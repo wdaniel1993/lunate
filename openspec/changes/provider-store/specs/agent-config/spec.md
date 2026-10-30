@@ -4,13 +4,19 @@
 
 ### Requirement: Provider and profile settings validate at load
 
-User settings SHALL own provider definitions and model profiles. A project settings file MAY reference an existing provider, define a profile using that provider, and lower a limit; it SHALL NOT define a provider, endpoint/base URL, or credential reference. Profile settings SHALL be checked against the selected provider and catalog model at load. A refused project provider field or unsupported profile setting SHALL name the offending key and SHALL fail closed before a secret is resolved or a request is sent.
+User settings SHALL own provider definitions and model profiles. A project settings file MAY reference existing user providers and profiles, define a profile using an existing provider, and lower a limit; it SHALL NOT define a provider, endpoint/base URL, or credential reference. Profile settings SHALL be checked against the selected provider and catalog model at load. A refused project provider field or unsupported profile setting SHALL name the offending key and SHALL fail closed before a secret is resolved or a request is sent.
 
 #### Scenario: Project profile references a user provider
 
 - **GIVEN** project settings that define a profile on an existing user provider and lower a configured limit
 - **WHEN** settings load
 - **THEN** the profile is accepted and the lower limit applies
+
+#### Scenario: Project usage references an existing user profile
+
+- **GIVEN** project settings that assign a usage to an existing user-defined profile
+- **WHEN** settings load
+- **THEN** the reference is accepted without redefining the profile's provider
 
 #### Scenario: Project provider attack names the offending key
 

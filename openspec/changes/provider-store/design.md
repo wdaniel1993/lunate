@@ -2,7 +2,9 @@
 
 ## Context
 
-Today `Lunate.Ai` loads twelve provider presets and a model catalog; `AuthStore` keeps named keys; user settings may carry custom OpenAI-compatible providers; and one model id is selected for the session. `/model` switches that active model, compaction uses it, and cost reporting attributes token lanes to the model. Extension model providers and virtual models are a separate registry; the `model-router` sample already owns its per-request routing inside a declared provider.
+Today `Lunate.Ai` loads twelve provider presets and a model catalog; `AuthStore` keeps named keys; user settings may carry custom OpenAI-compatible providers; and one model id is selected for the session. `AuthCommand.List` enumerates preset and stored-key names without endpoint reachability, `/model` switches the one active model, compaction uses that same model, and `UsageCost` groups recorded token lanes by model rather than semantic usage or provider. These current paths establish the configuration and attribution gap this proposal addresses. Extension model providers and virtual models are a separate registry; the `model-router` sample already owns its per-request routing inside a declared provider.
+
+The requested `openspec/project.md` is not present in this checkout. Capability names below follow the existing `openspec/specs/` directories and the configured OpenSpec instructions.
 
 The change introduces user-owned provider instances, named profiles, and usage selection across `Lunate.Ai`, `Lunate.Agent`, settings/auth, sessions, and the TUI. Security and migration are central constraints: a project repository is untrusted input, secrets stay in the existing secret store or an external source, and the session format is pinned by ADR-0015. ADR-0022 records the current preset/auth model and must be revisited for the new provider instance and profile semantics. No in-force ADR is superseded in the repository; ADR-0008 only supersedes one release-row wording in ADR-0001.
 
@@ -56,7 +58,7 @@ Each decision and shadow metric carries provider kind (`native` or `adapter`) an
 
 ### Project settings are references, never provider definitions
 
-Only user settings may define provider instances. Project settings may refer to existing providers/profiles, create profiles on those providers, and lower configured limits; they may not introduce a provider, endpoint/base URL, or credential reference. Validate this boundary while parsing project settings, before the credential resolver or network stack is reachable. Errors name the offending key.
+Only user settings may define provider instances. Project settings may refer to existing user providers and profiles, create profiles on existing user providers, and lower configured limits; they may not introduce a provider, endpoint/base URL, or credential reference. Validate this boundary while parsing project settings, before the credential resolver or network stack is reachable. Errors name the offending key.
 
 The reason is a credential-exfiltration path: if a repository could define a provider URL and point it at its own server, Lunate could attach the user's credential reference to a request controlled by the repository. Keeping endpoint and credential references user-owned closes that path; a project can still select a provider the user already approved.
 

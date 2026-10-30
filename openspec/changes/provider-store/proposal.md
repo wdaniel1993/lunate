@@ -12,7 +12,7 @@ Provider credentials, endpoints, model settings, and model selection are current
 - Require declared decision capability, keep an explicitly declared and uncalibrated `adapter:<provider>/<model>` option distinct from native decision providers, report missing decision capability separately from invalid decision output, and leave the decision layer off when no decision profile is configured.
 - Attribute recorded usage and `/cost` to both usage and provider; record decision provider kind and model id; use chat for compaction unless the user opts into `fast`.
 - Advance the session format to schema 4 for usage/provider attribution, migrate schemas 1–3 on read, and update the schema-4 golden fixtures in the implementation PR after proposal approval.
-- Reject project-scope provider definitions, endpoints, and credential references while allowing project profiles to reference existing providers or tighten limits; retain region metadata without implementing data-routing policy.
+- Reject project-scope provider definitions, endpoints, and credential references while allowing project settings to reference existing user providers/profiles, define profiles on existing providers, or tighten limits; retain region metadata without implementing data-routing policy.
 - Keep routing selection in core at usage → profile → provider; leave per-request routing inside a declared provider such as the `model-router` sample. Add no routing DSL.
 
 ## Capabilities
