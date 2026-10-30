@@ -3,12 +3,12 @@
 ## 1. Accounting harness and red tests
 
 - [x] 1.1 Add a fixture `IChatClient` (in `tests/Lunate.Agent.Tests`) that reports `InputTokenCount = Utf8Length(request) / 4` for every call, so each test below can read the session's usage instead of asserting a string length by hand. Prove the fixture against an existing session-mirror test first.
-- [ ] 1.2 Add the four red tests, one file each, and record their failing output on the PR:
+- [x] 1.2 Add the four red tests, one file each, and record their failing output on the PR:
   - `ContextSpillTests` — a 9,000-character result spills and the request is under 700 estimated tokens; today it passes through whole.
   - `ContextConciseResultTests` — a `bash` call with 20,000 characters of stdout and a stderr failure line sends stderr and the pointer (under 700 tokens); today it sends stdout.
   - `ContextStaleReadTests` — a read, an edit, then a second edit from the old text is refused and the old read leaves the request; today the edit succeeds and the read stays.
   - `ContextMaskingTests` — a known credential echoed by a tool is `[redacted:<name>]` in the request, event, session entry and spill file; today it is raw in all four.
-- [ ] 1.3 Commit: `test(agent): pin the four context-hygiene behaviours red`.
+- [x] 1.3 Commit: `test(agent): pin the four context-hygiene behaviours red`.
 
 ## 2. Spills
 
