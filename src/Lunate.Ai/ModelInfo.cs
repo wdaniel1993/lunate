@@ -26,5 +26,7 @@ public sealed record ModelInfo(
 
     public bool SupportsVision { get; init; }
 
+    internal bool SupportsTemperature { get; init; }
+
     public string? WireId { get; init; }
 }

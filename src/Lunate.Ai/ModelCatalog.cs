@@ -236,6 +236,7 @@ public sealed class ModelCatalog
             Pricing = entry.Pricing,
             MaxOutput = entry.MaxOutput,
             SupportsVision = entry.SupportsVision,
+            SupportsTemperature = entry.SupportsTemperature,
             WireId = string.IsNullOrEmpty(entry.WireId) ? null : entry.WireId,
         };
     }
@@ -318,6 +319,8 @@ public sealed class ModelCatalog
         public int? MaxOutput { get; set; }
 
         public bool SupportsVision { get; set; }
+
+        public bool SupportsTemperature { get; set; }
 
         public string? WireId { get; set; }
     }
