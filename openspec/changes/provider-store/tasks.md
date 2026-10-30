@@ -28,7 +28,7 @@
 
 - [x] 5.1 Test-first in `Lunate.Agent.Tests`: add schema-4 session fixtures and round-trip tests for usage, profile, provider name/kind, resolved model id, token lanes, and decision method (`native`/`adapter`) plus probability; prove schemas 1–3 remain byte-identical and do not gain inferred attribution.
 - [x] 5.2 Add the schema-4 golden fixture(s) only after maintainer approval; prove all existing session goldens remain byte-for-byte unchanged. Stop and report any unrelated golden failure; never rewrite an existing golden to make a test pass.
-- [ ] 5.3 Test-first in `Lunate.Coding.Tests` and `Lunate.Tui.Tests`: prove `/cost` reports totals by usage and provider, includes contributing model ids, avoids double counting shared profiles, marks unknown positive token lanes unpriced, and formats values invariantly.
+- [x] 5.3 Test-first in `Lunate.Coding.Tests` and `Lunate.Tui.Tests`: prove `/cost` reports totals by usage and provider, includes contributing model ids, avoids double counting shared profiles, marks unknown positive token lanes unpriced, and formats values invariantly.
 
 ## 6. User surfaces and documentation
 

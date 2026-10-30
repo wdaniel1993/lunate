@@ -137,17 +137,15 @@ public sealed class UsageCostTests
         AddUsage(session, "fixture-priced", "compaction", "shared", "primary", "openai", 1_000_000);
         session.AppendModelUsage(
             "fixture-other",
-            new SessionUsage(1_000_000, 0)
-            {
-                Attribution = new ModelUsageAttribution(
-                    "decision",
-                    "decision-profile",
-                    "router",
-                    "openrouter",
-                    "adapter",
-                    0.8d
-                ),
-            },
+            new SessionUsage(1_000_000, 0),
+            new ModelUsageAttribution(
+                "decision",
+                "decision-profile",
+                "router",
+                "openrouter",
+                "adapter",
+                0.8d
+            ),
             decisionOption: "deny"
         );
 

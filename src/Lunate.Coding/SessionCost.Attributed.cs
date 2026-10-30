@@ -6,7 +6,7 @@ namespace Lunate.Coding;
 internal static partial class UsageCost
 {
     /// <summary>
-    /// Prices each schema-4 message usage once, then derives the usage and provider views from the
+    /// Prices each schema-4 model usage once, then derives the usage and provider views from the
     /// same records. Unknown attribution stays under an explicit unknown group; unknown prices stay
     /// unpriced rather than becoming zero.
     /// </summary>
@@ -27,17 +27,29 @@ internal static partial class UsageCost
                 continue;
             }
 
-            ModelUsageAttribution? attribution = usage.Attribution;
-            string? modelId = entry.Model ?? fallbackModelId;
-            UsageLanes lanes = UsageLanes.From(usage);
             records.Add(
-                new AttributedRecord(
-                    attribution?.Usage ?? "unknown",
-                    attribution?.ProviderName ?? "unknown",
-                    attribution?.ProviderKind,
-                    modelId,
-                    lanes,
-                    ForRecord(catalog, modelId, lanes)
+                CreateAttributedRecord(
+                    catalog,
+                    usage,
+                    usage.Attribution,
+                    entry.Model ?? fallbackModelId
+                )
+            );
+        }
+
+        foreach (SessionModelUsageEntry entry in session.Entries.OfType<SessionModelUsageEntry>())
+        {
+            if (entry.Usage is not { } usage)
+            {
+                continue;
+            }
+
+            records.Add(
+                CreateAttributedRecord(
+                    catalog,
+                    usage,
+                    entry.Attribution,
+                    entry.Model ?? fallbackModelId
                 )
             );
         }
@@ -91,6 +103,24 @@ internal static partial class UsageCost
                 .Select(item => item.Lanes)
                 .Aggregate(default(UsageLanes), (sum, lanes) => sum.Add(lanes)),
             cost
+        );
+    }
+
+    private static AttributedRecord CreateAttributedRecord(
+        ModelCatalog catalog,
+        SessionUsage usage,
+        ModelUsageAttribution? attribution,
+        string? modelId
+    )
+    {
+        UsageLanes lanes = UsageLanes.From(usage);
+        return new AttributedRecord(
+            attribution?.Usage ?? "unknown",
+            attribution?.ProviderName ?? "unknown",
+            attribution?.ProviderKind,
+            modelId,
+            lanes,
+            ForRecord(catalog, modelId, lanes)
         );
     }
 
