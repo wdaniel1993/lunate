@@ -118,6 +118,52 @@ public sealed class LiveAreaTests
     }
 
     [Fact]
+    public void VerificationShowsElapsedLine()
+    {
+        var scheduler = new TestScheduler();
+        using var console = new FakeConsoleIO(scheduler, new ConsoleSize(80, 10));
+        using var area = new LiveArea(console, scheduler);
+        area.Start();
+
+        area.SetVerifying(true);
+        Advance(scheduler, 33);
+
+        Assert.Contains("| verifying… 0s", console.Writes[^1], StringComparison.Ordinal);
+
+        Advance(scheduler, 1100);
+
+        Assert.Contains("verifying… 1s", console.Writes[^1], StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(40)]
+    [InlineData(59)]
+    public void Verification_activity_fits_the_narrow_width_without_metrics(int width)
+    {
+        var scheduler = new TestScheduler();
+        using var console = new FakeConsoleIO(scheduler, new ConsoleSize(width, 10));
+        using var area = new LiveArea(console, scheduler);
+        area.Start();
+
+        area.SetCancellable(true);
+        area.SetRunUsage(1200, 180);
+        area.SetVerifying(true);
+        Advance(scheduler, 33);
+
+        string frame = Visible(console.Writes[^1]);
+        Match activity = Regex.Match(
+            frame,
+            @"[|/\\-] verifying… \d+s",
+            RegexOptions.CultureInvariant
+        );
+        Assert.True(activity.Success, "the verification activity line must render");
+        Assert.Equal("| verifying… 0s", activity.Value);
+        Assert.DoesNotContain("↑", frame, StringComparison.Ordinal);
+        Assert.DoesNotContain("esc to interrupt", frame, StringComparison.Ordinal);
+        Assert.True(CellText.Width(activity.Value) <= width);
+    }
+
+    [Fact]
     public void A_resize_pushed_through_resized_reflows_the_next_frame()
     {
         var scheduler = new TestScheduler();
