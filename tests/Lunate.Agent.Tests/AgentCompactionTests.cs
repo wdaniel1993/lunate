@@ -394,6 +394,98 @@ public sealed class AgentCompactionTests
     }
 
     [Fact]
+    public async Task Compaction_uses_chat_by_default_even_when_fast_is_configured()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(temp.File("s.jsonl"), "/work");
+        AppendTurn(session, "one " + new string('x', 4000), "noted one");
+        AppendTurn(session, "two", "noted two");
+        AppendTurn(session, "three", "noted three");
+        AppendTurn(session, "four", "noted four");
+        var chat = new ScriptedChatClient()
+            .Enqueue(Summary("chat summary"))
+            .Enqueue(LoopScripts.Text("done"), LoopScripts.Stop());
+        var fast = new ScriptedChatClient();
+        AgentHarness harness = Harness(
+            chat,
+            session,
+            usageModels: new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+            {
+                ["chat"] = new(
+                    chat,
+                    "chat-profile",
+                    "openai",
+                    new ModelInfo("chat-model", "openai", null, Window, SupportsTools: true)
+                ),
+                ["fast"] = new(
+                    fast,
+                    "fast-profile",
+                    "openai",
+                    new ModelInfo("fast-model", "openai", null, Window, SupportsTools: true)
+                ),
+            }
+        );
+
+        await AgentTestSupport.Run(harness);
+
+        Assert.Equal(2, chat.Requests.Count);
+        Assert.Equal(CompactionReducer.SummarizationPrompt, chat.Requests[0].Messages[0].Text);
+        Assert.Empty(fast.Requests);
+        Assert.Equal(
+            "chat summary",
+            Assert.Single(session.Entries.OfType<SessionCompactionEntry>()).Summary
+        );
+    }
+
+    [Fact]
+    public async Task Fast_compaction_requires_an_explicit_compaction_assignment()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(temp.File("s.jsonl"), "/work");
+        AppendTurn(session, "one " + new string('x', 4000), "noted one");
+        AppendTurn(session, "two", "noted two");
+        AppendTurn(session, "three", "noted three");
+        AppendTurn(session, "four", "noted four");
+        var chat = new ScriptedChatClient().Enqueue(LoopScripts.Text("done"), LoopScripts.Stop());
+        var fast = new ScriptedChatClient().Enqueue(Summary("fast summary"));
+        AgentHarness harness = Harness(
+            chat,
+            session,
+            usageModels: new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+            {
+                ["chat"] = new(
+                    chat,
+                    "chat-profile",
+                    "openai",
+                    new ModelInfo("chat-model", "openai", null, Window, SupportsTools: true)
+                ),
+                ["fast"] = new(
+                    fast,
+                    "fast-profile",
+                    "openai",
+                    new ModelInfo("fast-model", "openai", null, Window, SupportsTools: true)
+                ),
+                ["compaction"] = new(
+                    fast,
+                    "fast-profile",
+                    "openai",
+                    new ModelInfo("fast-model", "openai", null, Window, SupportsTools: true)
+                ),
+            }
+        );
+
+        await AgentTestSupport.Run(harness);
+
+        Assert.Single(chat.Requests);
+        Assert.Single(fast.Requests);
+        Assert.Equal(CompactionReducer.SummarizationPrompt, fast.Requests[0].Messages[0].Text);
+        Assert.Equal(
+            "fast summary",
+            Assert.Single(session.Entries.OfType<SessionCompactionEntry>()).Summary
+        );
+    }
+
+    [Fact]
     public async Task A_compacted_session_resumes_as_summary_plus_post_messages()
     {
         using var temp = new TempDirectory();
