@@ -29,7 +29,8 @@ public sealed class ExtensionsCommandTests
         Assert.Equal(ExtensionsCommand.ExitOk, exitCode);
         Assert.Empty(errors.ToString());
         string[] lines = output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        Assert.Equal(2, lines.Length);
+        // The two store extensions plus the builtin, which composes into every listing.
+        Assert.Equal(3, lines.Length);
         Assert.StartsWith(
             "hello-project 0.1.0 (project) trust-denied, tools 0, commands 0, hooks 0, services 0",
             lines[0],
@@ -44,6 +45,8 @@ public sealed class ExtensionsCommandTests
             lines[1],
             StringComparison.Ordinal
         );
+        Assert.StartsWith("roslyn 1.0.0 (builtin) loaded in ", lines[2], StringComparison.Ordinal);
+        Assert.Contains("inactive 'roslyn__diagnostics'", lines[2], StringComparison.Ordinal);
     }
 
     [Fact]
@@ -246,7 +249,11 @@ public sealed class ExtensionsCommandTests
 
         Assert.Equal(ExtensionsCommand.ExitOk, exitCode);
         using JsonDocument document = JsonDocument.Parse(output.ToString());
-        JsonElement node = Assert.Single(document.RootElement.EnumerateArray());
+        // The builtin composes into every listing; this test is about the store extension's row.
+        JsonElement node = Assert.Single(
+            document.RootElement.EnumerateArray(),
+            entry => entry.GetProperty("id").GetString() == "tools"
+        );
         JsonElement inactive = node.GetProperty("inactive");
         JsonElement entry = Assert.Single(inactive.EnumerateArray());
         Assert.Equal("tools__echo", entry.GetProperty("tool").GetString());
@@ -281,7 +288,11 @@ public sealed class ExtensionsCommandTests
         Assert.Equal(ExtensionsCommand.ExitOk, exitCode);
         Assert.Empty(errors.ToString());
         using JsonDocument document = JsonDocument.Parse(output.ToString());
-        JsonElement node = Assert.Single(document.RootElement.EnumerateArray());
+        // The builtin composes into every listing; this test is about the store extension's row.
+        JsonElement node = Assert.Single(
+            document.RootElement.EnumerateArray(),
+            entry => entry.GetProperty("id").GetString() == "hello"
+        );
         Assert.Equal("hello", node.GetProperty("id").GetString());
         Assert.Equal("0.1.0", node.GetProperty("version").GetString());
         Assert.Equal("global", node.GetProperty("scope").GetString());
@@ -300,7 +311,7 @@ public sealed class ExtensionsCommandTests
     }
 
     [Fact]
-    public void The_empty_store_reads_none_configured_and_json_prints_an_empty_array()
+    public void The_empty_store_lists_only_the_inactive_roslyn_builtin()
     {
         using var temp = new TempDirectory();
         string worktree = temp.File("worktree");
@@ -331,9 +342,22 @@ public sealed class ExtensionsCommandTests
         );
 
         Assert.Equal(ExtensionsCommand.ExitOk, textExit);
-        Assert.Equal("extensions: none configured", Trimmed(text));
+        string textLine = Trimmed(text);
+        // An empty store is not an empty listing: the builtin composes, and its tools are inactive
+        // at a root with no project file.
+        Assert.StartsWith("roslyn 1.0.0 (builtin) loaded in ", textLine, StringComparison.Ordinal);
+        Assert.Contains(
+            "tools 5, inactive 'roslyn__diagnostics'",
+            textLine,
+            StringComparison.Ordinal
+        );
         Assert.Equal(ExtensionsCommand.ExitOk, jsonExit);
-        Assert.Equal("[]", Trimmed(json));
+        using JsonDocument document = JsonDocument.Parse(json.ToString());
+        JsonElement node = Assert.Single(document.RootElement.EnumerateArray());
+        Assert.Equal("roslyn", node.GetProperty("id").GetString());
+        Assert.Equal("builtin", node.GetProperty("scope").GetString());
+        Assert.Equal(5, node.GetProperty("tools").GetInt32());
+        Assert.Equal(5, node.GetProperty("inactive").GetArrayLength());
     }
 
     [Fact]
