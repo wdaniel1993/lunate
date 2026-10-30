@@ -166,14 +166,19 @@ public sealed class ExtensionWorkspaceServiceLifecycleTests
             root => new TrackedValue(root, root => disposals.Add(root)),
             new ExtensionWorkspaceService("tracker", 2)
         );
-        registry.Acquire("svc", "tracker", typeof(TrackedValue), "/root/a", Ct).Dispose();
-        registry.Acquire("svc", "tracker", typeof(TrackedValue), "/root/a", Ct);
+        // The registry stores the root it can compare, and a host that spells absolute paths
+        // differently spells them differently here too: "/root/a" is not a rooted Windows path, and
+        // GetFullPath answers "D:\root\a" there. The expectation follows the host instead of pinning
+        // a POSIX spelling that only the runner that wrote it can satisfy.
+        string root = Path.GetFullPath("/root/a");
+        registry.Acquire("svc", "tracker", typeof(TrackedValue), root, Ct).Dispose();
+        registry.Acquire("svc", "tracker", typeof(TrackedValue), root, Ct);
 
         registry.Unregister("svc");
 
-        Assert.Equal(["/root/a"], disposals);
+        Assert.Equal([root], disposals);
         InvalidOperationException refused = Assert.Throws<InvalidOperationException>(() =>
-            registry.Acquire("svc", "tracker", typeof(TrackedValue), "/root/a", Ct)
+            registry.Acquire("svc", "tracker", typeof(TrackedValue), root, Ct)
         );
         Assert.Contains("is not registered", refused.Message, StringComparison.Ordinal);
     }
