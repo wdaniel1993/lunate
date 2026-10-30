@@ -14,10 +14,8 @@ Enter
 Sleep 7s
 Type "/"
 Sleep 2s
-Down
-Sleep 1s
-Down
-Sleep 1s
+Type "cop"
+Sleep 2s
 Tab
 Sleep 2s
 Enter

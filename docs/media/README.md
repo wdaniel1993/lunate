@@ -38,3 +38,10 @@ committed tape against a Release build, keyless and deterministic. Requirements 
 re-record procedure (provider key) are documented in the script's header. The frame is always
 1400×700, font size 16, padding 12, Dracula (`features-narrow` at 450×620); change it nowhere
 else. Every GIF must stay under 5 MB — the README media guard rejects bigger files.
+
+Two tapes drive their moment deliberately: `features-input` filters by text (`/cop` then
+`Tab`) instead of counting rows, so it stays correct when the command table changes;
+`features-narrow` waits 40 s after the approval so the turn finishes before its `/` list opens.
+`features-bash` and `features-follow-up` replay an exchange whose fixture digest no longer
+matches, so both show the app's own `run failed: fixture mismatch` notice — the same broken
+choreography the previous capture had, not a new defect.

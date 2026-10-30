@@ -20,7 +20,7 @@ Enter
 Sleep 6s
 Type "y"
 Enter
-Sleep 26s
+Sleep 40s
 Type "/"
 Sleep 4s
 Ctrl+C
