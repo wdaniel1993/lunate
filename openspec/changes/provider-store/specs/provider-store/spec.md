@@ -104,25 +104,43 @@ Core selection SHALL resolve usages to profiles and profiles to providers; it SH
 
 ### Requirement: Decision capability, adapter, and degradation
 
-The `decision` usage SHALL accept a native profile only when its provider and model declare decision capability and structured output. A Jev-compatible provider SHALL register that capability through the provider capability contract; core SHALL NOT use a vendor identity allowlist. A chat-model adapter MAY be used only when explicitly declared as `adapter:<provider>/<model>` and the model supports structured output; it SHALL be marked uncalibrated. Every decision and shadow metric SHALL carry provider kind (`native` or `adapter`) and model id, and shadow metrics SHALL be reported separately per kind. The capability validator SHALL report `This model cannot decide` when structured output or required capability is missing. A separate decision-output validator SHALL report `invalid decision` when a capable model returns output that violates the decision contract; provider limitations SHALL never be reported as product decision bugs. If no decision profile is configured, the decision layer SHALL report unavailable and remain off; it SHALL NOT silently use the chat profile.
+The `decision` usage SHALL accept an explicitly assigned model profile unless the model metadata explicitly says structured output/schema generation is unsupported. Unknown capability SHALL be allowed at configuration time and validated at runtime. Catalog/discovery `apiType` SHALL be a labelling hint only and SHALL NOT gate acceptance; provider names and model ids SHALL NOT imply capability. A provider-calibrated decision API SHALL be labelled `native`; a chat model explicitly assigned to decision SHALL be labelled `adapter`, whether used directly or through the explicit `adapter:<provider>/<model>` wrapper. Every model SHALL start uncalibrated; calibrated state SHALL be earned per model id through shadow metrics and maintainer sign-off under #183, never inferred from method. Every adapter response SHALL be checked against the defined decision options and well-formed probabilities. If a provider exposes logprobs, they SHALL supply probability provenance; otherwise an adapter MAY use self-reported probability. Native decision APIs SHALL record native probability provenance. Decision method (`native` or `adapter`) and probability method (`logprobs`, `self-reported`, or `native`) SHALL be distinct fields. A well-formed probability result SHALL provide one finite value in [0, 1] per defined option and sum to 1 within the contract tolerance. Three consecutive contract failures SHALL mark that profile `cannot decide` for the rest of the session and name the model. The capability validator SHALL report `This model cannot decide`, naming the model and missing structured-output capability, only when the catalog explicitly says that capability is absent. Malformed output after capability passes SHALL report `invalid decision`. Decisions MAY tighten an outcome but SHALL never override a deny, regardless of calibration. If no decision profile is configured, the decision layer SHALL report unavailable and remain off; it SHALL NOT implicitly borrow chat.
 
-#### Scenario: A capable provider is accepted without vendor matching
+#### Scenario: A provider-calibrated decision API is native without vendor matching
 
-- **GIVEN** a provider/model that declares decision capability and structured output
+- **GIVEN** a provider/model whose metadata identifies a provider-calibrated decision API and structured output
 - **WHEN** it is assigned to the decision usage
-- **THEN** it is accepted regardless of provider name
+- **THEN** it is accepted and labelled `native` regardless of provider name
 
-#### Scenario: A model without decision capability is refused by name
+#### Scenario: A chat model can fulfil the contract as an adapter
 
-- **GIVEN** a model without structured output or the required native decision capability
+- **GIVEN** a chat-typed model that supports structured output and is explicitly assigned to decision
 - **WHEN** it is assigned to decision
-- **THEN** the capability validator reports `This model cannot decide` and identifies the missing capability
+- **THEN** it is accepted and labelled `adapter`, uncalibrated, whether used directly or through the explicit wrapper
 
-#### Scenario: The declared chat adapter is explicit and uncalibrated
+#### Scenario: Explicitly absent structured output refuses assignment by model name
 
-- **GIVEN** a structured-output chat model declared as `adapter:provider-a/model-x`
+- **GIVEN** a model whose catalog explicitly declares structured-output support absent
+- **WHEN** it is assigned to decision
+- **THEN** assignment is refused with `This model cannot decide`, the model name, and missing structured-output capability before a model call
+
+#### Scenario: Unknown structured-output capability is allowed for runtime validation
+
+- **GIVEN** a model whose catalog has no structured-output capability value
+- **WHEN** it is assigned to decision
+- **THEN** configuration accepts the assignment and runtime validates the first response
+
+#### Scenario: Repeated adapter contract failures disable the profile for the session
+
+- **GIVEN** an adapter model returns three consecutive malformed decision contracts
+- **WHEN** the third response is validated
+- **THEN** the profile is marked `cannot decide` for the rest of the session and the notice names the model
+
+#### Scenario: The wrapped chat adapter is explicit and uncalibrated
+
+- **GIVEN** a structured-output chat model explicitly declared as `adapter:provider-a/model-x`
 - **WHEN** it is selected for decision use
-- **THEN** each decision is labelled `adapter`, carries model id `model-x`, and is marked uncalibrated
+- **THEN** each decision is labelled `adapter`, carries model id `model-x`, and is marked uncalibrated, just like direct assignment of that chat model
 
 #### Scenario: Invalid decision output is distinct from provider limitation
 
@@ -140,7 +158,13 @@ The `decision` usage SHALL accept a native profile only when its provider and mo
 
 - **GIVEN** shadow decisions from one native profile and one adapter profile
 - **WHEN** shadow metrics are reported
-- **THEN** each result and aggregate is grouped by provider kind and model id
+- **THEN** each result remains grouped by method and model id, no models merge, and neither model is calibrated without its own shadow evidence and maintainer sign-off
+
+#### Scenario: A decision never overrides a deny
+
+- **GIVEN** a deny outcome and a calibrated decision profile
+- **WHEN** the decision result is applied
+- **THEN** the outcome remains denied
 
 ### Requirement: Usage and provider cost attribution
 

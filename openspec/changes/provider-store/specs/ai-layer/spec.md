@@ -20,19 +20,31 @@ The twelve built-in provider presets SHALL be provider-kind templates that suppl
 
 ### Requirement: Model capability metadata
 
-The model/provider catalog SHALL expose whether a resolved model supports structured output and declares decision capability. A provider MAY register the decision capability through the provider capability contract; capability resolution SHALL follow the selected provider/model metadata and SHALL NOT inspect vendor names. Missing metadata SHALL mean the capability is not declared.
+The model/provider catalog SHALL expose an optional structured-output capability flag and optional `apiType` metadata (`chat` or `decision`). At configuration time, only an explicit structured-output=false flag SHALL refuse decision assignment; unknown capability SHALL proceed to runtime validation. `apiType` SHALL be a labelling hint only and SHALL NOT gate decision usage. A provider MAY declare a provider-calibrated decision API through metadata. An explicitly assigned chat model with structured-output support MAY serve decision usage as an `adapter`, directly or through a wrapper. Capability SHALL NOT be inferred from vendor names or ids. Decision method, probability method and calibrated state SHALL be distinct: every model starts uncalibrated and only per-model shadow evidence plus maintainer sign-off may mark it calibrated.
 
-#### Scenario: Capability declaration is vendor-neutral
+#### Scenario: A provider-calibrated decision API is labelled vendor-neutrally
 
-- **GIVEN** a Jev-compatible provider registered with decision capability and structured output
+- **GIVEN** a Jev-compatible provider whose API metadata declares a provider-calibrated decision API and structured output
 - **WHEN** its model is resolved
-- **THEN** the resolved metadata declares decision capability without a vendor-name check
+- **THEN** the resolved metadata labels it as `native` without a vendor-name check
 
-#### Scenario: Missing capability is not inferred
+#### Scenario: Explicitly absent structured output refuses decision assignment
 
-- **GIVEN** a catalog model with no structured-output or decision-capability declaration
-- **WHEN** the model is resolved
-- **THEN** neither capability is inferred from its id or provider name
+- **GIVEN** a catalog model with structured-output=false
+- **WHEN** it is assigned to decision
+- **THEN** assignment is refused by the explicit capability flag, without vendor, id or API-type inference
+
+#### Scenario: Unknown structured-output capability is allowed
+
+- **GIVEN** a catalog model whose structured-output capability is unknown
+- **WHEN** it is assigned to decision
+- **THEN** configuration allows it and runtime validates its response contract
+
+#### Scenario: A chat model with structured output can be an adapter
+
+- **GIVEN** a chat-typed catalog model that supports structured output
+- **WHEN** it is explicitly assigned to decision
+- **THEN** it is labelled `adapter` and uncalibrated rather than refused by its API type
 
 ### Requirement: Profile options are validated against resolved models
 

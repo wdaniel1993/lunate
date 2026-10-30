@@ -72,11 +72,13 @@ A session file SHALL be append-only JSONL: a header line (schema, session `id`, 
 - **WHEN** the session is loaded and re-serialized
 - **THEN** usage, provider, resolved model id, and token lanes are byte-identical
 
-#### Scenario: Decision provenance distinguishes provider kinds
+Schema 4 usage attribution SHALL identify usage, profile name, provider id and provider kind. Decision provenance SHALL additionally carry decision method (`native` or `adapter`), resolved model id, probability and probability method (`logprobs`, `self-reported`, or `native`). Session attribution SHALL NOT contain endpoints, headers, credential references or secrets.
+
+#### Scenario: Decision provenance separates method and probability source
 
 - **GIVEN** a schema 4 decision usage from an adapter model
 - **WHEN** the decision record is written
-- **THEN** it carries provider kind `adapter` and the resolved model id, with no credential reference or value
+- **THEN** it carries decision method `adapter`, probability and probability method `logprobs`, `self-reported`, or `native`, with the resolved model id and no credential reference or value
 
 #### Scenario: Legacy sessions do not invent attribution
 
