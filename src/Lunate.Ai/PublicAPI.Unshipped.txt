@@ -91,6 +91,28 @@ Lunate.Ai.ProviderAdapter
 Lunate.Ai.ProviderAdapter.Anthropic = 1 -> Lunate.Ai.ProviderAdapter
 Lunate.Ai.ProviderAdapter.OpenAi = 0 -> Lunate.Ai.ProviderAdapter
 Lunate.Ai.ProviderAdapter.OpenAiCompatible = 2 -> Lunate.Ai.ProviderAdapter
+Lunate.Ai.ProviderEntry
+Lunate.Ai.ProviderEntry.<Clone>$() -> Lunate.Ai.ProviderEntry!
+Lunate.Ai.ProviderEntry.BaseUrl.get -> System.Uri!
+Lunate.Ai.ProviderEntry.BaseUrl.init -> void
+Lunate.Ai.ProviderEntry.CredentialReference.get -> string!
+Lunate.Ai.ProviderEntry.CredentialReference.init -> void
+Lunate.Ai.ProviderEntry.Deconstruct(out string! Name, out string! Kind, out System.Uri! BaseUrl, out string! CredentialReference, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Headers, out string? Region) -> void
+Lunate.Ai.ProviderEntry.Equals(Lunate.Ai.ProviderEntry? other) -> bool
+Lunate.Ai.ProviderEntry.Headers.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Lunate.Ai.ProviderEntry.Headers.init -> void
+Lunate.Ai.ProviderEntry.Kind.get -> string!
+Lunate.Ai.ProviderEntry.Kind.init -> void
+Lunate.Ai.ProviderEntry.Name.get -> string!
+Lunate.Ai.ProviderEntry.Name.init -> void
+Lunate.Ai.ProviderEntry.ProviderEntry(string! Name, string! Kind, System.Uri! BaseUrl, string! CredentialReference, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Headers = null, string? Region = null) -> void
+Lunate.Ai.ProviderEntry.Region.get -> string?
+Lunate.Ai.ProviderEntry.Region.init -> void
+override Lunate.Ai.ProviderEntry.Equals(object? obj) -> bool
+override Lunate.Ai.ProviderEntry.GetHashCode() -> int
+override Lunate.Ai.ProviderEntry.ToString() -> string!
+static Lunate.Ai.ProviderEntry.operator !=(Lunate.Ai.ProviderEntry? left, Lunate.Ai.ProviderEntry? right) -> bool
+static Lunate.Ai.ProviderEntry.operator ==(Lunate.Ai.ProviderEntry? left, Lunate.Ai.ProviderEntry? right) -> bool
 Lunate.Ai.ProviderPreset
 Lunate.Ai.ProviderPreset.<Clone>$() -> Lunate.Ai.ProviderPreset!
 Lunate.Ai.ProviderPreset.Adapter.get -> Lunate.Ai.ProviderAdapter

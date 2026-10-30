@@ -61,7 +61,22 @@ public sealed class AuthStore
             );
         }
 
-        return new AuthStore(path, env, keys);
+        var store = new AuthStore(path, env, keys);
+        if (keys.Count > 0)
+        {
+            string directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
+            AgentSettings settings = SettingsStore.Resolve(
+                Path.Combine(directory, "settings.json"),
+                _ => null
+            );
+            _ = ProviderStore.Load(
+                Path.Combine(directory, "providers.json"),
+                store,
+                settings.Providers
+            );
+        }
+
+        return store;
     }
 
     /// <summary>Returns the named key with provider environment overrides applied, or null when it is missing or blank.</summary>
