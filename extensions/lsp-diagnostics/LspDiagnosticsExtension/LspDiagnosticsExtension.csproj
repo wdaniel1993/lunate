@@ -1,19 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <RootNamespace>SubagentsExtension</RootNamespace>
+        <RootNamespace>LspDiagnosticsExtension</RootNamespace>
 
         <!--
-            This sample ships as a real package (Lunate.Extensions.Subagents), so a user gets the subagent
-            tool with `lunate install` and the release smoke installs it from a published feed instead
-            of a test fixture. The package is a bundle, not a library: its layout is the bundle
-            contract (`lunate.package.json` plus `extension/`), so the build output is packed under
-            `extension/` rather than in `lib/`, and the project declares no package dependencies —
-            the host owns the contract and every assembly it references.
+            lsp-diagnostics ships as a real package (Lunate.Extensions.LspDiagnostics), so a user gets
+            language-server diagnostics with `lunate install`. The package is a bundle, not a library:
+            its layout is the bundle contract (`lunate.package.json` plus `extension/`), so the build
+            output is packed under `extension/` rather than in `lib/`, and the project declares no
+            package dependencies — the host owns the contract and every assembly it references.
         -->
         <IsPackable>true</IsPackable>
-        <PackageId>Lunate.Extensions.Subagents</PackageId>
-        <Description>The subagents extension for Lunate: one tool that runs a child agent through the harness's subagent seam. Officially supported.</Description>
-        <PackageTags>lunate;extension;subagents</PackageTags>
+        <PackageId>Lunate.Extensions.LspDiagnostics</PackageId>
+        <Description>The lsp-diagnostics extension for Lunate: language-server diagnostics attached to write and edit tool results after the call. Officially supported.</Description>
+        <PackageTags>lunate;extension;lsp-diagnostics</PackageTags>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/wdaniel1993/lunate</PackageProjectUrl>
         <RepositoryUrl>https://github.com/wdaniel1993/lunate</RepositoryUrl>
@@ -37,17 +36,17 @@
             project's output, where a load would ignore them (and warn once) anyway.
         -->
         <ProjectReference
-            Include="../../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
+            Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
             Private="false"
             ExcludeAssets="runtime"
         />
         <ProjectReference
-            Include="../../../../src/Lunate.Agent/Lunate.Agent.csproj"
+            Include="../../../src/Lunate.Agent/Lunate.Agent.csproj"
             Private="false"
             ExcludeAssets="runtime"
         />
         <ProjectReference
-            Include="../../../../src/Lunate.Ai/Lunate.Ai.csproj"
+            Include="../../../src/Lunate.Ai/Lunate.Ai.csproj"
             Private="false"
             ExcludeAssets="runtime"
         />
@@ -56,7 +55,7 @@
     <ItemGroup>
         <None Update="extension.json" CopyToOutputDirectory="PreserveNewest" />
         <None Include="lunate.package.json" Pack="true" PackagePath="/" />
-        <!-- The page a reader lands on from the feed is the sample's own README. -->
+        <!-- The page a reader lands on from the feed is the extension's own README. -->
         <None Include="../README.md" Pack="true" PackagePath="/" />
     </ItemGroup>
 

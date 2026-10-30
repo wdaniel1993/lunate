@@ -83,7 +83,7 @@ public interface IExtensionToolHandler
 | --- | --- |
 | `RunId`, `CallId` | The current run and call identity; nested calls use `"<parent>/<n>"`. |
 | `ExecuteToolAsync(name, args, ct)` | Runs a nested call through validation, hooks, approval and cancellation. |
-| `Subagents` | The per-run `ISubagentRunner`; null outside a run. See the [`subagents` sample](../../../samples/extensions/subagents/README.md). |
+| `Subagents` | The per-run `ISubagentRunner`; null outside a run. See the supported [`subagents` extension](../../../extensions/subagents/README.md). |
 | `Models` | The run-bound `IModelAccess`; `For(modelId)` charges usage to this run. Null outside a run. |
 | `Progress` | Reports one progress line to the event stream. |
 | `WorkingDirectory` | The run's working directory. |

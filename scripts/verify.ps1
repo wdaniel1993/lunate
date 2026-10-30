@@ -354,7 +354,7 @@ try {
     $packageHome = Join-Path $packageTmp 'home'
     New-Item -ItemType Directory -Force -Path $packageFeed, $packageTree, $packageHome | Out-Null
     try {
-        dotnet pack samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj -c $configuration -o $packageFeed --nologo
+        dotnet pack extensions/subagents/SubagentsExtension/SubagentsExtension.csproj -c $configuration -o $packageFeed --nologo
         if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet pack of the extension sample failed' }
         Assert-PackageMetadata `
             -Package (Join-Path $packageFeed "Lunate.Extensions.Subagents.$version.nupkg") `

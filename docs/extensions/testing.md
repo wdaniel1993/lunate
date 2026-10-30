@@ -149,11 +149,12 @@ sample.
 
 ```bash
 dotnet test templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj
-dotnet test samples/extensions/permission-gate/PermissionGateExtension.Tests/PermissionGateExtension.Tests.csproj
+dotnet test extensions/permission-gate/PermissionGateExtension.Tests/PermissionGateExtension.Tests.csproj
 ```
 
 The samples under `samples/extensions/` are the fitness suite: each one proves a core capability
-and runs in CI. Run the extension's own test project before you change a sample.
+and runs in CI. The supported extensions under `extensions/` match that bar — their tests are
+solution members and run in the same gate. Run the extension's own test project before you change it.
 
 ## The missing-primitive rule
 

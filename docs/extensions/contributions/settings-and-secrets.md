@@ -87,7 +87,7 @@ if (
 ```
 
 Full file:
-[`PermissionGateToolCallingHandler.cs`](../../../samples/extensions/permission-gate/PermissionGateExtension/PermissionGateToolCallingHandler.cs).
+[`PermissionGateToolCallingHandler.cs`](../../../extensions/permission-gate/PermissionGateExtension/PermissionGateToolCallingHandler.cs).
 
 A declared provider uses a secret by name, not by value:
 

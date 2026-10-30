@@ -73,7 +73,8 @@ bash scripts/gate-tests.sh               # the gate's own self-tests (needs a pu
 | `openspec/changes/` | in-flight proposals and tasks |
 | `adr/` | durable architectural decisions |
 | `docs/` | guide, spikes, eval write-ups and the documentation map |
-| `templates/`, `samples/` | the extension template and the reference extensions |
+| `templates/`, `samples/` | the extension template and the reference extensions (the fitness suite) |
+| `extensions/` | the first-party supported extension tier, shipped as `Lunate.Extensions.*` packages |
 
 ## Documentation
 

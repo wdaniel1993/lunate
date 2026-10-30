@@ -116,7 +116,7 @@ public sealed class PermissionGateToolCallingHandler(
 ```
 
 Full file:
-[`PermissionGateToolCallingHandler.cs`](../../../samples/extensions/permission-gate/PermissionGateExtension/PermissionGateToolCallingHandler.cs).
+[`PermissionGateToolCallingHandler.cs`](../../../extensions/permission-gate/PermissionGateExtension/PermissionGateToolCallingHandler.cs).
 `ToolCalling` runs before the approval prompt, so the block happens without asking.
 
 ## Example: attach a result
@@ -126,7 +126,7 @@ The `lsp-diagnostics` handler is the reference for the transformation shape: aft
 server, appends a labeled section to `payload.Output`, and returns it with the diagnostics as the
 third argument of `ToolResultReadyResult` (`StructuredContent`). Every not-applicable call and
 every failure returns the original output unchanged. Full file:
-[`LspDiagnosticsToolResultReadyHandler.cs`](../../../samples/extensions/lsp-diagnostics/LspDiagnosticsExtension/LspDiagnosticsToolResultReadyHandler.cs).
+[`LspDiagnosticsToolResultReadyHandler.cs`](../../../extensions/lsp-diagnostics/LspDiagnosticsExtension/LspDiagnosticsToolResultReadyHandler.cs).
 
 ## See also
 

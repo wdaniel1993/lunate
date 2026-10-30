@@ -1,0 +1,83 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <RootNamespace>PermissionGateExtension</RootNamespace>
+
+        <!--
+            permission-gate ships as a real package (Lunate.Extensions.PermissionGate), so a user gets
+            the tool policy gate with `lunate install`. The package is a bundle, not a library: its
+            layout is the bundle contract (`lunate.package.json` plus `extension/`), so the build
+            output is packed under `extension/` rather than in `lib/`, and the project declares no
+            package dependencies — the host owns the contract and every assembly it references.
+        -->
+        <IsPackable>true</IsPackable>
+        <PackageId>Lunate.Extensions.PermissionGate</PackageId>
+        <Description>The permission-gate extension for Lunate: a settings-driven policy that blocks or approves destructive tool calls before the approval prompt. Officially supported.</Description>
+        <PackageTags>lunate;extension;permission-gate</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/wdaniel1993/lunate</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/wdaniel1993/lunate</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+        <!--
+            A bundle is not a library: assemblies live under extension/, where Lunate loads them, so
+            NU5100 ("not inside lib/") describes the layout this package exists to have. NU5128 is the
+            matching "no dependency group" warning. Neither can be fixed without breaking the bundle.
+        -->
+        <NoWarn>$(NoWarn);NU5100;NU5128</NoWarn>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);PackBundleContent</TargetsForTfmSpecificContentInPackage>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!--
+            The host owns the contract, Lunate.Agent and Lunate.Ai: Lunate loads them once and every
+            extension binds to those copies. Referencing them compile-only keeps them out of this
+            project's output, where a load would ignore them (and warn once) anyway.
+        -->
+        <ProjectReference
+            Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
+            Private="false"
+            ExcludeAssets="runtime"
+        />
+        <ProjectReference
+            Include="../../../src/Lunate.Agent/Lunate.Agent.csproj"
+            Private="false"
+            ExcludeAssets="runtime"
+        />
+        <ProjectReference
+            Include="../../../src/Lunate.Ai/Lunate.Ai.csproj"
+            Private="false"
+            ExcludeAssets="runtime"
+        />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="extension.json" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="lunate.package.json" Pack="true" PackagePath="/" />
+        <!-- The page a reader lands on from the feed is the extension's own README. -->
+        <None Include="../README.md" Pack="true" PackagePath="/" />
+    </ItemGroup>
+
+    <!--
+        The bundle's content is the build output, packed under extension/. It is read after Build so
+        the nupkg holds what this build produced, and it is staged into a directory that is emptied
+        first so a file an older build left in bin/ can never ride along into a package.
+    -->
+    <Target Name="PackBundleContent" DependsOnTargets="Build">
+        <ItemGroup>
+            <_BundleFile Include="$(TargetDir)**/*" />
+        </ItemGroup>
+        <RemoveDir Directories="$(IntermediateOutputPath)bundle" />
+        <Copy
+            SourceFiles="@(_BundleFile)"
+            DestinationFiles="@(_BundleFile->'$(IntermediateOutputPath)bundle/extension/%(RecursiveDir)%(Filename)%(Extension)')"
+        />
+        <ItemGroup>
+            <TfmSpecificPackageFile
+                Include="$(IntermediateOutputPath)bundle/extension/**/*"
+                PackagePath="extension/%(RecursiveDir)"
+            />
+        </ItemGroup>
+    </Target>
+</Project>

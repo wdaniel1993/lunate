@@ -81,7 +81,7 @@ public sealed class LspServerService : IBackgroundService
 ```
 
 Full file:
-[`LspServerService.cs`](../../../samples/extensions/lsp-diagnostics/LspDiagnosticsExtension/LspServerService.cs).
+[`LspServerService.cs`](../../../extensions/lsp-diagnostics/LspDiagnosticsExtension/LspServerService.cs).
 
 A service that only holds state can leave both methods empty. `memory-provider` registers
 `MemoryStore` this way: both `StartAsync` and `StopAsync` return `ValueTask.CompletedTask`. Full

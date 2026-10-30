@@ -4,6 +4,20 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Folder Name="/extensions/" />
+  <Folder Name="/extensions/lsp-diagnostics/">
+    <Project Path="extensions/lsp-diagnostics/LspDiagnosticsExtension.Tests/FakeLspServer/FakeLspServer.csproj" />
+    <Project Path="extensions/lsp-diagnostics/LspDiagnosticsExtension.Tests/LspDiagnosticsExtension.Tests.csproj" />
+    <Project Path="extensions/lsp-diagnostics/LspDiagnosticsExtension/LspDiagnosticsExtension.csproj" />
+  </Folder>
+  <Folder Name="/extensions/permission-gate/">
+    <Project Path="extensions/permission-gate/PermissionGateExtension.Tests/PermissionGateExtension.Tests.csproj" />
+    <Project Path="extensions/permission-gate/PermissionGateExtension/PermissionGateExtension.csproj" />
+  </Folder>
+  <Folder Name="/extensions/subagents/">
+    <Project Path="extensions/subagents/SubagentsExtension.Tests/SubagentsExtension.Tests.csproj" />
+    <Project Path="extensions/subagents/SubagentsExtension/SubagentsExtension.csproj" />
+  </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/extensions/node-remote/NodeRemoteExtension.Tests/NodeRemoteExtension.Tests.csproj" />
   </Folder>
@@ -12,11 +26,7 @@
     <Project Path="samples/extensions/code-mode/CodeModeExtension.Tests/CodeModeExtension.Tests.csproj" />
     <Project Path="samples/extensions/code-mode/CodeModeExtension/CodeModeExtension.csproj" />
   </Folder>
-  <Folder Name="/samples/extensions/lsp-diagnostics/">
-    <Project Path="samples/extensions/lsp-diagnostics/LspDiagnosticsExtension.Tests/FakeLspServer/FakeLspServer.csproj" />
-    <Project Path="samples/extensions/lsp-diagnostics/LspDiagnosticsExtension.Tests/LspDiagnosticsExtension.Tests.csproj" />
-    <Project Path="samples/extensions/lsp-diagnostics/LspDiagnosticsExtension/LspDiagnosticsExtension.csproj" />
-  </Folder>
+
   <Folder Name="/samples/extensions/mcp-from-extension/">
     <Project Path="samples/extensions/mcp-from-extension/McpFromExtensionExtension.Tests/FakeMcpServer/FakeMcpServer.csproj" />
     <Project Path="samples/extensions/mcp-from-extension/McpFromExtensionExtension.Tests/McpFromExtensionExtension.Tests.csproj" />
@@ -25,14 +35,6 @@
   <Folder Name="/samples/extensions/memory-provider/">
     <Project Path="samples/extensions/memory-provider/MemoryProviderExtension.Tests/MemoryProviderExtension.Tests.csproj" />
     <Project Path="samples/extensions/memory-provider/MemoryProviderExtension/MemoryProviderExtension.csproj" />
-  </Folder>
-  <Folder Name="/samples/extensions/permission-gate/">
-    <Project Path="samples/extensions/permission-gate/PermissionGateExtension.Tests/PermissionGateExtension.Tests.csproj" />
-    <Project Path="samples/extensions/permission-gate/PermissionGateExtension/PermissionGateExtension.csproj" />
-  </Folder>
-  <Folder Name="/samples/extensions/subagents/">
-    <Project Path="samples/extensions/subagents/SubagentsExtension.Tests/SubagentsExtension.Tests.csproj" />
-    <Project Path="samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj" />
   </Folder>
   <Folder Name="/samples/extensions/ui-showcase/">
     <Project Path="samples/extensions/ui-showcase/UiShowcaseExtension.Tests/UiShowcaseExtension.Tests.csproj" />
