@@ -26,7 +26,7 @@ public sealed class WorkspaceToolFactoryTests
         File.WriteAllText(temp.File("Program.cs"), "class C;\n");
         using var services = new WorkspaceServices(2, root => new FakeWorkspaceBackend(root));
 
-        ToolRegistry tools = HarnessFactory.CreateTools(
+        ToolRegistry tools = RoslynTestHarness.CreateTools(
             new Workspace(temp.Root),
             services: services
         );
@@ -52,7 +52,7 @@ public sealed class WorkspaceToolFactoryTests
             }
         );
 
-        ToolRegistry tools = HarnessFactory.CreateTools(
+        ToolRegistry tools = RoslynTestHarness.CreateTools(
             new Workspace(temp.Root),
             services: services
         );
@@ -89,7 +89,7 @@ public sealed class WorkspaceToolFactoryTests
         using var services = new WorkspaceServices(2, root => new FakeWorkspaceBackend(root));
         var extensionTool = new NamedProbe("ext-tool");
         var independentMcpTool = new NamedProbe("global__echo");
-        Func<string, ToolRegistry> factory = HarnessFactory.CreateWorkspaceTools(
+        Func<string, ToolRegistry> factory = RoslynTestHarness.CreateWorkspaceTools(
             services,
             [extensionTool, independentMcpTool]
         );
@@ -119,7 +119,7 @@ public sealed class WorkspaceToolFactoryTests
         var redactor = new CredentialRedactor([("ANTHROPIC_API_KEY", Secret)]);
         // The child factory inherits the write/edit guard: a child session runs with the same
         // redactor, so its write tool refuses the placeholder over the value it stands for.
-        Func<string, ToolRegistry> factory = HarnessFactory.CreateWorkspaceTools(
+        Func<string, ToolRegistry> factory = RoslynTestHarness.CreateWorkspaceTools(
             services,
             [],
             redaction: redactor
@@ -162,7 +162,7 @@ public sealed class WorkspaceToolFactoryTests
         var projectMcpTool = new NamedProbe("project__echo");
         var independentMcpTool = new NamedProbe("global__echo");
         var spawn = new SpawnProbe(worktree);
-        ToolRegistry parentTools = HarnessFactory.CreateTools(
+        ToolRegistry parentTools = RoslynTestHarness.CreateTools(
             new Workspace(canonicalMain),
             services: services
         );
@@ -183,7 +183,7 @@ public sealed class WorkspaceToolFactoryTests
             new AgentHarnessOptions
             {
                 WorkingDirectory = canonicalMain,
-                WorkspaceTools = HarnessFactory.CreateWorkspaceTools(
+                WorkspaceTools = RoslynTestHarness.CreateWorkspaceTools(
                     services,
                     [extensionTool, independentMcpTool]
                 ),

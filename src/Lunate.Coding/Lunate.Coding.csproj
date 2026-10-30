@@ -28,7 +28,7 @@
         <ProjectReference Include="../Lunate.Extensibility.Compile/Lunate.Extensibility.Compile.csproj" />
         <ProjectReference Include="../Lunate.Extensibility.Restore/Lunate.Extensibility.Restore.csproj" />
         <ProjectReference Include="../Lunate.Protocols/Lunate.Protocols.csproj" />
-        <ProjectReference Include="../Lunate.Roslyn/Lunate.Roslyn.csproj" />
+        <ProjectReference Include="../Lunate.Roslyn.BuiltIn/Lunate.Roslyn.BuiltIn.csproj" />
         <ProjectReference Include="../Lunate.Tui/Lunate.Tui.csproj" />
     </ItemGroup>
 

@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Lunate.TestSupport;
 
@@ -18,15 +19,33 @@ public sealed class LayeringTests
     {
         var references = ReadProjectReferences();
         var roslynReferences = references
-            .Where(reference =>
-                reference.From is "Lunate.Roslyn" or "Lunate.Roslyn.BuiltIn"
-            )
+            .Where(reference => reference.From is "Lunate.Roslyn" or "Lunate.Roslyn.BuiltIn")
             .ToArray();
 
         Assert.DoesNotContain(
             roslynReferences,
+            reference => reference.To is "Lunate.Agent" or "Lunate.Coding" or "Lunate.Extensibility"
+        );
+        Assert.Contains(("Lunate.Roslyn", "Lunate.Extensibility.Abstractions"), references);
+        Assert.Contains(("Lunate.Roslyn.BuiltIn", "Lunate.Extensibility.Abstractions"), references);
+        Assert.All(
+            roslynReferences,
             reference =>
-                reference.To is "Lunate.Agent" or "Lunate.Coding" or "Lunate.Extensibility"
+                Assert.True(
+                    reference.To is "Lunate.Extensibility.Abstractions" or "Lunate.Roslyn",
+                    $"unexpected Roslyn project edge: {reference.From} -> {reference.To}"
+                )
+        );
+
+        string[] packages = ReadRoslynPackages();
+        Assert.All(
+            packages,
+            package =>
+                Assert.True(
+                    package.StartsWith("Microsoft.CodeAnalysis.", StringComparison.Ordinal)
+                        || package.StartsWith("Microsoft.Build.", StringComparison.Ordinal),
+                    $"unexpected Roslyn package: {package}"
+                )
         );
     }
 
@@ -36,6 +55,46 @@ public sealed class LayeringTests
         var references = ReadProjectReferences();
 
         Assert.DoesNotContain(("Lunate.Coding", "Lunate.Roslyn"), references);
+    }
+
+    [Fact]
+    public void Coding_uses_only_the_builtin_factory_type_from_the_adapter()
+    {
+        var references = ReadProjectReferences();
+        Assert.Contains(("Lunate.Coding", "Lunate.Roslyn.BuiltIn"), references);
+        string repositoryRoot = RepositoryRoot.Find();
+        string adapterDirectory = Path.Combine(repositoryRoot, "src", "Lunate.Roslyn.BuiltIn");
+        string codingDirectory = Path.Combine(repositoryRoot, "src", "Lunate.Coding");
+        string[] adapterTypes = Directory
+            .EnumerateFiles(adapterDirectory, "*.cs", SearchOption.TopDirectoryOnly)
+            .SelectMany(path =>
+                Regex
+                    .Matches(
+                        File.ReadAllText(path),
+                        @"\b(?:class|record|interface|struct|enum)\s+(\w+)"
+                    )
+                    .Select(match => match.Groups[1].Value)
+            )
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        string codingSource = string.Join(
+            "\n",
+            Directory
+                .EnumerateFiles(codingDirectory, "*.cs", SearchOption.AllDirectories)
+                .Where(path =>
+                    !path.Contains(
+                        $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+                        StringComparison.Ordinal
+                    )
+                )
+                .Select(File.ReadAllText)
+        );
+        string[] usedAdapterTypes = adapterTypes
+            .Where(type => Regex.IsMatch(codingSource, $@"\b{Regex.Escape(type)}\b"))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(["RoslynBuiltInFactory"], usedAdapterTypes);
     }
 
     [Fact]
@@ -134,6 +193,24 @@ public sealed class LayeringTests
         }
 
         return references;
+    }
+
+    private static string[] ReadRoslynPackages()
+    {
+        string source = RepositoryRoot.Find();
+        return
+        [
+            .. new[] { "Lunate.Roslyn", "Lunate.Roslyn.BuiltIn" }
+                .SelectMany(name =>
+                    XDocument
+                        .Load(Path.Combine(source, "src", name, $"{name}.csproj"))
+                        .Descendants("PackageReference")
+                        .Select(element => element.Attribute("Include")?.Value)
+                        .OfType<string>()
+                )
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal),
+        ];
     }
 
     private static IReadOnlyList<(string Package, bool IsBuildOnly)> ReadAgentPackages()

@@ -15,13 +15,11 @@ public sealed class AcpSystemPromptTests
         using var temp = new TempDirectory();
         var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
         var workspace = new Workspace(temp.Root);
-        using var services = new WorkspaceServices(4);
         AgentHarness harness = AcpMode.CreateHarness(
             new AcpSessionContext(workspace.WorktreeRoot, null, null),
             null,
             [],
             [],
-            services,
             new LaunchOptions { SystemPrompt = "the acp contract", Model = "gpt-4o-mini" },
             new FakeChatClientFactory(client),
             temp.File("sessions")
@@ -40,13 +38,11 @@ public sealed class AcpSystemPromptTests
         using var temp = new TempDirectory();
         var client = new ScriptedChatClient();
         var workspace = new Workspace(temp.Root);
-        using var services = new WorkspaceServices(4);
         _ = AcpMode.CreateHarness(
             new AcpSessionContext(workspace.WorktreeRoot, null, null),
             null,
             [],
             [],
-            services,
             new LaunchOptions
             {
                 SystemPrompt = "the acp contract",

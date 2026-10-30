@@ -1,24 +1,23 @@
 using System.IO.Pipelines;
 using System.Text;
 using System.Text.Json;
-using Lunate.Roslyn;
 
 namespace Lunate.Coding.Tests;
 
 /// <summary>
-/// <c>lunate mcp roslyn</c>'s composition: the five <c>cs_*</c> tools are listed even where no
-/// solution exists, and a call reaches the tool's own no-solution answer instead of failing the
-/// server. The backend is a seam here so the test does not depend on MSBuild loading.
+/// <c>lunate mcp roslyn</c> composes the built-in through the manifest activation evaluator and
+/// serves its five compatibility aliases over the protocol.
 /// </summary>
 public sealed class McpRoslynCommandTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task Serves_the_five_roslyn_tools_and_maps_a_call_to_the_backend()
+    public async Task Serves_the_five_roslyn_tools_and_maps_a_call_to_the_builtin()
     {
         using var temp = new TempDirectory();
-        var backend = new NoSolutionBackend();
+        File.WriteAllText(temp.File("App.slnx"), "<Solution />");
+        File.WriteAllText(temp.File("Program.cs"), "public class Example { }");
         var toServer = new Pipe();
         var toClient = new Pipe();
         using var errors = new StringWriter();
@@ -28,8 +27,7 @@ public sealed class McpRoslynCommandTests
                 toServer.Reader.AsStream(),
                 toClient.Writer.AsStream(),
                 errors,
-                CancellationToken.None,
-                () => backend
+                CancellationToken.None
             )
         );
 
@@ -79,16 +77,15 @@ public sealed class McpRoslynCommandTests
             writer,
             3,
             "tools/call",
-            new { name = "cs_find_symbol", arguments = new { name = "Calculator" } }
+            new { name = "cs_outline", arguments = new { file = "Program.cs" } }
         );
         JsonElement result = call.GetProperty("result");
-        Assert.True(result.GetProperty("isError").GetBoolean());
+        Assert.False(result.GetProperty("isError").GetBoolean());
         Assert.Contains(
-            "No C# solution is available",
+            "Example",
             result.GetProperty("content")[0].GetProperty("text").GetString(),
             StringComparison.Ordinal
         );
-        Assert.Equal(1, backend.Loads);
 
         await writer.DisposeAsync();
         await toServer.Writer.CompleteAsync();
@@ -156,49 +153,5 @@ public sealed class McpRoslynCommandTests
                 return frame;
             }
         }
-    }
-
-    private sealed class NoSolutionBackend : ICSharpBackend
-    {
-        public int Loads { get; private set; }
-
-        public ValueTask<WorkspaceLoadResult> LoadAsync(CancellationToken ct)
-        {
-            Loads++;
-            return ValueTask.FromResult(
-                new WorkspaceLoadResult(
-                    WorkspaceStatus.NoSolution,
-                    $"no solution found: no .sln or .slnx under '{Path.GetTempPath()}' or its immediate subdirectories",
-                    null,
-                    0,
-                    0,
-                    []
-                )
-            );
-        }
-
-        public ValueTask<DiagnosticsResult> GetDiagnosticsAsync(
-            DiagnosticsScope scope,
-            CancellationToken ct
-        ) => throw new NotSupportedException();
-
-        public ValueTask<SymbolSearchResult> FindSymbolAsync(string name, CancellationToken ct) =>
-            throw new NotSupportedException();
-
-        public ValueTask<ReferencesResult> FindReferencesAsync(string name, CancellationToken ct) =>
-            throw new NotSupportedException();
-
-        public ValueTask<OutlineResult> OutlineAsync(string file, CancellationToken ct) =>
-            throw new NotSupportedException();
-
-        public ValueTask<RenamePlanResult> PlanRenameAsync(
-            string name,
-            string newName,
-            CancellationToken ct
-        ) => throw new NotSupportedException();
-
-        public void NotifyFileChanged(string absolutePath) { }
-
-        public void NotifyProjectChanged() { }
     }
 }

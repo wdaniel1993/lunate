@@ -24,7 +24,7 @@ public sealed class TwoWorktreeSubagentsTests
         string canonicalB = GitIdentity.Canonicalize(worktreeB);
         using var services = new WorkspaceServices(2, root => new FakeWorkspaceBackend(root));
         Session session = Session.Create(temp.File("sessions/parent.jsonl"), canonicalMain);
-        ToolRegistry parentTools = HarnessFactory.CreateTools(
+        ToolRegistry parentTools = RoslynTestHarness.CreateTools(
             new Workspace(canonicalMain),
             services: services
         );
@@ -76,7 +76,7 @@ public sealed class TwoWorktreeSubagentsTests
             {
                 WorkingDirectory = canonicalMain,
                 Session = session,
-                WorkspaceTools = HarnessFactory.CreateWorkspaceTools(services, []),
+                WorkspaceTools = RoslynTestHarness.CreateWorkspaceTools(services, []),
             }
         );
 

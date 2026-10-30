@@ -162,6 +162,7 @@ internal static class PrintMode
                         workspace,
                         catalog,
                         factory,
+                        settings.Roslyn.MaxLoadedWorkspaces,
                         errors,
                         ct
                     )
@@ -215,7 +216,9 @@ internal static class PrintMode
                     // the withheld ones are recorded for the /extensions view.
                     IReadOnlyList<ITool> extensionTools = extensions.ComposeTools(workspace);
                     tools.AddRange(extensionTools);
-                    inherited.AddRange(extensionTools);
+                    inherited.AddRange(
+                        extensionTools.Where(tool => !extensions.IsWorkspaceBoundTool(tool))
+                    );
                     // The configured names are the collision baseline: a same-named registration
                     // is skipped before listing (the configured server wins); nothing starts yet.
                     ExtensionMcpServers servers = extensions.ComposeMcpServers(
@@ -266,15 +269,6 @@ internal static class PrintMode
                 return 1;
             }
 
-            using var workspaceServices = new WorkspaceServices(
-                settings.Roslyn.MaxLoadedWorkspaces
-            );
-            // The bus exists only when the extension host composed; scan-only without extensions.
-            if (extensions is not null)
-            {
-                workspaceServices.Connect(extensions.FileChanges);
-            }
-
             AgentHarness harness;
             try
             {
@@ -288,7 +282,6 @@ internal static class PrintMode
                     factory,
                     extensions,
                     mcpTools,
-                    workspaceServices,
                     inheritedTools,
                     skills
                 );
@@ -488,6 +481,7 @@ internal static class PrintMode
         Workspace workspace,
         ModelCatalog catalog,
         IChatClientFactory factory,
+        int workspaceServiceCapLimit,
         TextWriter errors,
         CancellationToken ct
     )
@@ -497,6 +491,7 @@ internal static class PrintMode
             Log = seams?.Log ?? new StderrExtensionLog(errors),
             ModelCatalog = seams?.ModelCatalog ?? catalog,
             ClientFactory = seams?.ClientFactory ?? factory,
+            WorkspaceServiceCapLimit = workspaceServiceCapLimit,
         };
         return await ExtensionSession
             .StartAsync(workspace.Identity, resolved, ct)
@@ -617,7 +612,6 @@ internal static class PrintMode
         IChatClientFactory factory,
         ExtensionSession? extensions,
         IReadOnlyList<ITool> mcpTools,
-        WorkspaceServices workspaceServices,
         List<ITool> inheritedTools,
         SkillCatalog skills
     )
@@ -632,7 +626,6 @@ internal static class PrintMode
         );
         ToolRegistry tools = HarnessFactory.CreateTools(
             workspace,
-            services: workspaceServices,
             skillReadAllowance: new SkillReadAllowance(skills.ReadRoots),
             log: extensions?.Log,
             extraTools: settings.Tools.Extra,
@@ -687,8 +680,8 @@ internal static class PrintMode
             ModelId = model.Id,
             ModelRegistry = extensions?.ModelRegistry,
             WorkspaceTools = HarnessFactory.CreateWorkspaceTools(
-                workspaceServices,
-                inheritedTools,
+                root => extensions?.ComposeTools(new Workspace(root)) ?? [],
+                [.. inheritedTools.Where(tool => extensions?.IsWorkspaceBoundTool(tool) != true)],
                 root => skills.ReadRootsFor(root),
                 log: extensions?.Log,
                 extraTools: settings.Tools.Extra,

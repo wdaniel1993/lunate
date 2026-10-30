@@ -33,7 +33,7 @@ public sealed class RoslynMigrationMemoryProbeTests
         using var services = new WorkspaceServices(2);
         var changes = new FileChangeBus(solutionRoot);
         services.Connect(changes);
-        ToolRegistry tools = HarnessFactory.CreateTools(
+        ToolRegistry tools = RoslynTestHarness.CreateTools(
             new Workspace(solutionRoot),
             services: services
         );

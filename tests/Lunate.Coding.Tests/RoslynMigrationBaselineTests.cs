@@ -14,7 +14,7 @@ public sealed class RoslynMigrationBaselineTests
         using var fixture = RoslynFixtureSupport.CopySolution("console-app");
         RoslynFixtureSupport.Restore(fixture, "ConsoleApp.slnx");
         using var services = new WorkspaceServices(2);
-        ToolRegistry tools = HarnessFactory.CreateTools(
+        ToolRegistry tools = RoslynTestHarness.CreateTools(
             new Workspace(fixture.Root),
             services: services
         );

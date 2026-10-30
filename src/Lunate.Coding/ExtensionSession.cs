@@ -3,6 +3,7 @@ using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
+using Lunate.Roslyn.BuiltIn;
 
 namespace Lunate.Coding;
 
@@ -31,6 +32,9 @@ internal sealed record ExtensionSeams
     /// <c>--no-extensions</c> session composes only these.
     /// </summary>
     public IReadOnlyList<BuiltInExtension>? BuiltIns { get; init; }
+
+    /// <summary>The host's per-workspace service ceiling, which may lower built-in manifest caps.</summary>
+    public int? WorkspaceServiceCapLimit { get; init; }
 
     /// <summary>The session catalog the model registry falls back to; null disables the fallback.</summary>
     public ModelCatalog? ModelCatalog { get; init; }
@@ -192,8 +196,18 @@ internal sealed class ExtensionSession : IAsyncDisposable
             GlobalPackagesFolder = seams.GlobalPackagesFolder,
             ReservedCommands = Commands.BuiltinNames,
             ReservedToolNames = CoreToolNames,
-            BuiltIns = seams.BuiltIns ?? [],
+            BuiltIns =
+                seams.BuiltIns
+                ??
+                [
+                    new BuiltInExtension(
+                        "host/roslyn/extension.json",
+                        RoslynBuiltInFactory.Manifest,
+                        () => new RoslynBuiltInFactory()
+                    ),
+                ],
             BuiltInsOnly = seams.NoExtensions,
+            WorkspaceServiceCapLimit = seams.WorkspaceServiceCapLimit,
         };
         var loader = new ExtensionLoader(options);
         // Created eagerly, but it only holds the factory: nothing NuGet-shaped exists until a
@@ -367,6 +381,22 @@ internal sealed class ExtensionSession : IAsyncDisposable
 
         return active;
     }
+
+    internal static bool RoslynIsActive(string workspaceRoot) =>
+        ToolActivationEvaluator.Evaluate(
+            RoslynBuiltInFactory.Manifest.ToolActivation["*"],
+            workspaceRoot
+        );
+
+    /// <summary>
+    /// Whether a tool registered by this host carries a manifest activation rule and therefore
+    /// must be recomposed for a child workspace instead of inherited from the parent root.
+    /// </summary>
+    internal bool IsWorkspaceBoundTool(ITool tool) =>
+        _loader
+            .Tools.List()
+            .OfType<ExtensionToolAdapter>()
+            .Any(adapter => ReferenceEquals(adapter, tool) && adapter.ActivationRule is not null);
 
     /// <summary>
     /// The tools of one extension the composition withheld at the run root, each with the

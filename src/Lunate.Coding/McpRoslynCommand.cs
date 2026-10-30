@@ -1,8 +1,7 @@
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using Lunate.Agent;
+using Lunate.Ai;
 using Lunate.Protocols;
-using Lunate.Roslyn;
 
 namespace Lunate.Coding;
 
@@ -27,30 +26,25 @@ internal static class McpRoslynCommand
         Stream input,
         Stream output,
         TextWriter errors,
-        CancellationToken ct,
-        // Test seam: the composition is the production one unless a test supplies a backend.
-        Func<ICSharpBackend>? backend = null
+        CancellationToken ct
     )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
-        string root = Path.GetFullPath(workingDirectory);
-        var lazy = new Lazy<ICSharpBackend>(() => backend?.Invoke() ?? CreateBackend(root));
-        Func<ICSharpBackend> factory = () => lazy.Value;
-        ITool[] tools =
-        [
-            new CsDiagnosticsTool(factory),
-            new CsFindSymbolTool(factory),
-            new CsFindReferencesTool(factory),
-            new CsOutlineTool(factory),
-            new CsRenameTool(factory),
-        ];
+        Workspace workspace = new(workingDirectory);
+        string root = workspace.WorktreeRoot;
+        ExtensionSession? extensions = null;
 
         try
         {
+            LunateHome.StoreOutsideWorkspace(root, workspace.RepoRoot);
+            extensions = await ExtensionSession
+                .StartAsync(workspace.Identity, new ExtensionSeams { NoExtensions = true }, ct)
+                .ConfigureAwait(false);
+            IReadOnlyList<ITool> tools = extensions.ComposeTools(workspace);
             errors.WriteLine(
                 string.Create(
                     CultureInfo.InvariantCulture,
-                    $"lunate mcp roslyn: serving {tools.Length} tools from '{root}' (protocol on stdout, diagnostics on stderr)"
+                    $"lunate mcp roslyn: serving {tools.Count} tools from '{root}' (protocol on stdout, diagnostics on stderr)"
                 )
             );
 
@@ -79,17 +73,10 @@ internal static class McpRoslynCommand
         }
         finally
         {
-            if (lazy.IsValueCreated && lazy.Value is IDisposable disposable)
+            if (extensions is not null)
             {
-                disposable.Dispose();
+                await extensions.DisposeAsync().ConfigureAwait(false);
             }
         }
     }
-
-    /// <summary>
-    /// Nothing Roslyn or MSBuild loads before the first tool call: the backend is created inside this
-    /// isolated method only when the lazy value is first read.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static ICSharpBackend CreateBackend(string root) => new RoslynBackend(root);
 }

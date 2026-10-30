@@ -358,13 +358,11 @@ public sealed class CopyExportCommandTests
         using var temp = new TempDirectory();
         var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
         var workspace = new Workspace(temp.Root);
-        using var services = new WorkspaceServices(4);
         AgentHarness harness = AcpMode.CreateHarness(
             new AcpSessionContext(workspace.WorktreeRoot, null, null),
             null,
             [],
             [],
-            services,
             new LaunchOptions { Model = PrintModeTestSupport.ModelId },
             new FakeChatClientFactory(client),
             temp.File("sessions")
