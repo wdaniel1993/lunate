@@ -57,6 +57,46 @@ public sealed class SelectListRenderer
         return new Markup(builder.ToString());
     }
 
+    internal IRenderable Render(SelectListQuestionModel question)
+    {
+        ArgumentNullException.ThrowIfNull(question);
+        var builder = new StringBuilder();
+        foreach (string line in QuestionLines(question))
+        {
+            builder.Append(Markup.Escape(line)).Append('\n');
+        }
+
+        return new Markup(builder.ToString());
+    }
+
+    /// <summary>The question picker's plain lines, including its selection and free-text state.</summary>
+    internal static IReadOnlyList<string> QuestionLines(SelectListQuestionModel question)
+    {
+        ArgumentNullException.ThrowIfNull(question);
+        List<string> lines = [question.Title, question.Description];
+        for (int index = 0; index < question.Options.Count; index++)
+        {
+            SelectListQuestionOption option = question.Options[index];
+            string current = question.ActiveOption == index ? "> " : "  ";
+            string selected = question.MultiSelect
+                ? question.SelectedIndices.Contains(index)
+                    ? "[x] "
+                    : "[ ] "
+                : string.Empty;
+            string recommended =
+                question.RecommendedLabel == option.Label ? " (recommended)" : string.Empty;
+            lines.Add(current + selected + option.Label + recommended);
+            if (option.Description.Length > 0)
+            {
+                lines.Add("    " + option.Description);
+            }
+        }
+
+        string freeTextPrefix = question.FreeTextFocused ? "> Free text: " : "  Free text (Tab): ";
+        lines.Add(freeTextPrefix + question.FreeText);
+        return lines;
+    }
+
     /// <summary>The picker's plain lines as shown in the live area: title, then the marked items.</summary>
     internal static IReadOnlyList<string> PlainLines(SelectListModel model)
     {
