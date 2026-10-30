@@ -16,4 +16,4 @@ edited src/Lunate.Tui/ToolBlocks/ToolBlockRenderer.cs lines
 ────────────────────────────────────────────────────────────
 \x1b[38;5;110m> Ask anything, / for commands\x1b[0m
 ────────────────────────────────────────────────────────────
-deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main
+\x1b[38;5;245mdeepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main\x1b[0m

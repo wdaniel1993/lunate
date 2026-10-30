@@ -6,4 +6,4 @@ subagent (depth 1) asks: Allow bash\x1b[38;5;11m?\x1b[0m
 ────────────────────────────────────────
 \x1b[38;5;110m> Ask anything, / for commands\x1b[0m
 ────────────────────────────────────────
-deepseek-v4.1-flash · 0%
+\x1b[38;5;245mdeepseek-v4.1-flash · 0%\x1b[0m

@@ -4,4 +4,4 @@ subagent (depth 1) asks: Allow bash\x1b[93m?\x1b[0m  [\x1b[36my\x1b[0m]es  > [\x
 ────────────────────────────────────────────────────────────────────────────────
 \x1b[34m> Ask anything, / for commands\x1b[0m
 ────────────────────────────────────────────────────────────────────────────────
-deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main
+\x1b[90mdeepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main\x1b[0m

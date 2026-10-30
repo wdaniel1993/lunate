@@ -8,4 +8,4 @@
   step 11 of the box
   step 12 of the box
 ────────────────────────────────────────
-deepseek-v4.1-flash · 0%
+\x1b[38;5;245mdeepseek-v4.1-flash · 0%\x1b[0m
