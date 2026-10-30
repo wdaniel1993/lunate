@@ -63,4 +63,7 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events)
 
     /// <summary>The session whose spill files this run may read; null without a session.</summary>
     internal Session? Session { get; init; }
+
+    /// <summary>The per-harness read ledger; null when the tool runs outside the loop.</summary>
+    internal IReadLedger? Reads { get; init; }
 }

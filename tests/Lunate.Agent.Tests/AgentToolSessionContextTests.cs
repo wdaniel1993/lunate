@@ -26,5 +26,14 @@ public sealed class AgentToolSessionContextTests
         await Run(harness);
 
         Assert.Same(resumed, tool.ReceivedContext!.Session);
+        Assert.NotNull(tool.ReceivedContext.Reads);
+    }
+
+    [Fact]
+    public void A_hand_built_context_has_no_read_ledger()
+    {
+        var context = new ToolContext("/work", new AgentEventChannel());
+
+        Assert.Null(context.Reads);
     }
 }

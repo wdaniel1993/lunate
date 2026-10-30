@@ -177,6 +177,12 @@ public sealed partial class ReadTool : ITool
         var total = lines.Length;
         if (total == 0)
         {
+            ctx.Reads?.Record(
+                resolved.AbsolutePath,
+                text,
+                ctx.CallId ?? string.Empty,
+                resolved.RelativePath
+            );
             return Task.FromResult(Result("[empty file]"));
         }
 
@@ -218,6 +224,12 @@ public sealed partial class ReadTool : ITool
             );
         }
 
+        ctx.Reads?.Record(
+            resolved.AbsolutePath,
+            text,
+            ctx.CallId ?? string.Empty,
+            resolved.RelativePath
+        );
         return Task.FromResult(Result(output.ToString()));
     }
 

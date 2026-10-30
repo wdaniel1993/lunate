@@ -589,8 +589,10 @@ public sealed partial class AgentHarness
             FileChanges = new RunFileChangeSink(
                 _options.FileChanges,
                 _options.WorkingDirectory,
-                runId
+                runId,
+                _reads
             ),
+            Reads = _reads,
             Subagents = _subagentRunner,
             Session = _options.Session,
             ToolStubs = CallableToolStubs(),
