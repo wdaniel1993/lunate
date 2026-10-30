@@ -49,8 +49,8 @@
 
 ## 8. Document, compare and verify the migration
 
-- [ ] 8.1 Update `docs/guide.md`, `docs/architecture.md` and `docs/mcp-roslyn.md` to describe the built-in, activation, workspace service, `/extensions` status and unchanged `--no-extensions` behavior. Document restart/resume and rollback for pre-migration sessions; do not imply a session-format change.
-- [ ] 8.2 Restore the `docs/guide.md` positioning sentence “built only on the public extension API” only after dependency closure, the single-edge test, assembly-level lazy-loading test, and unchanged compatibility/golden/e2e tests are green; record that #237 may publish `Lunate.Extensibility.Abstractions` as stable only after this sentence is restored.
-- [ ] 8.3 Capture the migrated results using the baseline commands and fixtures; record before/after tool parity, startup and memory measurements, and confirm existing budgets and the two-workspace cap still hold.
+- [x] 8.1 Update `docs/guide.md`, `docs/architecture.md` and `docs/mcp-roslyn.md` to describe the built-in, activation, workspace service, `/extensions` status and unchanged `--no-extensions` behavior. Document restart/resume and rollback for pre-migration sessions; do not imply a session-format change.
+- [x] 8.2 Restore the `docs/guide.md` positioning sentence “built only on the public extension API” only after dependency closure, the single-edge test, assembly-level lazy-loading test, and unchanged compatibility/golden/e2e tests are green; record that #237 may publish `Lunate.Extensibility.Abstractions` as stable only after this sentence is restored.
+- [x] 8.3 Capture the migrated results using the baseline commands and fixtures; record before/after tool parity, startup and memory measurements, and confirm existing budgets and the two-workspace cap still hold.
 - [ ] 8.4 Run the relevant tests, `openspec validate roslyn-built-in-migration --type change --strict`, the Release solution build, formatting checks and `scripts/verify.sh`. Stop and report any golden-session diff; do not rewrite goldens unless an approved proposal changes the session format.
-- [ ] 8.5 Commit: `docs(coding): document the Roslyn built-in migration`.
+- [x] 8.5 Commit: `docs(coding): document the Roslyn built-in migration`.
