@@ -2,7 +2,7 @@
 
 ## 1. Approval checkpoint
 
-- [ ] 1.1 Obtain maintainer sign-off on the `ask_user` tool contract, MCP form elicitation and ACP fallback before implementation; record the decision on the proposal, and do not proceed if sign-off is withheld. Apply starts only after this proposal is available on `main`.
+- [x] 1.1 Obtain maintainer sign-off on the `ask_user` tool contract, MCP form elicitation and ACP fallback before implementation; record the decision on the proposal, and do not proceed if sign-off is withheld. Apply starts only after this proposal is available on `main`. Maintainer sign-off is recorded in [issue #343 comment](https://github.com/wdaniel1993/lunate/issues/343#issuecomment-6522720854) (2026-10-30).
 
 ## 2. Agent question contract
 
