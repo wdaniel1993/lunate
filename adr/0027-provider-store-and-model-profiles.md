@@ -18,7 +18,8 @@ Project settings are untrusted and must not gain authority to redirect a user's 
 
 **Provider access is user-owned.** The twelve existing presets are templates for adapter defaults
 and API endpoints. A named provider instance stores its kind, base URL, credential reference,
-optional headers and region metadata. It contains references, never resolved secrets. A provider
+optional headers whose values are credential references, and region metadata. It contains
+references, never resolved credentials or header values. A provider
 instance is access to the APIs its preset offers (such as chat and decisions), with each API's
 endpoint supplied by the preset. Project settings may reference existing user providers and define
 or narrow profiles on them, but may not define providers, endpoints, base URLs or credential

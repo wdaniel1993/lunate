@@ -4,7 +4,7 @@
 
 ### Requirement: User-scoped provider entries
 
-The provider store SHALL define providers only in user scope. Each provider entry SHALL have a unique user-facing name, a kind selected from the twelve existing templates (`openai`, `anthropic`, `openrouter`, `deepseek`, `moonshotai`, `zai`, `opencode`, `opencode-go`, `groq`, `togetherai`, `xai`, or `google`), a base URL, a credential reference, optional headers, and optional region (`eu`, `us`, or `local`). Multiple entries MAY use the same kind. A credential reference SHALL identify an auth-store key, environment variable, or configured helper; provider and project settings SHALL never contain the resolved secret. The `region` value SHALL be preserved as metadata; this change SHALL NOT route data or enforce a region policy.
+The provider store SHALL define providers only in user scope. Each provider entry SHALL have a unique user-facing name, a kind selected from the twelve existing templates (`openai`, `anthropic`, `openrouter`, `deepseek`, `moonshotai`, `zai`, `opencode`, `opencode-go`, `groq`, `togetherai`, `xai`, or `google`), a base URL, a credential reference, optional headers, and optional region (`eu`, `us`, or `local`). Multiple entries MAY use the same kind. A credential reference SHALL identify an auth-store key, environment variable, or configured helper. Header values SHALL be credential references of the same forms, never literal secret values. Provider and project settings SHALL never contain resolved credentials or header values. The `region` value SHALL be preserved as metadata; this change SHALL NOT route data or enforce a region policy.
 
 #### Scenario: Multiple entries share a template kind
 
@@ -20,9 +20,9 @@ The provider store SHALL define providers only in user scope. Each provider entr
 
 #### Scenario: Provider files contain references, never secrets
 
-- **GIVEN** an auth key, environment variable, or helper resolves to a credential value
+- **GIVEN** an auth key, environment variable, or helper resolves to a credential or header value
 - **WHEN** provider settings are written or listed
-- **THEN** only the reference is stored or shown and the credential value is absent
+- **THEN** only references are stored or shown and neither resolved value is present
 
 ### Requirement: Provider listing and credential migration
 

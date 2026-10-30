@@ -30,7 +30,7 @@ The change introduces user-owned provider instances, named profiles, and usage s
 
 ### Provider templates and instances are separate
 
-Keep the existing twelve preset definitions as provider-kind templates for adapter selection and defaults. Store named provider instances in user settings, each with kind, base URL, credential reference, optional headers, and region. An instance may override its template endpoint and credential source; its secret is resolved only by the existing host-side credential path at request time. Existing stored keys are migrated idempotently into matching provider entries without copying the value or replacing explicit entries. The environment remains the highest-precedence credential source for CI overrides.
+Keep the existing twelve preset definitions as provider-kind templates for adapter selection and defaults. Store named provider instances in user settings, each with kind, base URL, credential reference, optional headers whose values are credential references, and region. An instance may override its template endpoint and credential source; its secret is resolved only by the existing host-side credential path at request time. Existing stored keys are migrated idempotently into matching provider entries without copying the value or replacing explicit entries. The environment remains the highest-precedence credential source for CI overrides.
 
 **Alternative considered:** Treat each preset as the provider instance. Rejected because it cannot express multiple endpoints or credential sources for one kind and conflates defaults with user-owned endpoints.
 
