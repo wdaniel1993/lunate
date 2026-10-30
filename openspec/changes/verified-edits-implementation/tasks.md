@@ -34,7 +34,7 @@ only when its focused tests pass.
       `UnloadedWorkspaceReturnsUnverifiedWithoutLoad`. Confirm failure first; implement the
       in-memory source-generator run, loaded-TFM selection, and unloaded-workspace unverified
       result without triggering a load. Rerun the focused Roslyn class; all tests must pass.
-- [ ] 3.2 Add failing Roslyn tests `IncreasedDuplicateErrorCountIsRefused`,
+- [x] 3.2 Add failing Roslyn tests `IncreasedDuplicateErrorCountIsRefused`,
       `EqualErrorMultisetPassesDespiteLineMovement`, and `DependentProjectErrorsDoNotRefuse`. Confirm
       failure first; implement baseline/staged counts per `(code, message)`, line-independent
       comparison, staged-file filtering and dependent-project exclusion. Rerun
