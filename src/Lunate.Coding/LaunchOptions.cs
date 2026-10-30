@@ -57,6 +57,9 @@ internal sealed record LaunchOptions
     /// <summary>Skip the daily update check for this run.</summary>
     public bool Offline { get; init; }
 
+    /// <summary>Run the interactive session on the alternate screen; inline stays the default.</summary>
+    public bool Fullscreen { get; init; }
+
     /// <summary>The print-mode prompt; null outside print mode.</summary>
     public string? Prompt { get; init; }
 
@@ -77,6 +80,7 @@ internal sealed record LaunchOptions
         var json = false;
         var yolo = false;
         var offline = false;
+        var fullscreen = false;
         var resume = false;
         var noSession = false;
         var noTools = false;
@@ -121,6 +125,9 @@ internal sealed record LaunchOptions
                     break;
                 case "--offline":
                     offline = true;
+                    break;
+                case "--fullscreen":
+                    fullscreen = true;
                     break;
                 case "-c" or "--continue":
                     options = options with { Continue = true };
@@ -301,6 +308,7 @@ internal sealed record LaunchOptions
             Json = json,
             Yolo = yolo,
             Offline = offline,
+            Fullscreen = fullscreen,
             Prompt = print ? positional[0] : null,
         };
         return true;
@@ -356,6 +364,7 @@ internal sealed record LaunchOptions
                 or "--json"
                 or "--yolo"
                 or "--offline"
+                or "--fullscreen"
                 or "-c"
                 or "--continue"
                 or "-r"

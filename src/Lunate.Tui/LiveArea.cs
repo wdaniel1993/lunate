@@ -211,6 +211,33 @@ internal sealed partial class LiveArea : IDisposable
     }
 
     /// <summary>
+    /// Prepares the live area for an alternate-screen buffer switch (the full-screen mode): the
+    /// frame painted on the buffer being left is erased where the cursor stands, and the tracking
+    /// is forgotten, so the next frame paints from the new buffer's home position.
+    /// </summary>
+    internal void SwitchScreen()
+    {
+        lock (_paintGate)
+        {
+            _writer.Clear();
+            _writer.Forget();
+        }
+    }
+
+    /// <summary>
+    /// Forgets the frame tracking on leaving the alternate screen (the full-screen mode): the rows
+    /// the frame painted there are discarded with the buffer, and the next paint must not reach
+    /// back into the scrollback the terminal just restored.
+    /// </summary>
+    internal void ForgetFrame()
+    {
+        lock (_paintGate)
+        {
+            _writer.Forget();
+        }
+    }
+
+    /// <summary>
     /// Reads the committed scrollback while no commit is in flight: a multi-line commit (the
     /// welcome header, <c>/help</c>, <c>/context</c>) writes one line at a time under the paint
     /// gate, so a caller could otherwise observe it half-written. The seam's snapshot is the
