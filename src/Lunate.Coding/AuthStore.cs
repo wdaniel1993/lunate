@@ -64,16 +64,8 @@ public sealed class AuthStore
         var store = new AuthStore(path, env, keys);
         if (keys.Count > 0)
         {
-            string directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
-            AgentSettings settings = SettingsStore.Resolve(
-                Path.Combine(directory, "settings.json"),
-                _ => null
-            );
-            _ = ProviderStore.Load(
-                Path.Combine(directory, "providers.json"),
-                store,
-                settings.Providers
-            );
+            AgentSettings settings = SettingsStore.Resolve(SettingsFilePath(filePath), _ => null);
+            _ = ProviderStore.Load(ProviderStoreFilePath(filePath), store, settings.Providers);
         }
 
         return store;
@@ -273,6 +265,19 @@ public sealed class AuthStore
 
     private static string DefaultFilePath() =>
         Path.Combine(Lunate.Ai.LunateHome.Store, "auth.json");
+
+    internal static string SettingsFilePath(string? authFilePath = null) =>
+        SiblingFilePath(authFilePath, "settings.json");
+
+    internal static string ProviderStoreFilePath(string? authFilePath = null) =>
+        SiblingFilePath(authFilePath, "providers.json");
+
+    private static string SiblingFilePath(string? authFilePath, string name)
+    {
+        string authPath = authFilePath ?? DefaultFilePath();
+        string directory = Path.GetDirectoryName(Path.GetFullPath(authPath))!;
+        return Path.Combine(directory, name);
+    }
 
     private sealed record AuthFile(int SchemaVersion, SortedDictionary<string, string> Keys);
 }

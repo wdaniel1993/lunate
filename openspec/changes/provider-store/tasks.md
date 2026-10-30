@@ -8,7 +8,7 @@
 
 - [x] 2.1 Test-first in `Lunate.Coding.Tests`: add fixtures proving a legacy stored key creates a provider entry idempotently, preserves explicit custom endpoints, and never copies the secret; prove environment credentials override stored keys in CI-style settings.
 - [x] 2.2 Test-first in `Lunate.Ai.Tests` and `Lunate.Coding.Tests`: cover multiple named entries per template kind, all twelve template kinds, credential references (auth key, environment variable, helper), optional headers and `eu`/`us`/`local` metadata; prove secrets and header values never appear in persisted provider settings or list output.
-- [ ] 2.3 Test-first in `Lunate.Coding.Tests`: prove `lunate auth list` lists provider entries with credential present/absent and bounded `reachable`/`unreachable`/`unknown` status, sends no credential or optional header during its probe, and distinguishes two entries of one kind.
+- [x] 2.3 Test-first in `Lunate.Coding.Tests`: prove `lunate auth list` lists provider entries with credential present/absent and bounded `reachable`/`unreachable`/`unknown` status, sends no credential or optional header during its probe, and distinguishes two entries of one kind.
 
 ## 3. Profiles and scope validation
 

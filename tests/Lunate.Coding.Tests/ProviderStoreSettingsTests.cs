@@ -117,7 +117,8 @@ public sealed class ProviderStoreSettingsTests
             new AuthCommandSeams(
                 AuthPath: authPath,
                 SettingsPath: temp.File("settings.json"),
-                Environment: _ => null
+                Environment: _ => null,
+                ProviderProbeHandler: new StatusHandler()
             )
         );
 
@@ -150,5 +151,13 @@ public sealed class ProviderStoreSettingsTests
 
         Assert.True(created, error);
         return Assert.IsType<ProviderEntry>(entry);
+    }
+
+    private sealed class StatusHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK));
     }
 }
