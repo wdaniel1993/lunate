@@ -48,7 +48,7 @@ only when its focused tests pass.
       `InvalidVerifySettingNamesAcceptedValues`. Confirm failure first; implement top-level
       `verify` in `~/.lunate/settings.json` (no environment override), then rerun
       `dotnet test tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj -c Release --filter FullyQualifiedName~SettingsStoreVerifyTests`; all tests must pass.
-- [ ] 4.2 In `tests/Lunate.Coding.Tests/WriteVerifierPipelineTests.cs`, add failing tests
+- [x] 4.2 In `tests/Lunate.Coding.Tests/WriteVerifierPipelineTests.cs`, add failing tests
       `WarnWritesUnverifiedWithDiagnostics`, `OffSkipsVerifier`, and
       `ThirdAttemptWritesUnverifiedAfterTwoRefusals`. Confirm failure first; implement block/warn/off
       outcomes and per-canonical-file, per-run refusal counting. Assert refusal text lists errors

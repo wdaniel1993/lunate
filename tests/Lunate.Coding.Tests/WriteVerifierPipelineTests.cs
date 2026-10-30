@@ -153,6 +153,124 @@ public sealed class WriteVerifierPipelineTests
     }
 
     [Fact]
+    public async Task WarnWritesUnverifiedWithDiagnostics()
+    {
+        using var temp = new TempDirectory();
+        JsonElement diagnostics = Diagnostics();
+        var verifier = new RecordingVerifier(
+            (_, _) =>
+                new WriteVerificationResult(
+                    WriteVerificationStatus.Refused,
+                    "CS1002: ; expected; CS1513: } expected",
+                    diagnostics
+                )
+        );
+
+        ToolResult result = await new WriteTool(
+            new Workspace(temp.Root),
+            WriteVerificationMode.Warn,
+            _ => verifier
+        ).ExecuteAsync(
+            Args(new { path = "code.cs", content = "class C { invalid }\n" }),
+            Context(temp.Root),
+            Ct
+        );
+
+        Assert.False(result.IsError);
+        Assert.Contains("unverified", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CS1002: ; expected", result.Output, StringComparison.Ordinal);
+        Assert.Contains("CS1513: } expected", result.Output, StringComparison.Ordinal);
+        Assert.Equal(diagnostics.GetRawText(), result.StructuredContent?.GetRawText());
+        Assert.Equal("class C { invalid }\n", File.ReadAllText(temp.File("code.cs")));
+    }
+
+    [Fact]
+    public async Task OffSkipsVerifier()
+    {
+        using var temp = new TempDirectory();
+        var verifier = new RecordingVerifier((_, _) => Verified());
+        var selections = 0;
+
+        ToolResult result = await new WriteTool(
+            new Workspace(temp.Root),
+            WriteVerificationMode.Off,
+            _ =>
+            {
+                selections++;
+                return verifier;
+            }
+        ).ExecuteAsync(
+            Args(new { path = "code.cs", content = "unverified\n" }),
+            Context(temp.Root),
+            Ct
+        );
+
+        Assert.False(result.IsError);
+        Assert.Equal(0, selections);
+        Assert.Equal(0, verifier.Calls);
+        Assert.Equal("unverified\n", File.ReadAllText(temp.File("code.cs")));
+    }
+
+    [Fact]
+    public async Task ThirdAttemptWritesUnverifiedAfterTwoRefusals()
+    {
+        using var temp = new TempDirectory();
+        Directory.CreateSymbolicLink(Path.Combine(temp.Root, "alias"), temp.Root);
+        JsonElement diagnostics = Diagnostics();
+        var verifier = new RecordingVerifier(
+            (_, _) =>
+                new WriteVerificationResult(
+                    WriteVerificationStatus.Refused,
+                    "CS1002: ; expected; CS1513: } expected",
+                    diagnostics
+                )
+        );
+        var tool = new WriteTool(
+            new Workspace(temp.Root),
+            WriteVerificationMode.Block,
+            _ => verifier
+        );
+        ToolContext context = Context(temp.Root) with { RunId = "run-1" };
+
+        ToolResult first = await tool.ExecuteAsync(
+            Args(new { path = "code.cs", content = "first attempt\n" }),
+            context,
+            Ct
+        );
+        ToolResult second = await tool.ExecuteAsync(
+            Args(new { path = "alias/code.cs", content = "second attempt\n" }),
+            context,
+            Ct
+        );
+        ToolResult third = await tool.ExecuteAsync(
+            Args(new { path = "code.cs", content = "third attempt\n" }),
+            context,
+            Ct
+        );
+
+        foreach (ToolResult refusal in new[] { first, second })
+        {
+            Assert.True(refusal.IsError);
+            Assert.Contains("CS1002: ; expected", refusal.Output, StringComparison.Ordinal);
+            Assert.Contains("CS1513: } expected", refusal.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("unverified", refusal.Output, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(
+                "two refusals",
+                refusal.Output,
+                StringComparison.OrdinalIgnoreCase
+            );
+            Assert.Equal(diagnostics.GetRawText(), refusal.StructuredContent?.GetRawText());
+        }
+
+        Assert.False(third.IsError);
+        Assert.Contains("unverified", third.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("two refusals", third.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, verifier.Calls);
+        Assert.Equal("third attempt\n", File.ReadAllText(temp.File("code.cs")));
+        Assert.Equal(diagnostics.GetRawText(), third.StructuredContent?.GetRawText());
+    }
+
+    [Fact]
     public async Task Verification_timeout_writes_unverified_with_elapsed_and_reason()
     {
         using var temp = new TempDirectory();
@@ -223,6 +341,15 @@ public sealed class WriteVerifierPipelineTests
     }
 
     private static WriteVerificationResult Verified() => new(WriteVerificationStatus.Verified);
+
+    private static JsonElement Diagnostics() =>
+        JsonDocument
+            .Parse(
+                """
+                {"diagnostics":[{"severity":"error","code":"CS1002","message":"; expected"},{"severity":"error","code":"CS1513","message":"} expected"}]}
+                """
+            )
+            .RootElement.Clone();
 
     private static ToolContext Context(string root) => new(root, new QuietEvents());
 

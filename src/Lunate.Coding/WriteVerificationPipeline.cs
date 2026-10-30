@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Extensibility.Abstractions;
 
@@ -13,11 +14,28 @@ internal static class WriteVerificationPipeline
         string relativePath,
         string baselineContent,
         string stagedContent,
+        string canonicalPath,
         WorkspaceInfo workspace,
+        string? runId,
+        WriteVerificationMode mode,
+        WriteVerificationRefusalTracker refusalTracker,
         CancellationToken ct,
         TimeProvider? timeProvider = null
     )
     {
+        if (mode is WriteVerificationMode.Off)
+        {
+            return null;
+        }
+
+        if (refusalTracker.TryGetBypass(runId, canonicalPath, out JsonElement? priorDiagnostics))
+        {
+            return new WriteVerificationOutcome(
+                Notice: "unverified after two refusals for this file in this run",
+                StructuredContent: priorDiagnostics
+            );
+        }
+
         IWriteVerifier? verifier = verifierSelector?.Invoke(relativePath);
         if (verifier is null)
         {
@@ -68,17 +86,41 @@ internal static class WriteVerificationPipeline
         delayCancellation.Cancel();
         WriteVerificationResult result = await verification.ConfigureAwait(false);
 
-        return result.Status is WriteVerificationStatus.Refused
-            ? new WriteVerificationOutcome(
+        if (result.Status is WriteVerificationStatus.Refused)
+        {
+            refusalTracker.RecordRefusal(runId, canonicalPath, result.StructuredContent);
+            if (mode is WriteVerificationMode.Warn)
+            {
+                return new WriteVerificationOutcome(
+                    Notice: UnverifiedNotice(result.Reason),
+                    StructuredContent: result.StructuredContent
+                );
+            }
+
+            return new WriteVerificationOutcome(
                 Refusal: new ToolResult(
                     result.Reason
                         ?? "The write verifier refused the staged content; review its structured diagnostics and correct the errors before retrying.",
                     IsError: true,
                     StructuredContent: result.StructuredContent
                 )
+            );
+        }
+
+        return result.Status is WriteVerificationStatus.Unverified
+            ? new WriteVerificationOutcome(
+                Notice: UnverifiedNotice(result.Reason),
+                StructuredContent: result.StructuredContent
             )
             : null;
     }
+
+    private static string UnverifiedNotice(string? reason) =>
+        reason is null ? "unverified" : $"unverified: {reason}";
 }
 
-internal sealed record WriteVerificationOutcome(ToolResult? Refusal = null, string? Notice = null);
+internal sealed record WriteVerificationOutcome(
+    ToolResult? Refusal = null,
+    string? Notice = null,
+    JsonElement? StructuredContent = null
+);

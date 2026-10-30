@@ -161,6 +161,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly TranscriptViewer _viewer;
     private readonly HashSet<string> _alwaysApproved = new(StringComparer.Ordinal);
     private AgentSettings _settings = new();
+    private readonly WriteVerificationRefusalTracker _writeVerificationRefusals = new();
     private ModelCatalog _catalog = null!;
     private AuthStore _auth = null!;
     private Func<string, string?> _environment = Environment.GetEnvironmentVariable;
@@ -541,7 +542,9 @@ internal sealed partial class InteractiveSession : IDisposable
             log: _extensions?.Log,
             extraTools: _settings.Tools.Extra,
             redaction: _redaction,
-            writeVerifiers: _extensions?.WriteVerifiers
+            writeVerifiers: _extensions?.WriteVerifiers,
+            verificationMode: _settings.Verify,
+            refusalTracker: _writeVerificationRefusals
         );
         _tools.Add(new AskUserTool());
         await ComposeMcpConfigAsync(ct);
@@ -567,7 +570,9 @@ internal sealed partial class InteractiveSession : IDisposable
             log: _extensions?.Log,
             extraTools: _settings.Tools.Extra,
             redaction: _redaction,
-            writeVerifiers: _extensions?.WriteVerifiers
+            writeVerifiers: _extensions?.WriteVerifiers,
+            verificationMode: _settings.Verify,
+            refusalTracker: _writeVerificationRefusals
         );
         // The model resolves after the extension host: the configured id may name a virtual or
         // extension-registered model, which only the registry knows.

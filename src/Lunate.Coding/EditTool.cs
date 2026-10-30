@@ -20,6 +20,8 @@ public sealed class EditTool(
 ) : ITool
 {
     private readonly TimeProvider _timeProvider = TimeProvider.System;
+    private readonly WriteVerificationMode _verificationMode = WriteVerificationMode.Block;
+    private readonly WriteVerificationRefusalTracker _refusalTracker = new();
 
     /// <summary>The model-facing name; also what <see cref="HighRiskCall"/> classifies.</summary>
     internal const string ToolName = "edit";
@@ -42,14 +44,28 @@ public sealed class EditTool(
 
     internal EditTool(
         Workspace workspace,
+        WriteVerificationMode verificationMode,
+        Func<string, IWriteVerifier?>? verifierSelector
+    )
+        : this(workspace, verifierSelector: verifierSelector)
+    {
+        _verificationMode = verificationMode;
+    }
+
+    internal EditTool(
+        Workspace workspace,
         IFileMutationQueue? mutations,
         ITextFileAccess? files,
         CredentialRedactor? redaction,
-        Func<string, IWriteVerifier?>? verifierSelector = null
+        Func<string, IWriteVerifier?>? verifierSelector = null,
+        WriteVerificationMode verificationMode = WriteVerificationMode.Block,
+        WriteVerificationRefusalTracker? refusalTracker = null
     )
         : this(workspace, mutations, files, verifierSelector)
     {
         _redaction = redaction;
+        _verificationMode = verificationMode;
+        _refusalTracker = refusalTracker ?? new WriteVerificationRefusalTracker();
     }
 
     private static readonly JsonElement Schema = JsonDocument
@@ -284,7 +300,11 @@ public sealed class EditTool(
                         resolved.RelativePath,
                         fileText,
                         newFileText,
+                        resolved.AbsolutePath,
                         workspace.Identity,
+                        ctx.RunId,
+                        _verificationMode,
+                        _refusalTracker,
                         mutationCt,
                         _timeProvider
                     )
@@ -332,7 +352,12 @@ public sealed class EditTool(
                     LineDiff.Unified(fileText, newFileText, resolved.RelativePath)
                 );
 
-                return new ToolResult(output, IsError: false, details);
+                return new ToolResult(
+                    output,
+                    IsError: false,
+                    details,
+                    verification?.StructuredContent
+                );
             },
             ct
         );
