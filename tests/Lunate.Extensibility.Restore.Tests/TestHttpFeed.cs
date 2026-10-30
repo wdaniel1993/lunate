@@ -46,6 +46,18 @@ internal sealed class TestHttpFeed : IDisposable
                 Description = id,
             };
             package.Authors.Add("lunate-tests");
+            string source = Path.Combine(
+                Path.GetTempPath(),
+                string.Concat("lunate-http-feed-", Guid.NewGuid().ToString("N"), ".bin")
+            );
+            File.WriteAllText(source, $"lib bytes of {id} for the Lunate restore tests");
+            package.Files.Add(
+                new PhysicalPackageFile
+                {
+                    SourcePath = source,
+                    TargetPath = $"lib/net10.0/{id}.dll",
+                }
+            );
             MemoryStream stream = new();
             package.Save(stream);
             _nupkg = stream.ToArray();

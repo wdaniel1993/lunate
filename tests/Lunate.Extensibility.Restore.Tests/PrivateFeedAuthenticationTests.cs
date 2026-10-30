@@ -1,4 +1,5 @@
 using System.Text;
+using NuGet.Versioning;
 
 namespace Lunate.Extensibility.Restore.Tests;
 
@@ -45,12 +46,52 @@ public sealed class PrivateFeedAuthenticationTests
             Target = SingleFileTarget.Of(new Version(10, 0, 4), "osx-arm64"),
         };
 
-        InvalidOperationException failure = await Assert.ThrowsAsync<InvalidOperationException>(
+        InvalidOperationException failure = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             async () =>
                 await engine.RestoreAsync(request, TestContext.Current.CancellationToken)
         );
 
         Assert.Contains("authentication failed for feed 'private' (401)", failure.Message);
         Assert.Contains("nuget.config", failure.Message);
+    }
+
+    [Fact]
+    public async Task Credentials_configured_in_nuget_config_serve_a_protected_feed()
+    {
+        using var temp = new TempDirectory();
+        using TestHttpFeed feed = TestHttpFeed.Accepting("Private.Lib", "1.0.0", "lunate-bot");
+        string config =
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+            + "<configuration>\n"
+            + "  <packageSources>\n"
+            + "    <clear />\n"
+            + $"    <add key=\"private\" value=\"{feed.Url}\" />\n"
+            + "  </packageSources>\n"
+            + "  <packageSourceCredentials>\n"
+            + "    <private>\n"
+            + "      <add key=\"Username\" value=\"lunate-bot\" />\n"
+            + "      <add key=\"ClearTextPassword\" value=\"unit-test-password\" />\n"
+            + "    </private>\n"
+            + "  </packageSourceCredentials>\n"
+            + "</configuration>\n";
+        await File.WriteAllTextAsync(
+            Path.Combine(temp.Root, "nuget.config"),
+            config,
+            new UTF8Encoding(false),
+            TestContext.Current.CancellationToken
+        );
+        NuGetPackageFeed seam = NuGetPackageFeed.Create(
+            temp.Root,
+            [],
+            observer: null,
+            globalPackagesFolder: Path.Combine(temp.Root, "packages")
+        );
+
+        IReadOnlyList<NuGetVersion> versions = await seam.VersionsAsync(
+            "Private.Lib",
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal("1.0.0", versions.Single().ToNormalizedString());
     }
 }
