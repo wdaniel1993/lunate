@@ -66,7 +66,7 @@ only when its focused tests pass.
 
 ## 6. Calibrate and pin the performance ceiling
 
-- [ ] 6.1 Measure the warm changed-file verifier on the documented fixture/workload; apply ADR-0005
+- [x] 6.1 Measure the warm changed-file verifier on the documented fixture/workload; apply ADR-0005
       (median plus about 50% headroom, rounded up) with a maximum ceiling of 10 s. Add the measurement to the
       existing performance suite as `WriteVerificationBudget`, so it fails if the calibrated ceiling
       is exceeded. Run that perf case and record the measurement, environment and resulting budget.

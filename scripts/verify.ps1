@@ -208,6 +208,9 @@ try {
     Write-Host "`n==> path index budget"
     Invoke-Tests -Label 'path index budget' -TestArgs @('test', '--project', 'tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj', '-c', $configuration, '--no-build', '--filter-trait', 'Category=Perf')
 
+    Write-Host "`n==> write verifier budget"
+    Invoke-Tests -Label 'write verifier budget' -TestArgs @('test', '--project', 'tests/Lunate.Roslyn.Tests/Lunate.Roslyn.Tests.csproj', '-c', $configuration, '--no-build', '--filter-trait', 'Category=Perf', '-nodeReuse:false')
+
     Write-Host "`n==> install script (fixture release)"
     $version = [regex]::Match((Get-Content Directory.Build.props -Raw), '<Version>(.*?)</Version>').Groups[1].Value
     if (-not $version) { throw 'verify: cannot read <Version> from Directory.Build.props' }
