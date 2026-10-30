@@ -36,7 +36,11 @@ public sealed class ImageCapabilityPreflightTests
         });
 
         Assert.Empty(host.Client.Requests);
-        Assert.Contains("switch profile or remove the image", host.LastFrame, StringComparison.Ordinal);
+        Assert.Contains(
+            "switch profile or remove the image",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
 
         host.Console.Complete();
         await run;
