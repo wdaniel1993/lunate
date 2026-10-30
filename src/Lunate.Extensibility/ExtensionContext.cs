@@ -11,6 +11,7 @@ internal sealed class ExtensionContext : IExtensionContext
     private readonly Action<string, IStatusWidget>? _registerStatusWidget;
     private readonly Action<string, McpServerRegistration>? _registerMcpServer;
     private readonly Action<string, ExtensionToolRegistration>? _registerTool;
+    private readonly Action<string, WriteVerifierRegistration>? _registerWriteVerifier;
     private readonly Action<string, ExtensionModelProvider>? _registerModelProvider;
     private readonly Action<string, ExtensionModelMiddleware>? _registerModelMiddleware;
     private readonly Action<string, VirtualModelRegistration>? _registerVirtualModel;
@@ -45,6 +46,7 @@ internal sealed class ExtensionContext : IExtensionContext
         Action<string, IStatusWidget>? registerStatusWidget = null,
         Action<string, McpServerRegistration>? registerMcpServer = null,
         Action<string, ExtensionToolRegistration>? registerTool = null,
+        Action<string, WriteVerifierRegistration>? registerWriteVerifier = null,
         Action<string, ExtensionModelProvider>? registerModelProvider = null,
         Action<string, ExtensionModelMiddleware>? registerModelMiddleware = null,
         Action<string, VirtualModelRegistration>? registerVirtualModel = null,
@@ -72,6 +74,7 @@ internal sealed class ExtensionContext : IExtensionContext
         _registerStatusWidget = registerStatusWidget;
         _registerMcpServer = registerMcpServer;
         _registerTool = registerTool;
+        _registerWriteVerifier = registerWriteVerifier;
         _registerModelProvider = registerModelProvider;
         _registerModelMiddleware = registerModelMiddleware;
         _registerVirtualModel = registerVirtualModel;
@@ -154,6 +157,13 @@ internal sealed class ExtensionContext : IExtensionContext
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(registration);
         _registerTool?.Invoke(Id, registration);
+    }
+
+    public void RegisterWriteVerifier(WriteVerifierRegistration registration)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(registration);
+        _registerWriteVerifier?.Invoke(Id, registration);
     }
 
     public void RegisterMcpServer(McpServerRegistration registration)

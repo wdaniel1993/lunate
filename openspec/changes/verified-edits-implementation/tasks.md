@@ -4,7 +4,7 @@ only when its focused tests pass.
 
 ## 1. Public verifier contract and manifest
 
-- [ ] 1.1 In `tests/Lunate.Extensibility.Tests/WriteVerifierContractTests.cs`, add failing tests for
+- [x] 1.1 In `tests/Lunate.Extensibility.Tests/WriteVerifierContractTests.cs`, add failing tests for
       `writeVerifiers` parsing (`name`, multiple patterns, nested basename matching), invalid or
       duplicate patterns, undeclared registration, and declared-but-unregistered verifiers. Run
       the focused class and confirm failure first; then implement `IWriteVerifier`,

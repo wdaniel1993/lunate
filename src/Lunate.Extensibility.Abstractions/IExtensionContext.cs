@@ -44,6 +44,9 @@ public interface IExtensionContext
     /// </summary>
     void RegisterTool(ExtensionToolRegistration registration);
 
+    /// <summary>Registers a read-only verifier declared by name and filename patterns in the manifest.</summary>
+    void RegisterWriteVerifier(WriteVerifierRegistration registration);
+
     /// <summary>
     /// Registers a per-workspace service under its manifest <c>workspaceServices</c> name.
     /// Registration is registration only: the factory must not start processes, sockets or timers.

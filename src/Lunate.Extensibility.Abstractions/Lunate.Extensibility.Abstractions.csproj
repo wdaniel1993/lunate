@@ -6,7 +6,7 @@
             extension's referenced Lunate.Extensibility.Abstractions version with
             ExtensionApi.Current, and ExtensionApiTests holds the two equal.
         -->
-        <Version>1.12.0</Version>
+        <Version>1.13.0</Version>
     </PropertyGroup>
 
     <ItemGroup>
