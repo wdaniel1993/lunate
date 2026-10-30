@@ -1,0 +1,60 @@
+using Lunate.Coding;
+using Microsoft.Extensions.AI;
+using static Lunate.Agent.Tests.AgentTestSupport;
+
+namespace Lunate.Agent.Tests;
+
+public sealed class ContextConciseResultTests
+{
+    [Fact]
+    public async Task Bash_keeps_a_long_stdout_transcript_out_of_the_request()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(
+            temp.File("s.jsonl"),
+            temp.Root,
+            new FixedTimeProvider(new DateTimeOffset(2026, 10, 30, 12, 0, 0, TimeSpan.Zero))
+        );
+        string command = LongOutputCommand();
+        var scripted = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "bash", LoopScripts.Args(("command", command))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var client = new ContextAccountingChatClient(scripted);
+        var harness = new AgentHarness(
+            client,
+            Registry(new BashTool(new Workspace(temp.Root))),
+            new AgentHarnessOptions { Session = session, WorkingDirectory = temp.Root }
+        );
+
+        List<AgentEvent> events = await Run(harness);
+
+        long inputTokens = Assert
+            .IsType<SessionUsage>(
+                session
+                    .Entries.OfType<SessionMessageEntry>()
+                    .Last(entry => entry.Message.Role == ChatRole.Assistant)
+                    .Usage
+            )
+            .Input;
+        Assert.True(
+            inputTokens < 700,
+            $"the request carrying a 20,000-character bash transcript was {inputTokens} estimated tokens"
+        );
+        ToolCallResult result = Assert.Single(events.OfType<ToolCallResult>());
+        Assert.True(result.IsError);
+        Assert.Contains("stderr:\nfailure line", result.Output, StringComparison.Ordinal);
+        Assert.Contains("exit code: 7", result.Output, StringComparison.Ordinal);
+        Assert.Contains("full output at ", result.Output, StringComparison.Ordinal);
+        string transcript = File.ReadAllText(ToolOutputSpillTests.PathFromMarker(result.Output));
+        Assert.Contains("failure line", transcript, StringComparison.Ordinal);
+        Assert.Contains("line-200", transcript, StringComparison.Ordinal);
+    }
+
+    private static string LongOutputCommand() =>
+        OperatingSystem.IsWindows()
+            ? "1..200 | ForEach-Object { 'line-{0:D3} {1:D90}' -f $_, $_ }; [Console]::Error.WriteLine('failure line'); exit 7"
+            : "i=1; while [ $i -le 200 ]; do printf 'line-%03d %090d\\n' $i $i; i=$((i + 1)); done; printf 'failure line\\n' >&2; exit 7";
+}
