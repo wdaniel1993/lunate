@@ -132,10 +132,21 @@ public sealed partial class AgentHarness
         {
             _compactionInputTokens += usage.InputTokenCount ?? 0;
             _compactionOutputTokens += usage.OutputTokenCount ?? 0;
+            if (channel is not null && _compactionModel is { } model)
+            {
+                AccumulateUsage(
+                    runId,
+                    channel,
+                    usage,
+                    model.Model.Id,
+                    UsageAttribution("compaction", model)
+                );
+            }
+
             Trace.WriteLine(
                 string.Create(
                     CultureInfo.InvariantCulture,
-                    $"lunate: compaction summarization used {usage.InputTokenCount ?? 0} input and {usage.OutputTokenCount ?? 0} output tokens; not emitted as UsageUpdated."
+                    $"lunate: compaction summarization used {usage.InputTokenCount ?? 0} input and {usage.OutputTokenCount ?? 0} output tokens."
                 )
             );
         }

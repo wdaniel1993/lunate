@@ -115,6 +115,7 @@ public sealed class ModelProfileResolutionTests
         Assert.Contains("image", resolved.Capabilities.InputModalities!);
         Assert.Contains("image", resolved.Capabilities.OutputModalities!);
         Assert.Contains("structured-output", resolved.Capabilities.Features!);
+        Assert.Contains("structured-output", resolved.Model.Capabilities!.Features!);
     }
 
     [Fact]

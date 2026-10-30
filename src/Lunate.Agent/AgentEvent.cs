@@ -92,7 +92,18 @@ public sealed record UsageUpdated(string RunId, UsageDetails Usage) : ExtensionE
     /// otherwise; null when the emitter does not know (older streams and test fixtures).
     /// </summary>
     public string? ModelId { get; init; }
+
+    /// <summary>The usage, profile, and provider that produced these tokens; null for legacy callers.</summary>
+    public ModelUsageAttribution? Attribution { get; init; }
 }
+
+/// <summary>Usage/profile/provider attribution for one recorded model call.</summary>
+public sealed record ModelUsageAttribution(
+    string Usage,
+    string ProfileName,
+    string ProviderName,
+    string ProviderKind
+);
 
 /// <summary>
 /// A call routed through a virtual model: the requested (virtual) model id and the resolved

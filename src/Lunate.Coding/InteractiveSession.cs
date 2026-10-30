@@ -163,6 +163,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private AgentSettings _settings = new();
     private ModelCatalog _catalog = null!;
     private AuthStore _auth = null!;
+    private IReadOnlyList<ProviderEntry> _providerEntries = [];
     private Func<string, string?> _environment = Environment.GetEnvironmentVariable;
     private IChatClientFactory _factory = null!;
     private Workspace _workspace = null!;
@@ -461,6 +462,7 @@ internal sealed partial class InteractiveSession : IDisposable
             _auth,
             userSettings.Providers
         );
+        _providerEntries = userProviders.Entries;
         _settings = SettingsStore.ResolveWithProject(
             _options.SettingsPath,
             projectSettingsPath,
@@ -640,6 +642,14 @@ internal sealed partial class InteractiveSession : IDisposable
                 resolved.ContextWindow,
                 resolved.SupportsTools
             );
+        }
+        else if (_settings.Usages.TryGetValue("chat", out string? chatProfile))
+        {
+            _extensionModelId = null;
+            _modelRoute = null;
+            _model = ModelSelectionResolver
+                .ResolveChatModel(chatProfile, _settings, _providerEntries, _catalog)
+                .Model;
         }
         else
         {
@@ -859,6 +869,9 @@ internal sealed partial class InteractiveSession : IDisposable
     /// </summary>
     private AgentHarness BuildHarness(ModelInfo model)
     {
+        IReadOnlyDictionary<string, UsageModelClient>? usageModels = ResolveUsageModels(model);
+        UsageModelClient? chatModel = usageModels?.GetValueOrDefault("chat");
+        ModelInfo resolvedModel = chatModel?.Model ?? model;
         var harnessOptions = new AgentHarnessOptions
         {
             SystemPrompt = SystemPrompt.Compose(
@@ -880,9 +893,10 @@ internal sealed partial class InteractiveSession : IDisposable
             Session = _session,
             Steering = _steering,
             FileChanges = (IFileChangeSink?)_extensions?.FileChanges ?? NullFileChangeSink.Instance,
-            Model = model,
+            Model = resolvedModel,
             ModelCatalog = _catalog,
-            ModelId = model.Id,
+            ModelId = resolvedModel.Id,
+            UsageModels = usageModels,
             ThinkingLevel = _thinkingLevel,
             ModelRegistry = _extensions?.ModelRegistry,
             WorkspaceTools = _workspaceTools,
@@ -894,7 +908,7 @@ internal sealed partial class InteractiveSession : IDisposable
 
         IChatClient client = _extensionModelId is { } extensionModelId
             ? _extensions!.ModelRegistry.Resolve(extensionModelId)
-            : CreateSessionClient(model);
+            : chatModel?.Client ?? CreateSessionClient(model);
         return new AgentHarness(client, _tools, harnessOptions);
     }
 

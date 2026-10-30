@@ -226,6 +226,8 @@ Lunate.Agent.UsageUpdated.Equals(Lunate.Agent.UsageUpdated? other) -> bool
 Lunate.Agent.UsageUpdated.Usage.get -> Microsoft.Extensions.AI.UsageDetails!
 Lunate.Agent.UsageUpdated.Usage.init -> void
 Lunate.Agent.UsageUpdated.UsageUpdated(string! RunId, Microsoft.Extensions.AI.UsageDetails! Usage) -> void
+Lunate.Agent.UsageUpdated.Attribution.get -> Lunate.Agent.ModelUsageAttribution?
+Lunate.Agent.UsageUpdated.Attribution.init -> void
 override abstract Lunate.Agent.ExtensionEvent.<Clone>$() -> Lunate.Agent.ExtensionEvent!
 override Lunate.Agent.AgentEvent.Equals(object? obj) -> bool
 override Lunate.Agent.AgentEvent.GetHashCode() -> int
@@ -409,6 +411,10 @@ Lunate.Agent.AgentHarnessOptions.WorkingDirectory.get -> string!
 Lunate.Agent.AgentHarnessOptions.WorkingDirectory.init -> void
 Lunate.Agent.AgentHarnessOptions.WorkspaceTools.get -> System.Func<string!, Lunate.Agent.ToolRegistry!>?
 Lunate.Agent.AgentHarnessOptions.WorkspaceTools.init -> void
+Lunate.Agent.AgentHarnessOptions.Usage.get -> string!
+Lunate.Agent.AgentHarnessOptions.Usage.init -> void
+Lunate.Agent.AgentHarnessOptions.UsageModels.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Agent.UsageModelClient!>?
+Lunate.Agent.AgentHarnessOptions.UsageModels.init -> void
 Lunate.Agent.IToolApprover
 override Lunate.Agent.AgentHarnessOptions.Equals(object? obj) -> bool
 override Lunate.Agent.AgentHarnessOptions.GetHashCode() -> int
@@ -1202,6 +1208,43 @@ Lunate.Agent.AgentHarnessOptions.SubagentLimits.get -> Lunate.Agent.SubagentLimi
 Lunate.Agent.AgentHarnessOptions.SubagentLimits.init -> void
 Lunate.Agent.AgentHarnessOptions.TokenBudget.get -> long?
 Lunate.Agent.AgentHarnessOptions.TokenBudget.init -> void
+Lunate.Agent.UsageModelClient
+Lunate.Agent.UsageModelClient.<Clone>$() -> Lunate.Agent.UsageModelClient!
+Lunate.Agent.UsageModelClient.Client.get -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Agent.UsageModelClient.Client.init -> void
+Lunate.Agent.UsageModelClient.Deconstruct(out Microsoft.Extensions.AI.IChatClient! Client, out string! ProfileName, out string! ProviderName, out Lunate.Ai.ModelInfo! Model) -> void
+Lunate.Agent.UsageModelClient.Equals(Lunate.Agent.UsageModelClient? other) -> bool
+Lunate.Agent.UsageModelClient.Model.get -> Lunate.Ai.ModelInfo!
+Lunate.Agent.UsageModelClient.Model.init -> void
+Lunate.Agent.UsageModelClient.ProfileName.get -> string!
+Lunate.Agent.UsageModelClient.ProfileName.init -> void
+Lunate.Agent.UsageModelClient.ProviderKind.get -> string!
+Lunate.Agent.UsageModelClient.ProviderName.get -> string!
+Lunate.Agent.UsageModelClient.ProviderName.init -> void
+Lunate.Agent.UsageModelClient.UsageModelClient(Microsoft.Extensions.AI.IChatClient! Client, string! ProfileName, string! ProviderName, Lunate.Ai.ModelInfo! Model) -> void
+override Lunate.Agent.UsageModelClient.Equals(object? obj) -> bool
+override Lunate.Agent.UsageModelClient.GetHashCode() -> int
+override Lunate.Agent.UsageModelClient.ToString() -> string!
+static Lunate.Agent.UsageModelClient.operator !=(Lunate.Agent.UsageModelClient? left, Lunate.Agent.UsageModelClient? right) -> bool
+static Lunate.Agent.UsageModelClient.operator ==(Lunate.Agent.UsageModelClient? left, Lunate.Agent.UsageModelClient? right) -> bool
+Lunate.Agent.ModelUsageAttribution
+Lunate.Agent.ModelUsageAttribution.<Clone>$() -> Lunate.Agent.ModelUsageAttribution!
+Lunate.Agent.ModelUsageAttribution.Deconstruct(out string! Usage, out string! ProfileName, out string! ProviderName, out string! ProviderKind) -> void
+Lunate.Agent.ModelUsageAttribution.Equals(Lunate.Agent.ModelUsageAttribution? other) -> bool
+Lunate.Agent.ModelUsageAttribution.ProfileName.get -> string!
+Lunate.Agent.ModelUsageAttribution.ProfileName.init -> void
+Lunate.Agent.ModelUsageAttribution.ProviderKind.get -> string!
+Lunate.Agent.ModelUsageAttribution.ProviderKind.init -> void
+Lunate.Agent.ModelUsageAttribution.ProviderName.get -> string!
+Lunate.Agent.ModelUsageAttribution.ProviderName.init -> void
+Lunate.Agent.ModelUsageAttribution.Usage.get -> string!
+Lunate.Agent.ModelUsageAttribution.Usage.init -> void
+Lunate.Agent.ModelUsageAttribution.ModelUsageAttribution(string! Usage, string! ProfileName, string! ProviderName, string! ProviderKind) -> void
+override Lunate.Agent.ModelUsageAttribution.Equals(object? obj) -> bool
+override Lunate.Agent.ModelUsageAttribution.GetHashCode() -> int
+override Lunate.Agent.ModelUsageAttribution.ToString() -> string!
+static Lunate.Agent.ModelUsageAttribution.operator !=(Lunate.Agent.ModelUsageAttribution? left, Lunate.Agent.ModelUsageAttribution? right) -> bool
+static Lunate.Agent.ModelUsageAttribution.operator ==(Lunate.Agent.ModelUsageAttribution? left, Lunate.Agent.ModelUsageAttribution? right) -> bool
 Lunate.Agent.AgentMessageCompletedContext.ParentRunId.get -> string?
 Lunate.Agent.AgentMessageCompletedContext.ParentRunId.init -> void
 Lunate.Agent.AgentRunSettledContext.ParentRunId.get -> string?

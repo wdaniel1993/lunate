@@ -79,10 +79,11 @@ public sealed class ImageInputInteractiveTests
     }
 
     [Fact]
-    public async Task Switching_to_a_text_only_model_refuses_a_new_image()
+    public async Task Switching_to_a_model_with_unknown_image_support_attempts_a_new_image()
     {
         using var host = new InteractiveSessionHost();
         File.WriteAllBytes(host.Temp.File("shot.png"), ImageSamples.Png(2, 3));
+        host.Client.Enqueue(Scripts.Text("ok"), Scripts.Stop());
         host.Client.Enqueue(Scripts.Text("ok"), Scripts.Stop());
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
@@ -98,14 +99,10 @@ public sealed class ImageInputInteractiveTests
 
         host.Console.SendText(host.Temp.File("shot.png"));
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() =>
-        {
-            host.Advance(33);
-            return host.Frames.Contains("does not support images", StringComparison.Ordinal);
-        });
+        await host.Client.WaitForCallAsync(2);
 
-        Assert.Single(host.Client.Requests);
-        Assert.Contains("gpt-4", host.LastFrame, StringComparison.Ordinal);
+        Assert.Equal(2, host.Client.Requests.Count);
+        Assert.Single(host.Client.Requests[1][^1].Contents.OfType<DataContent>());
 
         host.Console.Complete();
         await run;

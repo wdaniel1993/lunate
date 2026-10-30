@@ -607,25 +607,39 @@ internal sealed partial class InteractiveSession
     /// <summary>Switches to a catalog model by id; an unknown id produces a notice.</summary>
     private async ValueTask SwitchModel(string id, CancellationToken ct)
     {
-        ModelInfo? model;
+        ResolvedModelProfile selected;
         try
         {
-            model = _catalog.Find(id);
+            selected = ModelSelectionResolver.ResolveChatModel(
+                id,
+                _settings,
+                _providerEntries,
+                _catalog
+            );
         }
-        catch (InvalidOperationException exception)
-        {
-            // An ambiguous bare id names its candidates; the switch reports, never guesses.
-            Notify(exception.Message, NoticeLevel.Warning);
-            return;
-        }
-
-        if (model is null)
+        catch (UnknownModelException)
         {
             Notify("unknown model: " + id, NoticeLevel.Warning);
             return;
         }
+        catch (InvalidOperationException exception)
+        {
+            Notify(exception.Message, NoticeLevel.Warning);
+            return;
+        }
+        catch (InvalidDataException exception)
+        {
+            Notify(exception.Message, NoticeLevel.Warning);
+            return;
+        }
 
-        await SwitchToModel(model, ct).ConfigureAwait(false);
+        if (!_providerEntries.Any(provider => provider.Name == selected.Provider.Name))
+        {
+            _providerEntries = [.. _providerEntries, selected.Provider];
+        }
+
+        _settings = ModelSelectionResolver.SelectChatProfile(_settings, selected);
+        await SwitchToModel(selected.Model, ct).ConfigureAwait(false);
     }
 
     /// <summary>

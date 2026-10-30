@@ -79,7 +79,17 @@ internal static class ModelProfileResolver
         )
             .Overlay(discoveredCapabilities)
             .Overlay(profile.CapabilitiesOverride);
-        return new ResolvedModelProfile(profile, provider, model, contextWindow, capabilities);
+        return new ResolvedModelProfile(
+            profile,
+            provider,
+            model with
+            {
+                Endpoint = provider.BaseUrl,
+                Capabilities = capabilities,
+            },
+            contextWindow,
+            capabilities
+        );
     }
 
     private static void ValidateReasoning(ModelProfile profile, ModelInfo model)

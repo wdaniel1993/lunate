@@ -18,7 +18,7 @@
 
 ## 4. Usage selection and decision behavior
 
-- [ ] 4.1 Test-first in `Lunate.Coding.Tests`: cover `/model` switching chat only, explicit `provider/model` resolution with provider defaults, unique bare model ids, and ambiguous bare ids refused with every candidate named.
+- [x] 4.1 Test-first in `Lunate.Coding.Tests`: cover `/model` switching chat only, explicit `provider/model` resolution with provider defaults, unique bare model ids, and ambiguous bare ids refused with every candidate named.
 - [ ] 4.2 Test-first in `Lunate.Agent.Tests`: prove chat, fast, decision, subagents, and compaction usages resolve to their configured profiles and each call's usage/provider/model attribution is emitted exactly once; prove absent subagent assignment defaults to chat while retaining `subagents` attribution.
 - [ ] 4.3 Test-first in `Lunate.Agent.Tests`: prove malformed decision contracts are retried once then fail naming the model, decisions record only model id, `native`/`adapter` and probability, shadow mode is user-opt-in, and decisions never override deny or exceed the allow envelope.
 - [ ] 4.4 Test-first in `Lunate.Agent.Tests`: prove no decision profile reports unavailable and stays off without calling the chat profile; prove technical contract failure is not a persistent model-capability verdict.
