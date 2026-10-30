@@ -165,8 +165,10 @@ public sealed class BashGuardToolTests
             var shell = new ShellResolver().Resolve();
             if (shell is { } resolved)
             {
-                GuardCommand command = new BashGuard(Target, GuardProbe.Current)
-                    .Wrap(resolved, Workspace);
+                GuardCommand command = new BashGuard(Target, GuardProbe.Current).Wrap(
+                    resolved,
+                    Workspace
+                );
                 GuardReady = command.Wrapped;
                 Notice = command.Notice ?? "(no report)";
             }
