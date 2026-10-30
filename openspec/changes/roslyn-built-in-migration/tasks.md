@@ -18,8 +18,8 @@
 
 - [x] 3.1 Register the `roslyn` service through `IExtensionContext`; acquire a lease for the call's `ToolContext.WorkingDirectory` in each of the five handlers. Keep creation lazy, share the host registry and cap of two, and preserve `roslyn.maxLoadedWorkspaces` as the host override. Test per-root isolation, lease release and cap behavior.
 - [x] 3.2 Bridge file-change events through `SubscribeFileChanged`: route only to already-created live service values, mark changed C# files, and request reload for project/solution/build configuration changes. Test that events never create a service and that disposal/eviction removes its event lookup.
-- [ ] 3.3 Test service disposal on eviction and shutdown, pinned-call safety, and child-run acquisition through the same registry and cap.
-- [ ] 3.4 Commit: `feat(roslyn): use the extension workspace service contract`.
+- [x] 3.3 Test service disposal on eviction and shutdown, pinned-call safety, and child-run acquisition through the same registry and cap.
+- [x] 3.4 Commit: `feat(roslyn): use the extension workspace service contract`.
 
 ## 4. Use the manifest activation rule in chat and MCP
 
