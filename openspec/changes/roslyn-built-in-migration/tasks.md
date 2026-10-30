@@ -8,11 +8,11 @@
 
 ## 2. Load Roslyn as a built-in
 
-- [ ] 2.1 Add the internal, non-packable `Lunate.Roslyn.BuiltIn` adapter with the `roslyn` built-in manifest, typed `IExtensionFactory` and host-supplied descriptor. Test descriptor validation, manifest cross-checks and built-in lifecycle without a collectible load context.
-- [ ] 2.2 Supply the descriptor through the existing host seam in interactive, print, ACP and child-run composition, including when `--no-extensions` is set. Test that the built-in is present while third-party discovery remains disabled.
-- [ ] 2.3 Add a startup test that asserts no `Microsoft.CodeAnalysis.*` or `Microsoft.Build.*` assembly is loaded before the first C# tool use.
-- [ ] 2.4 Keep the single-file build-host arrangement intact while constructing and loading the built-in.
-- [ ] 2.5 Commit: `feat(coding): load Roslyn through the built-in extension path`.
+- [x] 2.1 Add the internal, non-packable `Lunate.Roslyn.BuiltIn` adapter with the `roslyn` built-in manifest, typed `IExtensionFactory` and host-supplied descriptor. Test descriptor validation, manifest cross-checks and built-in lifecycle without a collectible load context.
+- [x] 2.2 Supply the descriptor through the existing host seam in interactive, print, ACP and child-run composition, including when `--no-extensions` is set. Test that the built-in is present while third-party discovery remains disabled.
+- [x] 2.3 Add a startup test that asserts no `Microsoft.CodeAnalysis.*` or `Microsoft.Build.*` assembly is loaded before the first C# tool use.
+- [x] 2.4 Keep the single-file build-host arrangement intact while constructing and loading the built-in.
+- [x] 2.5 Commit: `feat(coding): load Roslyn through the built-in extension path`.
 
 ## 3. Acquire the Roslyn workspace service through the contract
 
@@ -23,29 +23,29 @@
 
 ## 4. Use the manifest activation rule in chat and MCP
 
-- [ ] 4.1 Declare the existing root rule (`*.sln`, `*.slnx` or `*.csproj`) in the built-in manifest. Test matching and non-matching roots with the host `ToolActivationEvaluator`.
+- [x] 4.1 Declare the existing root rule (`*.sln`, `*.slnx` or `*.csproj`) in the built-in manifest. Test matching and non-matching roots with the host `ToolActivationEvaluator`.
 - [ ] 4.2 Route chat, print, ACP, child-run and `lunate mcp roslyn` composition through the same evaluator; MCP uses declared client roots or its launch directory when none are declared. Test that a non-matching root offers no C# tools and that changed roots re-evaluate and notify only when supported.
 - [ ] 4.3 Keep MCP stdout protocol-only and test the stale-root call response when no roots-change notification was received.
 - [ ] 4.4 Commit: `feat(coding): evaluate Roslyn activation from its manifest`.
 
 ## 5. Preserve the five `cs_*` aliases
 
-- [ ] 5.1 Declare aliases for exactly `cs_diagnostics`, `cs_find_symbol`, `cs_find_references`, `cs_outline` and `cs_rename`. Test canonical identity versus model-facing alias, global collision handling, and that every alias targets a declared and registered tool.
-- [ ] 5.2 Compare all five names, exact `ToolResult.Output` values and `IsError` flags with the frozen fixtures; do not update fixtures to hide a behavior change.
-- [ ] 5.3 Commit: `feat(roslyn): preserve the existing cs tool aliases`.
+- [x] 5.1 Declare aliases for exactly `cs_diagnostics`, `cs_find_symbol`, `cs_find_references`, `cs_outline` and `cs_rename`. Test canonical identity versus model-facing alias, global collision handling, and that every alias targets a declared and registered tool.
+- [x] 5.2 Compare all five names, exact `ToolResult.Output` values and `IsError` flags with the frozen fixtures; do not update fixtures to hide a behavior change.
+- [x] 5.3 Commit: `feat(roslyn): preserve the existing cs tool aliases`.
 
 ## 6. Remove direct C# tool composition
 
-- [ ] 6.1 Route the existing coding composition through the loaded built-in and its activation filter, then delete `HarnessFactory.AddCSharpTools` and the parallel hard-coded root gate. Test parity of available tools and results against the baseline.
-- [ ] 6.2 Commit: `refactor(coding): remove direct Roslyn tool composition`.
+- [x] 6.1 Route the existing coding composition through the loaded built-in and its activation filter, then delete `HarnessFactory.AddCSharpTools` and the parallel hard-coded root gate. Test parity of available tools and results against the baseline.
+- [x] 6.2 Commit: `refactor(coding): remove direct Roslyn tool composition`.
 
 ## 7. Remove the direct project dependency
 
-- [ ] 7.1 Remove the `Lunate.Coding` reference to `Lunate.Roslyn` and the corresponding `LayeringChecker` allowance. Remove the superseded core `WorkspaceServices` implementation and event subscription after the extension service tests cover their behavior.
-- [ ] 7.2 Extend the layering test to enforce dependency closure for both `Lunate.Roslyn` and `Lunate.Roslyn.BuiltIn`: only `Lunate.Extensibility.Abstractions`, Roslyn/MSBuild packages and the BCL are allowed.
-- [ ] 7.3 Add a single-edge test asserting `Lunate.Coding` uses `Lunate.Roslyn.BuiltIn` only to supply the host's list of built-in factories and consumes no other adapter type.
-- [ ] 7.4 Verify the solution graph and layering tests contain no direct `Lunate.Coding` → `Lunate.Roslyn` dependency; confirm both coding and MCP paths still load the same built-in.
-- [ ] 7.5 Commit: `refactor(coding): remove the direct Roslyn project reference`.
+- [x] 7.1 Remove the `Lunate.Coding` reference to `Lunate.Roslyn` and the corresponding `LayeringChecker` allowance. Remove the superseded core `WorkspaceServices` implementation and event subscription after the extension service tests cover their behavior.
+- [x] 7.2 Extend the layering test to enforce dependency closure for both `Lunate.Roslyn` and `Lunate.Roslyn.BuiltIn`: only `Lunate.Extensibility.Abstractions`, Roslyn/MSBuild packages and the BCL are allowed.
+- [x] 7.3 Add a single-edge test asserting `Lunate.Coding` uses `Lunate.Roslyn.BuiltIn` only to supply the host's list of built-in factories and consumes no other adapter type.
+- [x] 7.4 Verify the solution graph and layering tests contain no direct `Lunate.Coding` → `Lunate.Roslyn` dependency; confirm both coding and MCP paths still load the same built-in.
+- [x] 7.5 Commit: `refactor(coding): remove the direct Roslyn project reference`.
 
 ## 8. Document, compare and verify the migration
 
