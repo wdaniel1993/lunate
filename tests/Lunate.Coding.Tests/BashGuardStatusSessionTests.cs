@@ -42,8 +42,7 @@ public sealed class BashGuardStatusSessionTests
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
         string header = await host.WaitForScrollbackAsync(
-            text => text.Contains("bash guard", StringComparison.Ordinal),
-            "the guard status in the welcome header"
+            $"lunate  v{ProductVersion.Build}"
         );
         string expectedHeader =
             enabled
@@ -54,7 +53,7 @@ public sealed class BashGuardStatusSessionTests
         host.Console.SendText("/context");
         host.Console.SendEnter();
         string expectedContext = $"bash guard: {mechanism}; probe: {probeState}";
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, expectedContext);
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "context: ");
 
         Assert.Contains(expectedContext, host.LastFrame, StringComparison.Ordinal);
         Assert.Equal(expectedProbeCalls, probeCalls);
