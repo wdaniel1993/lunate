@@ -49,6 +49,11 @@ public sealed partial class AgentHarness
         _tools = tools;
         _options = options ?? new AgentHarnessOptions();
         ValidateOptions(_options);
+        if (ResolveUsageModel("decision") is not null && _tools.Find("decide") is null)
+        {
+            _tools.Add(new DecideTool());
+        }
+
         _images = _options.Session?.Images ?? SessionImages.InMemory();
         _compactionModel = ResolveUsageModel("compaction");
         _compactor = new CompactionReducer(

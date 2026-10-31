@@ -892,11 +892,17 @@ internal sealed partial class InteractiveSession : IDisposable
         IReadOnlyDictionary<string, UsageModelClient>? usageModels = ResolveUsageModels(model);
         UsageModelClient? chatModel = usageModels?.GetValueOrDefault("chat");
         ModelInfo resolvedModel = chatModel?.Model ?? model;
+        List<string> toolNames = [.. _tools.Tools.Select(tool => tool.Name)];
+        if (usageModels?.ContainsKey("decision") == true && !toolNames.Contains("decide"))
+        {
+            toolNames.Add("decide");
+        }
+
         var harnessOptions = new AgentHarnessOptions
         {
             SystemPrompt = SystemPrompt.Compose(
                 _workspace,
-                [.. _tools.Tools.Select(tool => tool.Name)],
+                toolNames,
                 SystemPrompt.Directives(_options.Launch, _session)
             ),
             PromptSections = _skillSection is { } skills

@@ -44,7 +44,7 @@
 - [ ] 4.3 **Question suggestions** (#344, display only): show a suggested answer beside a question the
       user is answering. Add the test that an answer — suggested, chosen or auto-filled with no user
       present — grants no tool approval and never answers a skipped question while a user is present.
-- [ ] 4.4 **`decide` tool** (information only): offered only when a `decision` profile is configured,
+- [x] 4.4 **`decide` tool** (information only): offered only when a `decision` profile is configured,
       batch-friendly (several questions per call), cost under the `decision` usage in `/cost`. Add the
       test that a decision received through the tool grants and skips no approval, and the test that
       the tool is absent without a decision profile.
