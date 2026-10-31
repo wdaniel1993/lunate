@@ -1012,6 +1012,8 @@ Lunate runs model-chosen shell commands with your user's rights, so the defaults
 
 These decisions are settled; the foundational ones are recorded as durable ADRs under `adr/` (see 0001 and 0002), and the rest become ADRs as changes touch them.
 
+To choose the next ADR number, list the primary ADR filenames in `adr/` and take the highest number plus one. Use filenames; do not grep ADR contents. Addenda use `NNNN-addendum-<slug>.md` and keep their parent ADR's number.
+
 | Decision | Choice | Why |
 | --- | --- | --- |
 | Audience | Polished daily-driver CLI; readability stays a principle | The project's value is daily use and C# depth |

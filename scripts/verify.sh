@@ -186,6 +186,10 @@ docs_profile() {
   step "generated docs regions"
   python3 "${SCRIPT_DIR}/docs-sync" --check
 
+  step "ADR numbering"
+  python3 "${SCRIPT_DIR}/../tests/scripts/test_adr_numbers.py"
+  python3 "${SCRIPT_DIR}/check-adr-numbers.py"
+
   step "docs are not build inputs"
   bash "${SCRIPT_DIR}/no-docs-references.sh"
 
