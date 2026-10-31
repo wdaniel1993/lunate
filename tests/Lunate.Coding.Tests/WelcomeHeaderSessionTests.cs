@@ -146,10 +146,10 @@ public sealed class WelcomeHeaderSessionTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         string scrollback = await host.WaitForScrollbackAsync(
-            $"lunate v{ProductVersion.Build} — /help for commands"
+            $"lunate v{ProductVersion.Build} · bash guard none · probe not run — /help for commands"
         );
         Assert.Contains(
-            $"lunate v{ProductVersion.Build} — /help for commands",
+            $"lunate v{ProductVersion.Build} · bash guard none · probe not run — /help for commands",
             scrollback,
             StringComparison.Ordinal
         );
@@ -172,10 +172,10 @@ public sealed class WelcomeHeaderSessionTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         string scrollback = await host.WaitForScrollbackAsync(
-            $"lunate v{ProductVersion.Build} - /help for commands"
+            $"lunate v{ProductVersion.Build} - bash guard none - probe not run - /help for commands"
         );
         Assert.Contains(
-            $"lunate v{ProductVersion.Build} - /help for commands",
+            $"lunate v{ProductVersion.Build} - bash guard none - probe not run - /help for commands",
             scrollback,
             StringComparison.Ordinal
         );
