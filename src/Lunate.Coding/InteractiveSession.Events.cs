@@ -103,6 +103,11 @@ internal sealed partial class InteractiveSession
                 break;
             case UsageUpdated usage:
                 AddUsage(usage, root: !child);
+                if (usage.Attribution?.Usage == "decision")
+                {
+                    RecordDecisionUsage(usage);
+                }
+
                 break;
             case DecisionEvaluated decision when !child:
                 Notify(

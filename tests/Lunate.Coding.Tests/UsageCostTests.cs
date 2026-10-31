@@ -198,10 +198,9 @@ public sealed class UsageCostTests
             UsageCost.SummarizeAttributedSession(catalog, session)
         );
 
-        Assert.Equal(
-            ["decision (native)", "decision (adapter)"],
-            report.ByUsage.Select(line => line.Name)
-        );
+        Assert.Equal(["decision", "decision"], report.ByUsage.Select(line => line.Name));
+        Assert.Equal("native", report.ByUsage[0].DecisionMethod);
+        Assert.Equal("adapter", report.ByUsage[1].DecisionMethod);
         Assert.Equal(0.001m, report.ByUsage[0].Cost);
         Assert.Equal(0.002m, report.ByUsage[1].Cost);
     }
