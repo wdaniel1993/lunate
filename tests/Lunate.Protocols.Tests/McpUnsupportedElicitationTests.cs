@@ -22,11 +22,15 @@ public sealed class McpUnsupportedElicitationTests
         bool interactionOpened = false;
         ToolContext context = McpTestEnvironment.Context with
         {
-            AskUserAsync = (_, _) =>
-            {
-                interactionOpened = true;
-                return Task.FromResult(new UserQuestionResult(UserQuestionStatus.Skipped, []));
-            },
+            AgentState = new AgentToolContextState(
+                null,
+                null,
+                (_, _) =>
+                {
+                    interactionOpened = true;
+                    return Task.FromResult(new UserQuestionResult(UserQuestionStatus.Skipped, []));
+                }
+            ),
         };
 
         ToolResult result = await tool.ExecuteAsync(
@@ -89,8 +93,11 @@ public sealed class McpUnsupportedElicitationTests
         );
         ToolContext context = McpTestEnvironment.Context with
         {
-            AskUserAsync = (_, _) =>
-                Task.FromResult(new UserQuestionResult(UserQuestionStatus.Skipped, [])),
+            AgentState = new AgentToolContextState(
+                null,
+                null,
+                (_, _) => Task.FromResult(new UserQuestionResult(UserQuestionStatus.Skipped, []))
+            ),
         };
 
         ToolResult result = await tool.ExecuteAsync(

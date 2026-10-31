@@ -43,22 +43,26 @@ public sealed class McpFormElicitationTests
         IReadOnlyList<UserQuestion>? presented = null;
         ToolContext context = McpTestEnvironment.Context with
         {
-            AskUserAsync = (questions, _) =>
-            {
-                presented = questions;
-                return Task.FromResult(
-                    new UserQuestionResult(
-                        UserQuestionStatus.Answered,
-                        [
-                            new UserQuestionAnswer([], "new project"),
-                            new UserQuestionAnswer([], "3"),
-                            new UserQuestionAnswer([], "true"),
-                            new UserQuestionAnswer(["guided"], null),
-                            new UserQuestionAnswer(["safe", "fast"], null),
-                        ]
-                    )
-                );
-            },
+            AgentState = new AgentToolContextState(
+                null,
+                null,
+                (questions, _) =>
+                {
+                    presented = questions;
+                    return Task.FromResult(
+                        new UserQuestionResult(
+                            UserQuestionStatus.Answered,
+                            [
+                                new UserQuestionAnswer([], "new project"),
+                                new UserQuestionAnswer([], "3"),
+                                new UserQuestionAnswer([], "true"),
+                                new UserQuestionAnswer(["guided"], null),
+                                new UserQuestionAnswer(["safe", "fast"], null),
+                            ]
+                        )
+                    );
+                }
+            ),
         };
 
         ToolResult result = await tool.ExecuteAsync(
@@ -115,19 +119,23 @@ public sealed class McpFormElicitationTests
         );
         ToolContext context = McpTestEnvironment.Context with
         {
-            AskUserAsync = (questions, _) =>
-                Task.FromResult(
-                    new UserQuestionResult(
-                        UserQuestionStatus.Answered,
-                        [
-                            new UserQuestionAnswer([], "new project"),
-                            new UserQuestionAnswer([], "3"),
-                            new UserQuestionAnswer([], "true"),
-                            new UserQuestionAnswer(["unknown"], null),
-                            new UserQuestionAnswer(["safe"], null),
-                        ]
+            AgentState = new AgentToolContextState(
+                null,
+                null,
+                (questions, _) =>
+                    Task.FromResult(
+                        new UserQuestionResult(
+                            UserQuestionStatus.Answered,
+                            [
+                                new UserQuestionAnswer([], "new project"),
+                                new UserQuestionAnswer([], "3"),
+                                new UserQuestionAnswer([], "true"),
+                                new UserQuestionAnswer(["unknown"], null),
+                                new UserQuestionAnswer(["safe"], null),
+                            ]
+                        )
                     )
-                ),
+            ),
         };
 
         ToolResult result = await tool.ExecuteAsync(
@@ -156,19 +164,23 @@ public sealed class McpFormElicitationTests
         );
         ToolContext context = McpTestEnvironment.Context with
         {
-            AskUserAsync = (_, _) =>
-                Task.FromResult(
-                    new UserQuestionResult(
-                        UserQuestionStatus.Answered,
-                        [
-                            new UserQuestionAnswer([], "new project"),
-                            new UserQuestionAnswer([], "3"),
-                            new UserQuestionAnswer([], "true"),
-                            new UserQuestionAnswer(["guided"], null),
-                            new UserQuestionAnswer(["safe", "fast"], null),
-                        ]
+            AgentState = new AgentToolContextState(
+                null,
+                null,
+                (_, _) =>
+                    Task.FromResult(
+                        new UserQuestionResult(
+                            UserQuestionStatus.Answered,
+                            [
+                                new UserQuestionAnswer([], "new project"),
+                                new UserQuestionAnswer([], "3"),
+                                new UserQuestionAnswer([], "true"),
+                                new UserQuestionAnswer(["guided"], null),
+                                new UserQuestionAnswer(["safe", "fast"], null),
+                            ]
+                        )
                     )
-                ),
+            ),
         };
 
         ToolResult result = await tool.ExecuteAsync(

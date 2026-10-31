@@ -26,6 +26,9 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events)
     /// <summary>Reports progress to the run's event stream as a <see cref="ToolProgressUpdate"/>.</summary>
     public Action<string>? Progress { get; init; }
 
+    /// <summary>The estimated-token threshold above which a tool result is spilled.</summary>
+    public int SpillThresholdTokens { get; init; } = 2_000;
+
     /// <summary>The queue serializing file mutations per path.</summary>
     public IFileMutationQueue FileMutations { get; init; } = FileMutationQueue.Shared;
 
@@ -61,22 +64,9 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events)
     /// </summary>
     public IModelAccess? Models { get; init; }
 
-    /// <summary>The interactive question handler for this run; null when no user is present.</summary>
-    internal Func<
-        IReadOnlyList<UserQuestion>,
-        CancellationToken,
-        Task<UserQuestionResult>
-    >? AskUserAsync { get; init; }
+    /// <summary>The character budget for one tool result before truncation.</summary>
+    public int ToolOutputLimit { get; init; } = 30_000;
 
-    /// <summary>The session whose spill files this run may read; null without a session.</summary>
-    internal Session? Session { get; init; }
-
-    /// <summary>The result-admission token bound available to tools that page a known spill.</summary>
-    internal int SpillThresholdTokens { get; init; } = ToolOutput.DefaultSpillThresholdTokens;
-
-    /// <summary>The result-admission character bound available to tools that page a known spill.</summary>
-    internal int ToolOutputLimit { get; init; } = ToolOutput.DefaultLimit;
-
-    /// <summary>The per-harness read ledger; null when the tool runs outside the loop.</summary>
-    internal IReadLedger? Reads { get; init; }
+    /// <summary>Opaque Agent-owned execution state; Contracts does not depend on the agent.</summary>
+    internal object? AgentState { get; init; }
 }

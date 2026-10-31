@@ -1,4 +1,5 @@
 using System.Runtime.Loader;
+using Lunate.Agent;
 using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Extensibility.Compile.Tests;
@@ -65,6 +66,53 @@ public sealed class SingleFileIsolationTests
         Assert.Contains("Acme.Contracts", warning, StringComparison.Ordinal);
         Assert.Contains("Acme.Extra", warning, StringComparison.Ordinal);
         Assert.Contains(fixture.Id, warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_locked_package_that_ships_contracts_uses_the_hosts_identity()
+    {
+        using SingleFileLoadFixture fixture = SingleFileLoadFixture.Create();
+        fixture.AddToolPackage(SingleFileLoadFixture.Lib, Ct);
+        fixture.AddHostAssemblyCopy(
+            "Acme.Contracts",
+            "1.0.0",
+            "Lunate.Contracts",
+            typeof(ToolContext).Assembly.Location
+        );
+        await fixture.BuildAsync(
+            SingleFileLoadFixture.Source(probe: "typeof(ToolContext).Assembly.Location"),
+            cancellationToken: Ct
+        );
+
+        ExtensionLoader loader = fixture.Discovered();
+        LoadedExtension loaded = await loader.LoadSingleFileAsync(fixture.Id, Ct);
+        CommandResult result = await CommandAsync(loader, "ping");
+
+        Assert.Equal(typeof(ToolContext).Assembly.Location, result.Message);
+        AssemblyLoadContext context = AssemblyLoadContext.GetLoadContext(
+            loaded.Extension.GetType().Assembly
+        )!;
+        Assert.NotSame(AssemblyLoadContext.Default, context);
+        Assert.DoesNotContain(
+            context.Assemblies,
+            assembly =>
+                string.Equals(
+                    assembly.GetName().Name,
+                    typeof(ToolContext).Assembly.GetName().Name,
+                    StringComparison.Ordinal
+                )
+        );
+
+        IgnoredHostCopy copy = Assert.IsType<IgnoredHostCopy>(loader.IgnoredHostCopyOf(fixture.Id));
+        Assert.Equal(["Lunate.Contracts"], copy.Names);
+        Assert.Equal(["Acme.Contracts"], copy.Owners);
+        string warning = Assert.Single(
+            fixture.Log.Matching("ignored the copy of Lunate.Contracts shipped by")
+        );
+        Assert.Equal(
+            $"warn: extension '{fixture.Id}': ignored the copy of Lunate.Contracts shipped by package 'Acme.Contracts'; the host owns that assembly, so the host's copy is the one loaded.",
+            warning
+        );
     }
 
     private static async Task<CommandResult> CommandAsync(ExtensionLoader loader, string name)

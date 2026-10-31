@@ -8,11 +8,12 @@ test needs a live API.
 
 ## Add the kit
 
-The test project references the AI project, the contract and the kit. The paths below match the
-template's depth; adjust them for your layout:
+The test project references the AI project, both contract assemblies and the kit. The paths below
+match the template's depth; adjust them for your layout:
 
 ```xml
 <ProjectReference Include="../../../src/Lunate.Ai/Lunate.Ai.csproj" />
+<ProjectReference Include="../../../src/Lunate.Contracts/Lunate.Contracts.csproj" />
 <ProjectReference Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
 <ProjectReference Include="../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
 ```

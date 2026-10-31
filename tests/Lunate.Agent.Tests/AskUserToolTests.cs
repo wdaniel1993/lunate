@@ -207,7 +207,11 @@ public sealed class AskUserToolTests
 
     private static ToolContext CreateContext(
         Func<IReadOnlyList<UserQuestion>, CancellationToken, Task<UserQuestionResult>> handler
-    ) => new("/repo", new RecordingAgentEvents()) { AskUserAsync = handler };
+    ) =>
+        new("/repo", new RecordingAgentEvents())
+        {
+            AgentState = new AgentToolContextState(null, null, handler),
+        };
 
     private static Task<UserQuestionResult> AnswerAll(IReadOnlyList<UserQuestion> questions) =>
         Task.FromResult(

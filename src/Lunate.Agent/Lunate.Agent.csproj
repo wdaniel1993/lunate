@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
         <ProjectReference Include="../Lunate.Ai/Lunate.Ai.csproj" />
+        <ProjectReference Include="../Lunate.Contracts/Lunate.Contracts.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -19,6 +20,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Agent.Tests" />
+        <InternalsVisibleTo Include="lunate" />
         <InternalsVisibleTo Include="Lunate.Protocols" />
         <InternalsVisibleTo Include="Lunate.Protocols.Tests" />
         <!-- The coding harness ("lunate") creates its store through SessionProvisioning. -->

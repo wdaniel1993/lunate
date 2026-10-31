@@ -5,9 +5,10 @@ namespace Lunate.Coding.Tests;
 
 /// <summary>
 /// The compile-only half of the layering rule: an extension that references a host assembly must not
-/// copy it. <c>Private="false"</c> keeps the DLL out of the output directory and
-/// <c>ExcludeAssets="runtime"</c> keeps it out of the deps file; both still compile against, and the
-/// loader binds the extension to the host's copy.
+/// copy it. <c>Private="false"</c> keeps the DLL out of the output directory, and
+/// <c>ExcludeAssets="runtime"</c> keeps it out of the deps file; the extension still compiles against
+/// the assemblies and the loader binds it to the host's copy. If <c>PrivateAssets</c> is specified,
+/// it must be <c>all</c> so the reference does not flow transitively.
 /// </summary>
 public sealed class LayeringExtensionReferencesTests
 {
@@ -55,11 +56,15 @@ public sealed class LayeringExtensionReferencesTests
                     problems.Add($"{from} copies {target}: ExcludeAssets must be runtime");
                 }
 
-                if (reference.Attribute("PrivateAssets") is not null)
+                string? privateAssets = reference.Attribute("PrivateAssets")?.Value;
+                if (
+                    privateAssets is not null
+                    && !string.Equals("all", privateAssets, StringComparison.Ordinal)
+                )
                 {
                     problems.Add(
-                        $"{from} -> {target} carries PrivateAssets, which also hides the host "
-                            + "types an extension's signatures use"
+                        $"{from} -> {target} sets PrivateAssets to '{privateAssets}'; when specified, "
+                            + "it must be all"
                     );
                 }
             }

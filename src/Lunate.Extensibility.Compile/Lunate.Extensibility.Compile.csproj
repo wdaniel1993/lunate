@@ -13,7 +13,7 @@
         The compile-time contract travels inside this assembly. A published self-contained
         single-file binary has no .dll on disk to point a MetadataReference at — the managed
         assemblies are bundled and Assembly.Location is empty — so the contract the host was built
-        against is embedded here and read from the manifest at compile time: the four shared
+        against is embedded here and read from the manifest at compile time: the three shared
         assemblies every extension may reference, as this build resolved them (the same metadata a
         ProjectReference exposes to any other consumer).
 
@@ -39,7 +39,7 @@
         <ItemGroup>
             <EmbeddedResource
                 Include="@(ReferencePath)"
-                Condition="'%(Filename)' == 'Lunate.Extensibility.Abstractions' Or '%(Filename)' == 'Lunate.Agent' Or '%(Filename)' == 'Lunate.Ai' Or '%(Filename)' == 'Microsoft.Extensions.AI.Abstractions'"
+                Condition="'%(Filename)' == 'Lunate.Contracts' Or '%(Filename)' == 'Lunate.Extensibility.Abstractions' Or '%(Filename)' == 'Microsoft.Extensions.AI.Abstractions'"
             >
                 <LogicalName>contracts/%(Filename).dll</LogicalName>
             </EmbeddedResource>

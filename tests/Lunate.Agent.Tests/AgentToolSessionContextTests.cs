@@ -20,13 +20,22 @@ public sealed class AgentToolSessionContextTests
         var harness = new AgentHarness(
             client,
             Registry(tool),
-            new AgentHarnessOptions { Session = resumed, WorkingDirectory = temp.Root }
+            new AgentHarnessOptions
+            {
+                Session = resumed,
+                WorkingDirectory = temp.Root,
+                ToolOutputLimit = 123,
+                SpillThresholdTokens = 456,
+            }
         );
 
         await Run(harness);
 
-        Assert.Same(resumed, tool.ReceivedContext!.Session);
-        Assert.NotNull(tool.ReceivedContext.Reads);
+        ToolContext received = tool.ReceivedContext!;
+        Assert.Same(resumed, AgentToolContextState.SessionFor(received));
+        Assert.NotNull(AgentToolContextState.ReadsFor(received));
+        Assert.Equal(123, received.ToolOutputLimit);
+        Assert.Equal(456, received.SpillThresholdTokens);
     }
 
     [Fact]
@@ -34,6 +43,6 @@ public sealed class AgentToolSessionContextTests
     {
         var context = new ToolContext("/work", new AgentEventChannel());
 
-        Assert.Null(context.Reads);
+        Assert.Null(AgentToolContextState.ReadsFor(context));
     }
 }

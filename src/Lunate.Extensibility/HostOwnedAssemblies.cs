@@ -22,12 +22,14 @@ public static class HostOwnedAssemblies
 {
     /// <summary>
     /// The shared contract assemblies, in the order diagnostics name them: the extension contract,
-    /// the two host assemblies its public signatures use, and <c>System.Text.Json</c>, whose types
-    /// cross the same boundary. A copy of any of these is ignored wherever it is found.
+    /// the tool and event contract assembly, the two host assemblies its public signatures use, and
+    /// <c>System.Text.Json</c>, whose types cross the same boundary. A copy of any of these is
+    /// ignored wherever it is found.
     /// </summary>
     public static IReadOnlyList<string> Names { get; } =
     [
         "Lunate.Extensibility.Abstractions",
+        "Lunate.Contracts",
         "Lunate.Agent",
         "Microsoft.Extensions.AI.Abstractions",
         "System.Text.Json",

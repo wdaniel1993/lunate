@@ -155,7 +155,10 @@ public sealed class ToolOutputSpillReadTests
         using JsonDocument args = JsonDocument.Parse(JsonSerializer.Serialize(new { path }));
         return tool.ExecuteAsync(
             args.RootElement,
-            new ToolContext(workingDirectory, new NullAgentEvents()) { Session = session },
+            new ToolContext(workingDirectory, new NullAgentEvents())
+            {
+                AgentState = new AgentToolContextState(session, null, null),
+            },
             CancellationToken.None
         );
     }

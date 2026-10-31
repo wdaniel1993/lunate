@@ -31,7 +31,11 @@ internal static class LayeringChecker
             ("Lunate.Extensibility.Remote.Tests", "Lunate.Extensibility.Remote"),
             ("Lunate.Extensibility.Remote.Tests", "Lunate.Extensibility"),
             ("Lunate.Extensibility.Remote.Tests", "Lunate.Extensibility.Testing"),
-            ("Lunate.Extensibility.Abstractions", "Lunate.Agent"),
+            ("Lunate.Agent", "Lunate.Contracts"),
+            ("Lunate.Ai", "Lunate.Contracts"),
+            // The agent-only ask-user seam rides the contract's internal state object, so the
+            // protocol adapters read it as friends (InternalsVisibleTo), not by layering.
+            ("Lunate.Extensibility.Abstractions", "Lunate.Contracts"),
             ("Lunate.Extensibility.Testing", "Lunate.Agent"),
             ("Lunate.Extensibility.Testing", "Lunate.Ai"),
             // The kit composes MCP registrations through the production mapping in Coding.
@@ -129,6 +133,7 @@ internal static class LayeringChecker
             ("FakeLsp", "Lunate.Extensibility.Abstractions"),
             ("TemplateExtension", "Lunate.Extensibility.Abstractions"),
             ("TemplateExtension.Tests", "Lunate.Ai"),
+            ("TemplateExtension.Tests", "Lunate.Contracts"),
             ("TemplateExtension.Tests", "Lunate.Extensibility.Abstractions"),
             ("TemplateExtension.Tests", "Lunate.Extensibility.Testing"),
             ("PermissionGateExtension", "Lunate.Extensibility.Abstractions"),
@@ -187,7 +192,7 @@ internal static class LayeringChecker
     /// An extension may reference them — compile-only, never copied — and nothing else of the host.
     /// </summary>
     public static IReadOnlySet<string> ExtensionHostAssemblies { get; } =
-        new HashSet<string> { "Lunate.Extensibility.Abstractions", "Lunate.Agent", "Lunate.Ai" };
+        new HashSet<string> { "Lunate.Extensibility.Abstractions", "Lunate.Contracts" };
 
     /// <summary>
     /// An extension is a project outside the host's own <c>Lunate.*</c> set — a sample, the template,

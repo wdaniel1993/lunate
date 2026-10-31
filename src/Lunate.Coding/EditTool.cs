@@ -220,7 +220,9 @@ public sealed class EditTool(
                 }
 
                 if (
-                    ctx.Reads?.Check(resolved.AbsolutePath, fileText, resolved.RelativePath) is
+                    AgentToolContextState
+                        .ReadsFor(ctx)
+                        ?.Check(resolved.AbsolutePath, fileText, resolved.RelativePath) is
                     { } staleRead
                 )
                 {
@@ -333,7 +335,9 @@ public sealed class EditTool(
                         FileChangeKind.Modified
                     )
                 );
-                ctx.Reads?.Refresh(resolved.AbsolutePath, newFileText, resolved.RelativePath);
+                AgentToolContextState
+                    .ReadsFor(ctx)
+                    ?.Refresh(resolved.AbsolutePath, newFileText, resolved.RelativePath);
 
                 var firstLine = start + 1;
                 var lastLine = start + newLines.Length;
