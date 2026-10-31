@@ -37,9 +37,10 @@
 
 ## 4. Follow-up changes (not part of this change)
 
-- [ ] 4.1 `verified-edits-implementation`: public manifest-declared verifier registration, host
+- [x] 4.1 `verified-edits-implementation`: public manifest-declared verifier registration, host
        invocation after approval, C# verifier registered by `Lunate.Roslyn`, the `verify` setting,
        timeout/cancellation, refusal escape and TUI progress; test-first per its implementation
        tasks, recalibrate the ceiling by ADR-0005 and pin it in the perf suite; update docs only when
-       the behavior is true.
-- [ ] 4.2 #340: the LSP extension registers a verifier for `*.ts`/`*.tsx`.
+       the behavior is true. Merged via #341 (`18fc3580`).
+- [x] 4.2 #340: the LSP extension registers a verifier for `*.ts`/`*.tsx`; completed by #362
+       (`6d0d078d`).

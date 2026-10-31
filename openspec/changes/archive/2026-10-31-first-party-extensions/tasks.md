@@ -52,5 +52,4 @@ must pass unchanged at their new paths, and the two new packages must survive
       (markdownlint, `scripts/docs-sync --check`).
 - [x] 5.2 Narrow gate green: `dotnet build lunate.slnx -c Release`, `dotnet test` over the three moved
       test projects at their new paths, `dotnet csharpier check .`; the full matrix stays with CI.
-- [ ] 5.3 Archive waits for review (the shepherd's merge), then `openspec archive
-      first-party-extensions --yes` is the implementation PR's final commit.
+- [x] 5.3 Archive as the implementation PR's final commit; completed in PR #381.
