@@ -22,6 +22,12 @@ public sealed class ModelRoutingDecisionTests
         DecisionEvaluated decision = Assert.Single(run.Events.OfType<DecisionEvaluated>());
         Assert.Equal("routing", decision.QuestionId);
         Assert.Equal("fast", decision.Answer);
+        UsageUpdated decisionUsage = Assert.Single(
+            run.Events.OfType<UsageUpdated>().Where(item => item.Attribution?.Usage == "decision")
+        );
+        Assert.Equal("decision", decisionUsage.Attribution?.Usage);
+        Assert.Equal("decision", decisionUsage.Attribution?.ProfileName);
+        Assert.Equal("adapter", decisionUsage.Attribution?.DecisionMethod);
     }
 
     [Fact]
@@ -69,10 +75,18 @@ public sealed class ModelRoutingDecisionTests
             LoopScripts.Stop()
         );
         ScriptedChatClient decision = new();
-        decision.Enqueue(LoopScripts.Text(decisionResponse), LoopScripts.Stop());
+        decision.Enqueue(
+            LoopScripts.Text(decisionResponse),
+            LoopScripts.Usage(500, 20),
+            LoopScripts.Stop()
+        );
         if (decisionResponse == "not json")
         {
-            decision.Enqueue(LoopScripts.Text(decisionResponse), LoopScripts.Stop());
+            decision.Enqueue(
+                LoopScripts.Text(decisionResponse),
+                LoopScripts.Usage(500, 20),
+                LoopScripts.Stop()
+            );
         }
 
         var harness = new AgentHarness(

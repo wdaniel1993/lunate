@@ -66,6 +66,37 @@ internal sealed partial class InteractiveSession
         }
     }
 
+    private IReadOnlyDictionary<string, UsageModelClient>? ResolveRoutingProfiles()
+    {
+        if (_settings.RoutingMode == DecisionMode.Off)
+        {
+            return null;
+        }
+
+        var profiles = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal);
+        foreach (string profileName in _settings.RoutingProfiles)
+        {
+            ResolvedModelProfile profile = ModelSelectionResolver.ResolveChatModel(
+                profileName,
+                _settings,
+                _providerEntries,
+                _catalog
+            );
+            profiles.Add(
+                profileName,
+                new UsageModelClient(
+                    new DeferredChatClient(() => CreateUsageClient(profile)),
+                    profile.Profile.Name,
+                    profile.Provider.Name,
+                    profile.Model,
+                    profile.Profile.DecisionThreshold
+                )
+            );
+        }
+
+        return profiles;
+    }
+
     private IChatClient CreateUsageClient(ResolvedModelProfile profile)
     {
         string reference = profile.Provider.CredentialReference;

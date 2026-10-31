@@ -45,6 +45,12 @@ public sealed record AgentSettings
     /// <summary>The optional approval decision consumer; defaults to off.</summary>
     public DecisionMode DecisionMode { get; init; } = DecisionMode.Off;
 
+    /// <summary>The optional model-routing decision consumer; defaults to off.</summary>
+    internal DecisionMode RoutingMode { get; init; } = DecisionMode.Off;
+
+    /// <summary>The named profiles the model-routing consumer may select.</summary>
+    internal IReadOnlyList<string> RoutingProfiles { get; init; } = [];
+
     /// <summary>How much of a tool call the scrollback shows; defaults to collapsed.</summary>
     public ToolDetails ToolDetails { get; init; } = ToolDetails.Collapsed;
 
@@ -181,6 +187,7 @@ public static partial class SettingsStore
             settings = ParseFile(path, problems);
         }
 
+        ValidateRoutingSettings(settings, problems);
         settings = ApplyEnvironment(
             settings,
             environment ?? Environment.GetEnvironmentVariable,
@@ -475,6 +482,18 @@ public static partial class SettingsStore
                         settings = settings with
                         {
                             DecisionMode = ReadDecisionMode(property.Value, problems),
+                        };
+                        break;
+                    case "routingMode":
+                        settings = settings with
+                        {
+                            RoutingMode = ReadRoutingMode(property.Value, problems),
+                        };
+                        break;
+                    case "routingProfiles":
+                        settings = settings with
+                        {
+                            RoutingProfiles = ReadRoutingProfiles(property.Value, problems),
                         };
                         break;
                     case "tui":

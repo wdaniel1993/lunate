@@ -48,6 +48,81 @@ public sealed class SettingsProfileCapabilitiesTests
     }
 
     [Fact]
+    public void Model_routing_is_opt_in_and_uses_only_named_profiles()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "routingMode": "shadow",
+              "routingProfiles": ["default", "fast"],
+              "profiles": {
+                "default": { "provider": "router", "model": "router/model-a" },
+                "fast": { "provider": "router", "model": "router/model-b" }
+              }
+            }
+            """
+        );
+
+        AgentSettings defaults = SettingsStore.Resolve(null, _ => null);
+        AgentSettings configured = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal(DecisionMode.Off, defaults.RoutingMode);
+        Assert.Equal(DecisionMode.Shadow, configured.RoutingMode);
+        Assert.Equal(["default", "fast"], configured.RoutingProfiles);
+    }
+
+    [Fact]
+    public void Model_routing_requires_two_existing_profiles()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "routingMode": "enforce",
+              "routingProfiles": ["missing"]
+            }
+            """
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(temp.File("settings.json"), _ => null)
+        );
+
+        Assert.Contains("routingProfiles", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("unknown profiles", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("at least two", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Project_settings_cannot_enable_model_routing()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("project-settings.json"),
+            """
+            { "schemaVersion": 2, "routingMode": "enforce" }
+            """
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.ResolveWithProject(
+                null,
+                temp.File("project-settings.json"),
+                [],
+                _ => null
+            )
+        );
+
+        Assert.Contains("routingMode", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("not allowed", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void User_profile_can_override_open_capability_categories()
     {
         using var temp = new TempDirectory();
