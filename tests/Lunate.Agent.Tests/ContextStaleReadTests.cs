@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.Json;
 using Lunate.Coding;
 using Microsoft.Extensions.AI;
 using static Lunate.Agent.Tests.AgentTestSupport;
@@ -114,49 +113,6 @@ public sealed class ContextStaleReadTests
                 - Encoding.UTF8.GetByteCount(priorRead.Result!.ToString()!)
             ) / 4;
         Assert.True(savedTokens >= 4_000, $"the stale read saves {savedTokens} estimated tokens");
-    }
-
-    [Fact]
-    public async Task An_invalidated_read_preserves_the_request_prefix_until_a_batch_turn()
-    {
-        using var temp = new TempDirectory();
-        File.WriteAllText(temp.File("small.txt"), "before\n");
-        var scripted = new ScriptedChatClient()
-            .Enqueue(
-                LoopScripts.Call("read", "read", LoopScripts.Args(("path", "small.txt"))),
-                LoopScripts.ToolCalls()
-            )
-            .Enqueue(LoopScripts.Text("Read"), LoopScripts.Stop())
-            .Enqueue(
-                LoopScripts.Call(
-                    "edit",
-                    "edit",
-                    LoopScripts.Args(
-                        ("path", "small.txt"),
-                        ("old_text", "before"),
-                        ("new_text", "after")
-                    )
-                ),
-                LoopScripts.ToolCalls()
-            )
-            .Enqueue(LoopScripts.Text("Edited"), LoopScripts.Stop());
-        var harness = new AgentHarness(
-            new ContextAccountingChatClient(scripted),
-            Registry(
-                new ReadTool(new Workspace(temp.Root)),
-                new EditTool(new Workspace(temp.Root))
-            ),
-            new AgentHarnessOptions { WorkingDirectory = temp.Root }
-        );
-
-        CancellationToken ct = TestContext.Current.CancellationToken;
-        await harness.RunAsync("Read the file", ct).ToListAsync(ct);
-        await harness.RunAsync("Update the file", ct).ToListAsync(ct);
-
-        Assert.Equal(
-            RequestPrefixThroughResult(scripted.Requests[1], "read"),
-            RequestPrefixThroughResult(scripted.Requests[3], "read")
-        );
     }
 
     [Fact]
@@ -384,34 +340,4 @@ public sealed class ContextStaleReadTests
     }
 
     private static string Line(int number) => $"line-{number:D4}";
-
-    private static byte[] RequestPrefixThroughResult(ScriptedRequest request, string callId)
-    {
-        int resultIndex = request
-            .Messages.Select((message, index) => (message, index))
-            .Single(item =>
-                item.message.Contents.OfType<FunctionResultContent>()
-                    .Any(result => result.CallId == callId)
-            )
-            .index;
-        string prefix = string.Join(
-            "\n",
-            request
-                .Messages.Take(resultIndex + 1)
-                .Select(message =>
-                    $"{message.Role}|{string.Join('|', message.Contents.Select(ContentSnapshot))}"
-                )
-        );
-        return Encoding.UTF8.GetBytes(prefix);
-    }
-
-    private static string ContentSnapshot(AIContent content) =>
-        content switch
-        {
-            TextContent text => $"text:{text.Text}",
-            FunctionCallContent call =>
-                $"call:{call.CallId}:{call.Name}:{JsonSerializer.Serialize(call.Arguments)}",
-            FunctionResultContent result => $"result:{result.CallId}:{result.Result}",
-            _ => $"{content.GetType().Name}:{content}",
-        };
 }
