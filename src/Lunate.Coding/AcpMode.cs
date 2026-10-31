@@ -22,7 +22,9 @@ internal static class AcpMode
         ExtensionSeams? extensions = null,
         string? mcpConfigPath = null,
         string? mcpAgentsConfigPath = null,
-        LaunchOptions? launch = null
+        LaunchOptions? launch = null,
+        string? hardlinkScanRoot = null,
+        IHardlinkScanFileSystem? hardlinkScanFileSystem = null
     )
     {
         var interaction = new AcpUserInteraction(line => errors.WriteLine($"lunate: {line}"));
@@ -42,6 +44,12 @@ internal static class AcpMode
             LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot);
             IExtensionLog log = extensions?.Log ?? new StderrExtensionLog(errors);
             AgentSettings settings = SettingsStore.Resolve(null, null);
+            StateRootHardlinkScan.Report(
+                hardlinkScanRoot,
+                hardlinkScanFileSystem,
+                warning => errors.WriteLine("lunate: " + warning)
+            );
+
             // The host composes in every mode: with --no-extensions it composes nothing at all —
             // built-ins included — so no store scan, trust question or third-party load runs
             // (design §1).

@@ -30,14 +30,14 @@ internal sealed record HardlinkScanResult(string? ExternalPath, bool Incomplete)
             if (ExternalPath is { } path)
             {
                 warnings.Add(
-                    $"pre-existing hardlink can bypass the bash guard: {path} has a link outside LUNATE_HOME"
+                    $"warning: pre-existing hardlink can bypass the bash guard: {path} has a link outside LUNATE_HOME"
                 );
             }
 
             if (Incomplete)
             {
                 warnings.Add(
-                    "the state-root hardlink scan was incomplete; some files could not be inspected"
+                    "warning: the state-root hardlink scan was incomplete; some files could not be inspected"
                 );
             }
 
@@ -48,6 +48,27 @@ internal sealed record HardlinkScanResult(string? ExternalPath, bool Incomplete)
 
 internal static class StateRootHardlinkScan
 {
+    internal static void Report(
+        string? stateRoot,
+        IHardlinkScanFileSystem? fileSystem,
+        Action<string> warn
+    )
+    {
+        ArgumentNullException.ThrowIfNull(warn);
+        if (stateRoot is null)
+        {
+            return;
+        }
+
+        HardlinkScanResult result = fileSystem is null
+            ? Scan(stateRoot)
+            : Scan(stateRoot, fileSystem);
+        foreach (string warning in result.Warnings)
+        {
+            warn(warning);
+        }
+    }
+
     internal static HardlinkScanResult Scan(string stateRoot) =>
         Scan(stateRoot, SystemHardlinkScanFileSystem.Instance);
 

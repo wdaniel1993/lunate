@@ -13,7 +13,7 @@ using Spectre.Console;
 namespace Lunate.Coding;
 
 /// <summary>The injectable seams of an interactive session; production leaves paths null.</summary>
-internal sealed record InteractiveSessionOptions
+internal sealed partial record InteractiveSessionOptions
 {
     public IChatClientFactory? Factory { get; init; }
 
@@ -472,6 +472,7 @@ internal sealed partial class InteractiveSession : IDisposable
             _options.Environment
         );
         _settings = SettingsStore.ApplyLaunch(_settings, _options.Launch);
+        WarnAboutStateRootHardlinks();
         ApplyTuiPresentation();
         _thinkingLevel = _settings.Thinking;
         _catalog = HarnessFactory.LoadCatalog(_settings, _options.ModelsPath);

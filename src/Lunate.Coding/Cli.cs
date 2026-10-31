@@ -23,7 +23,9 @@ internal static class Cli
         // requirement does not depend on how the test host was started.
         bool? stdinIsTerminal = null,
         // The auth command's paths and boundaries; null uses the production defaults.
-        AuthCommandSeams? authSeams = null
+        AuthCommandSeams? authSeams = null,
+        string? hardlinkScanRoot = null,
+        IHardlinkScanFileSystem? hardlinkScanFileSystem = null
     )
     {
         var noExtensions = false;
@@ -151,7 +153,9 @@ internal static class Cli
                 Console.OpenStandardOutput(),
                 ct,
                 extensions: noExtensions ? Suppress(extensions) : extensions,
-                launch: acpLaunch
+                launch: acpLaunch,
+                hardlinkScanRoot: hardlinkScanRoot,
+                hardlinkScanFileSystem: hardlinkScanFileSystem
             );
         }
 
@@ -182,7 +186,16 @@ internal static class Cli
 
         if (!launch.Print)
         {
-            return RunInteractive(errors, ct, interactiveOptions, seams, launch, updateCheck);
+            return RunInteractive(
+                errors,
+                ct,
+                interactiveOptions,
+                seams,
+                launch,
+                updateCheck,
+                hardlinkScanRoot,
+                hardlinkScanFileSystem
+            );
         }
 
         PrintModeOptions options = (printOptions ?? new PrintModeOptions()) with
@@ -192,6 +205,8 @@ internal static class Cli
             Yolo = launch.Yolo,
             Extensions = seams,
             Launch = launch,
+            HardlinkScanRoot = printOptions?.HardlinkScanRoot ?? hardlinkScanRoot,
+            HardlinkScanFileSystem = printOptions?.HardlinkScanFileSystem ?? hardlinkScanFileSystem,
         };
         return PrintMode.RunAsync(options, output, errors, ct).GetAwaiter().GetResult();
     }
@@ -282,7 +297,9 @@ internal static class Cli
         InteractiveSessionOptions? options,
         ExtensionSeams? extensions,
         LaunchOptions launch,
-        UpdateCheckSeams? updateCheck
+        UpdateCheckSeams? updateCheck,
+        string? hardlinkScanRoot,
+        IHardlinkScanFileSystem? hardlinkScanFileSystem
     )
     {
         IConsoleIO console;
@@ -302,6 +319,8 @@ internal static class Cli
             {
                 Console = console,
                 Scheduler = Scheduler.Default,
+                HardlinkScanRoot = hardlinkScanRoot,
+                HardlinkScanFileSystem = hardlinkScanFileSystem,
             };
         }
         else
@@ -315,6 +334,8 @@ internal static class Cli
             Extensions = extensions ?? options?.Extensions,
             Launch = launch,
             UpdateCheck = updateSeams,
+            HardlinkScanRoot = options?.HardlinkScanRoot ?? hardlinkScanRoot,
+            HardlinkScanFileSystem = options?.HardlinkScanFileSystem ?? hardlinkScanFileSystem,
         };
 
         if (ConsoleSupport.Check(console) is not null)

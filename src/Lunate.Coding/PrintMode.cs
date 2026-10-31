@@ -11,7 +11,7 @@ namespace Lunate.Coding;
 /// (settings under the user profile, the embedded catalog, a real client factory, the session
 /// paths of the working directory); tests pass temp paths and a fake factory.
 /// </summary>
-internal sealed record PrintModeOptions
+internal sealed partial record PrintModeOptions
 {
     /// <summary>The prompt to run.</summary>
     public string Prompt { get; init; } = string.Empty;
@@ -107,6 +107,12 @@ internal static class PrintMode
         {
             settings = SettingsStore.Resolve(options.SettingsPath, options.Environment);
             settings = SettingsStore.ApplyLaunch(settings, options.Launch);
+            StateRootHardlinkScan.Report(
+                options.HardlinkScanRoot,
+                options.HardlinkScanFileSystem,
+                warning => interaction.Notify(new UserNotice(NoticeLevel.Warning, warning))
+            );
+
             catalog = HarnessFactory.LoadCatalog(settings, options.ModelsPath);
             model = HarnessFactory.ResolveModel(settings.Model, catalog);
             factory =
