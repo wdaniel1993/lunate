@@ -200,6 +200,8 @@ self_test() {
         ci-ok '^    needs: \[plan, verify, verify-powershell, verify-docs, perf\]' 1
     _self_workflow "the verify matrix must cover every OS leg" \
         verify 'os: \[ubuntu-latest, macos-latest, windows-latest\]' 1
+    _self_workflow "Linux hyperfine must run only on Linux shard 1" \
+        verify "if: runner\.os == 'Linux' && matrix\.shard == 1" 1
     _self_workflow "the verify matrix must run the gate per shard, so no shard can be dropped from the matrix" \
         verify 'scripts/verify\.sh --shard' 1
     _self_workflow "manual dispatch must support the unsharded baseline" \
