@@ -616,6 +616,7 @@ internal static class PrintMode
         SkillCatalog skills
     )
     {
+        var refusalTracker = new WriteVerificationRefusalTracker();
         CredentialRedactor redaction = HarnessFactory.CollectRedaction(
             options.AuthPath,
             options.Environment,
@@ -629,7 +630,10 @@ internal static class PrintMode
             skillReadAllowance: new SkillReadAllowance(skills.ReadRoots),
             log: extensions?.Log,
             extraTools: settings.Tools.Extra,
-            redaction: redaction
+            redaction: redaction,
+            writeVerifiers: extensions?.WriteVerifiers,
+            verificationMode: settings.Verify,
+            refusalTracker: refusalTracker
         );
         tools.Add(new AskUserTool());
         foreach (ITool tool in mcpTools)
@@ -686,7 +690,10 @@ internal static class PrintMode
                 root => skills.ReadRootsFor(root),
                 log: extensions?.Log,
                 extraTools: settings.Tools.Extra,
-                redaction: redaction
+                redaction: redaction,
+                writeVerifiers: extensions?.WriteVerifiers,
+                verificationMode: settings.Verify,
+                refusalTracker: refusalTracker
             ),
         };
 

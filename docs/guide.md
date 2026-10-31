@@ -376,6 +376,14 @@ Tool results are written for the model: short, factual, and every error says wha
 | `edit` | `path`, `old_text`, `new_text`, optional `start_line` | `edited src/X.cs lines 40–48 (match: indent)`; diff in `Details` | Not found + closest region; ambiguous + line numbers of all matches; tier refused for whitespace-significant file; `old_text` equals `new_text` |
 | `bash` | `command`, `timeout_s` (default 120, max 600) | Exit code + combined stdout/stderr, cut in the middle when too long | Timeout (process tree killed); shell could not start. A non-zero exit code is reported, not treated as a tool error |
 
+After approval, `write` and `edit` pass staged content to a matching registered verifier through
+`IWriteVerifier` in `Lunate.Extensibility.Abstractions`. The host alone applies the staged content.
+The top-level `verify` setting in `~/.lunate/settings.json` selects the outcome: `block` (default)
+prevents the write on verifier refusal, `warn` writes and reports `unverified` with diagnostics, and
+`off` skips verifier selection and execution. A verifier that exceeds the 10-second ceiling degrades
+to `unverified` and the staged content is written. Pressing Esc during verification cancels the run
+and does not write that content.
+
 `read` also accepts PNG, JPEG, GIF and WebP images. When image input is known to be unsupported, the active model is named and the user is told to switch profile or remove the image before a request is sent. Unknown image support is attempted; a provider rejection becomes the same clear notice. Images are capped at 5 MB and 4,096 pixels per side, and downscaling is not available yet.
 
 **Optional search tools**
@@ -449,7 +457,8 @@ Tools: read, write, edit, bash{extra_tools}.
 **Config**
 
 `~/.lunate/settings.json` holds profiles, usage assignments, approval policy, output limits and
-`projection.batchTurns` (default 4; `LUNATE_PROJECTION_BATCH_TURNS` overrides it);
+write-verification mode, plus `projection.batchTurns` (default 4;
+`LUNATE_PROJECTION_BATCH_TURNS` overrides it);
 `~/.lunate/providers.json` holds named provider instances; and `~/.lunate/auth.json` holds stored
 keys. Provider instances select one of the twelve built-in kinds as a template and may override its
 endpoint. Credentials and optional header values are references (`auth:`, `env:`, or `helper:`), not
@@ -475,6 +484,10 @@ a policy. Responses must contain a defined option and well-formed probabilities;
 retried once, then reported as a failed decision naming the model. `apiType` records `native` versus
 `adapter` provenance but does not assess suitability. Decisions never override deny or approve beyond
 the user's allow envelope.
+
+The top-level `verify` setting selects how staged writes are verified: `block` (default) prevents a
+write on verifier refusal, `warn` writes and reports `unverified` with diagnostics, and `off` skips
+verifier selection and execution. It has no environment-variable override.
 
 `toolDetails` chooses how much of a tool call the scrollback commits: `"collapsed"` (the default)
 writes the header line only, `"expanded"` adds the bounded output excerpt and the diff panel;

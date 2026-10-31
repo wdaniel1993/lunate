@@ -4,7 +4,7 @@ namespace Lunate.Extensibility.Abstractions;
 
 public static class ExtensionApi
 {
-    public const string Current = "1.12.0";
+    public const string Current = "1.13.0";
 
     public static bool IsCompatible(string range)
     {

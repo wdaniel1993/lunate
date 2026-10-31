@@ -31,6 +31,7 @@ public sealed partial class ExtensionLoader
     private readonly SkillSourceRegistry _skillSources;
     private readonly CommandSourceRegistry _commandSources;
     private readonly ExtensionToolRegistry _tools;
+    private readonly WriteVerifierRegistry _writeVerifiers = new();
     private readonly ExtensionWorkspaceServiceRegistry _workspaceServices;
     private readonly Dictionary<string, List<IDisposable>> _subscriptions = new(
         StringComparer.Ordinal
@@ -90,6 +91,9 @@ public sealed partial class ExtensionLoader
 
     /// <summary>The tools the loaded extensions registered, in registration order.</summary>
     public ExtensionToolRegistry Tools => _tools;
+
+    /// <summary>The manifest-matched read-only verifiers registered by loaded extensions.</summary>
+    public WriteVerifierRegistry WriteVerifiers => _writeVerifiers;
 
     /// <summary>The workspace services the loaded extensions registered, per (extension, name).</summary>
     internal ExtensionWorkspaceServiceRegistry WorkspaceServices => _workspaceServices;
@@ -205,6 +209,7 @@ public sealed partial class ExtensionLoader
         _singleFileKeys.Remove(id);
         _ignoredCopies.Remove(id);
         IReadOnlyList<string> removedTools = _tools.Unregister(id);
+        _writeVerifiers.Unregister(id);
         _workspaceServices.Unregister(id);
         _hooks.Unregister(id);
         await _backgroundServices.DropAsync(id).ConfigureAwait(false);

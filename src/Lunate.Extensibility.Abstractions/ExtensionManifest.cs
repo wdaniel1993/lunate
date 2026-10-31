@@ -35,6 +35,9 @@ public sealed partial record ExtensionManifest
 
     public IReadOnlyList<ModelProviderDescriptor> ModelProviders { get; init; } = [];
 
+    /// <summary>The declared write verifiers and the basename patterns each one handles.</summary>
+    public IReadOnlyList<WriteVerifierDeclaration> WriteVerifiers { get; init; } = [];
+
     /// <summary>
     /// True when the manifest asserts built-in provenance: the extension ships with the host and its
     /// code runs in the default <c>AssemblyLoadContext</c>. Defaults to <see langword="false"/>;
@@ -150,6 +153,7 @@ public sealed partial record ExtensionManifest
                 Services = DeclarationArray(root, fileName, "services"),
                 Capabilities = StringArray(root, fileName, "capabilities"),
                 ModelProviders = ModelProviderArray(root, fileName),
+                WriteVerifiers = WriteVerifierArray(root, fileName),
                 SettingsSchema = OptionalSettingsSchema(root, fileName),
             };
         }

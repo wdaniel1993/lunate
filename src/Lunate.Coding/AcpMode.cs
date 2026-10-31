@@ -251,12 +251,16 @@ internal static class AcpMode
             storePath: null,
             workspace.WorktreeRoot
         );
+        var refusalTracker = new WriteVerificationRefusalTracker();
         ToolRegistry tools = HarnessFactory.CreateTools(
             workspace,
             files: context.FileAccess,
             log: host?.Log,
             extraTools: effective.Tools.Extra,
-            redaction: redaction
+            redaction: redaction,
+            writeVerifiers: host?.WriteVerifiers,
+            verificationMode: effective.Verify,
+            refusalTracker: refusalTracker
         );
         tools.Add(new AskUserTool());
         foreach (ITool tool in mcpTools)
@@ -313,7 +317,10 @@ internal static class AcpMode
                 [.. inheritedTools.Where(tool => host?.IsWorkspaceBoundTool(tool) != true)],
                 log: host?.Log,
                 extraTools: effective.Tools.Extra,
-                redaction: redaction
+                redaction: redaction,
+                writeVerifiers: host?.WriteVerifiers,
+                verificationMode: effective.Verify,
+                refusalTracker: refusalTracker
             ),
         };
 

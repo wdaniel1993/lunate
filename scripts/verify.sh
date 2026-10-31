@@ -341,6 +341,9 @@ fi
 step "path index budget"
 run_tests "path index budget" dotnet test --project tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj -c "$CONFIGURATION" --no-build --filter-trait Category=Perf
 
+step "write verifier budget"
+run_tests "write verifier budget" dotnet test --project tests/Lunate.Roslyn.Tests/Lunate.Roslyn.Tests.csproj -c "$CONFIGURATION" --no-build --filter-trait Category=Perf
+
 step "install script (fixture release)"
 version="$(product_version)"
 if [ -z "$version" ]; then

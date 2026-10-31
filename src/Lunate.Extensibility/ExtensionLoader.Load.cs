@@ -230,6 +230,7 @@ public sealed partial class ExtensionLoader
         _extensionContexts[descriptor.Id] = extensionContext;
         IExtension extension = implementation.Create(extensionContext);
         CrossCheckManifestTools(descriptor);
+        CrossCheckManifestWriteVerifiers(descriptor);
         CrossCheckManifestWorkspaceServices(descriptor);
         await CrossCheckManifestCommandsAsync(descriptor, cancellationToken).ConfigureAwait(false);
         _modelRegistry.RegisterDeclared(descriptor.Id, descriptor.Manifest.ModelProviders, secrets);
@@ -289,6 +290,7 @@ public sealed partial class ExtensionLoader
         _loaded.Remove(id);
         _contexts.Remove(id);
         _tools.Unregister(id);
+        _writeVerifiers.Unregister(id);
         _workspaceServices.Unregister(id);
         _hooks.Unregister(id);
         _modelRegistry.Unregister(id);
@@ -328,6 +330,12 @@ public sealed partial class ExtensionLoader
                     registration,
                     ActivationRule(descriptor, registration.Name),
                     ToolAlias(descriptor, registration.Name)
+                ),
+            (extensionId, registration) =>
+                _writeVerifiers.Register(
+                    extensionId,
+                    registration,
+                    descriptor.Manifest.WriteVerifiers
                 ),
             _modelRegistry.RegisterProvider,
             _modelRegistry.RegisterModelMiddleware,
