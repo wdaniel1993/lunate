@@ -68,7 +68,8 @@ internal sealed record UsageCostLine(
     string? ProviderKind,
     IReadOnlyList<string> ModelIds,
     UsageLanes Lanes,
-    decimal? Cost
+    decimal? Cost,
+    string? DecisionMethod = null
 );
 
 /// <summary>Cost totals by usage and provider; an unpriced group keeps a null cost.</summary>

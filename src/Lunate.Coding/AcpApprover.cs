@@ -8,8 +8,14 @@ namespace Lunate.Coding;
 /// always reach the client's permission panel, whatever the policy level says — an editor's
 /// request is never auto-approved. There is no yolo in ACP mode.
 /// </summary>
-internal sealed class AcpApprover(ApprovalPolicy policy, IToolApprover client) : IToolApprover
+internal sealed class AcpApprover(ApprovalPolicy policy, IToolApprover client)
+    : IUserPromptToolApprover
 {
+    public ValueTask<bool> PromptAsync(ApprovalRequest request, CancellationToken ct) =>
+        client is IUserPromptToolApprover promptApprover
+            ? promptApprover.PromptAsync(request, ct)
+            : ValueTask.FromResult(false);
+
     /// <summary>Returns true to execute the call, false to decline it.</summary>
     public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
     {

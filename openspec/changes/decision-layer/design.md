@@ -138,9 +138,14 @@ The invariant is enforced at one place: the harness's approval seam, which knows
 the risk tier and the remembered grants. `DecisionMode.Enforce` is redefined as **escalate-only**:
 
 - a `deny` recommendation on a call the envelope would allow turns that call into an ask to the
-  user, showing the decision and its probability — it never silently blocks;
+  user, showing the decision and its probability — it never silently blocks. The harness sets
+  `ApprovalRequest.EscalationRequested` and carries the recommendation, probability, model id and
+  `native|adapter` method, then calls `IUserPromptToolApprover.PromptAsync` directly so the normal
+  envelope auto-allow cannot swallow the ask and correctness does not depend on the approver reading
+  the flag. `IToolApprover`'s existing signature remains unchanged;
 - in an unattended run, escalate means **deny, fail-closed**, with a notice saying the decision
-  escalated and no user was present;
+  escalated and no user was present. An approver that cannot implement the prompt capability is
+  treated as unattended by the harness;
 - an `approve` recommendation never skips a prompt, never waives a denial, and never authorizes a
   call the tool rules exclude from any decision model.
 

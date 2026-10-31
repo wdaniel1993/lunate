@@ -9,6 +9,6 @@ public enum DecisionMode
     /// <summary>Record decision outcomes without changing the ordinary approval flow.</summary>
     Shadow,
 
-    /// <summary>Allow a decision to veto an ask; the ordinary approver must still approve it.</summary>
+    /// <summary>Escalate a decision denial to a prompt; unattended calls fail closed.</summary>
     Enforce,
 }

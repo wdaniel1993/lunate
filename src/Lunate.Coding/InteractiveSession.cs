@@ -2243,13 +2243,30 @@ internal sealed partial class InteractiveSession : IDisposable
             && !SameRoot(root, _workspace.WorktreeRoot)
                 ? root
                 : null;
-        var detail = ApprovalDetail.Build(
+        IReadOnlyList<string> detail = ApprovalDetail.Build(
             toolName,
             request.Args,
             request.WorkspaceRoot ?? _workspace.WorktreeRoot,
             _capabilities.Unicode,
             _console.Size.Columns
         );
+        if (request.EscalationRequested)
+        {
+            string reason = request
+                is {
+                    DecisionRecommendation: { } recommendation,
+                    DecisionProbability: { } probability,
+                    DecisionModelId: { } modelId,
+                }
+                ? string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"decision model recommends {recommendation} ({probability:0.00}, {modelId})"
+                )
+                : "decision model requested escalation";
+            detail =
+                detail.Count == 0 ? [string.Empty, reason] : [detail[0], reason, .. detail.Skip(1)];
+        }
+
         var prompt = new ApprovalPromptModel(
             toolName,
             request.Args.GetRawText(),
@@ -2418,8 +2435,11 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <c>lunate</c> command or a write into the state root) always prompts and never inherits
     /// that grant.</summary>
     private sealed class SessionApprover(InteractiveSession session, ApprovalPolicy policy)
-        : IToolApprover
+        : IUserPromptToolApprover
     {
+        public ValueTask<bool> PromptAsync(ApprovalRequest request, CancellationToken ct) =>
+            session.RequestApprovalAsync(request, ct, allowAlways: false);
+
         public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
         {
             if (HighRiskCall.Is(request))

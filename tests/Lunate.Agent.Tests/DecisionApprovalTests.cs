@@ -5,7 +5,7 @@ namespace Lunate.Agent.Tests;
 public sealed class DecisionApprovalTests
 {
     [Fact]
-    public async Task Malformed_decision_is_retried_once_then_fails_closed()
+    public async Task Malformed_decision_falls_back_to_the_ordinary_approval_flow()
     {
         var chat = new ScriptedChatClient()
             .Enqueue(
@@ -59,14 +59,9 @@ public sealed class DecisionApprovalTests
         List<AgentEvent> events = await AgentTestSupport.Run(harness);
 
         Assert.Equal(2, decision.Requests.Count);
-        Assert.Empty(approver.Requests);
-        Assert.Equal(0, executions);
-        Assert.Contains(
-            events.OfType<ToolCallResult>(),
-            result =>
-                result.Output.Contains("decision-model", StringComparison.Ordinal)
-                && result.Output.Contains("failed", StringComparison.OrdinalIgnoreCase)
-        );
+        Assert.Single(approver.Requests);
+        Assert.Equal(1, executions);
+        Assert.Single(events.OfType<DecisionFailed>());
     }
 
     [Fact]
@@ -87,6 +82,7 @@ public sealed class DecisionApprovalTests
         Assert.Equal(decision.Option, decision.Answer);
         Assert.Equal(0.8d, decision.Probability);
         Assert.Single(run.Approver.Requests);
+        Assert.False(run.Approver.Requests[0].EscalationRequested);
         Assert.Equal(0, run.Executions);
     }
 
@@ -104,20 +100,6 @@ public sealed class DecisionApprovalTests
         Assert.Equal("deny", decision.Option);
         Assert.Single(run.Approver.Requests);
         Assert.Equal(1, run.Executions);
-    }
-
-    [Fact]
-    public async Task Enforced_decision_can_tighten_a_user_approval()
-    {
-        DecisionRun run = await RunApprovalAsync(
-            """{"results":{"approval":{"answer":"deny","probabilities":{"approve":0.2,"deny":0.8}}}}""",
-            DecisionMode.Enforce,
-            userApproval: true
-        );
-
-        Assert.Single(run.Events.OfType<DecisionEvaluated>());
-        Assert.Empty(run.Approver.Requests);
-        Assert.Equal(0, run.Executions);
     }
 
     [Fact]
@@ -232,8 +214,8 @@ public sealed class DecisionApprovalTests
         Assert.Equal(3, decision.Requests.Count);
         Assert.Single(events.OfType<DecisionFailed>());
         Assert.Single(events.OfType<DecisionEvaluated>());
-        Assert.Single(approver.Requests);
-        Assert.Equal(1, executions);
+        Assert.Equal(2, approver.Requests.Count);
+        Assert.Equal(2, executions);
     }
 
     private static async Task<DecisionRun> RunApprovalAsync(

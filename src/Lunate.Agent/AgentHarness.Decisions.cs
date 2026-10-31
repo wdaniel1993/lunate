@@ -105,7 +105,7 @@ public sealed partial class AgentHarness
         if (model is null)
         {
             channel.Emit(new DecisionUnavailable(runId) { QuestionId = "approval" });
-            return new ApprovalDecisionResult(null, null);
+            return new ApprovalDecisionResult(null);
         }
 
         bool native =
@@ -175,9 +175,7 @@ public sealed partial class AgentHarness
                 Answer = answer.Answer,
             };
             channel.Emit(evaluated);
-            double threshold = model.DecisionThreshold ?? 0.5d;
-            bool approve = answer.Answer == "approve" && answer.Probability >= threshold;
-            return new ApprovalDecisionResult(evaluated, null, approve);
+            return new ApprovalDecisionResult(evaluated);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -188,22 +186,15 @@ public sealed partial class AgentHarness
             const string questionId = "approval";
             string reason = exception.Message;
             channel.Emit(new DecisionFailed(runId, modelId, reason) { QuestionId = questionId });
-            return new ApprovalDecisionResult(null, reason);
+            return new ApprovalDecisionResult(null);
         }
         catch (Exception)
         {
             const string reason = "provider request failed";
             channel.Emit(new DecisionFailed(runId, modelId, reason) { QuestionId = "approval" });
-            return new ApprovalDecisionResult(
-                null,
-                $"Decision for model '{modelId}' failed after retry: {reason}."
-            );
+            return new ApprovalDecisionResult(null);
         }
     }
 
-    private sealed record ApprovalDecisionResult(
-        DecisionEvaluated? Evaluation,
-        string? Failure,
-        bool Approve = false
-    );
+    private sealed record ApprovalDecisionResult(DecisionEvaluated? Evaluation);
 }
