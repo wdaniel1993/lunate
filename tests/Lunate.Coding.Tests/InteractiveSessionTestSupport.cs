@@ -559,6 +559,7 @@ internal sealed class InteractiveSessionHost : IDisposable
     private readonly StringWriter _diagnostics = new();
     private readonly List<AgentEvent> _events = [];
     private readonly object _eventsGate = new();
+    private readonly Action<AgentEvent>? _eventObserverSuffix;
 
     public InteractiveSessionHost(
         HookRunner? hooks = null,
@@ -585,9 +586,11 @@ internal sealed class InteractiveSessionHost : IDisposable
         Func<DateTimeOffset>? clock = null,
         string? editorTempDirectory = null,
         UpdateCheckSeams? updateCheck = null,
-        bool interactiveConsole = false
+        bool interactiveConsole = false,
+        Action<AgentEvent>? eventObserverSuffix = null
     )
     {
+        _eventObserverSuffix = eventObserverSuffix;
         Scrollback = new TestConsole();
         Scrollback.Profile.Width = 80;
         Scrollback.Profile.Height = 24;
@@ -670,6 +673,10 @@ internal sealed class InteractiveSessionHost : IDisposable
         {
             _events.Add(agentEvent);
         }
+
+        // The suffix runs outside the gate, after the recording: a failing suffix is a fault in
+        // the session's own event pipe (the seam the app's observer hangs on), not in the record.
+        _eventObserverSuffix?.Invoke(agentEvent);
     }
 
     public Task RunAsync() => Session.RunAsync(TestContext.Current.CancellationToken);
