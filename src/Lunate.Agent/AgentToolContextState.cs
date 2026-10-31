@@ -3,7 +3,13 @@ namespace Lunate.Agent;
 internal sealed record AgentToolContextState(
     Session? Session,
     IReadLedger? Reads,
-    Func<IReadOnlyList<UserQuestion>, CancellationToken, Task<UserQuestionResult>>? AskUserAsync
+    Func<IReadOnlyList<UserQuestion>, CancellationToken, Task<UserQuestionResult>>? AskUserAsync,
+    bool QuestionSuggestionsEnabled = false,
+    Func<
+        Lunate.Contracts.DecisionRequest,
+        CancellationToken,
+        Task<Lunate.Contracts.DecisionResponse>
+    >? QuestionDecisionAsync = null
 )
 {
     internal static Session? SessionFor(ToolContext context) =>

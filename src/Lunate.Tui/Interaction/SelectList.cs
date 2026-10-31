@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Spectre.Console;
 using Spectre.Console.Rendering;
@@ -92,7 +93,15 @@ public sealed class SelectListRenderer
                 : string.Empty;
             string recommended =
                 question.RecommendedLabel == option.Label ? " (recommended)" : string.Empty;
-            AddWrapped(lines, option.Label + recommended, current + selected, availableWidth);
+            string suggested = option.DecisionSuggestedProbability is { } probability
+                ? $" (suggested · decision model {probability.ToString("0.00", CultureInfo.InvariantCulture)})"
+                : string.Empty;
+            AddWrapped(
+                lines,
+                option.Label + recommended + suggested,
+                current + selected,
+                availableWidth
+            );
             if (option.Description.Length > 0)
             {
                 AddWrapped(

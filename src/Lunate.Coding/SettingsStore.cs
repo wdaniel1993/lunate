@@ -45,6 +45,9 @@ public sealed record AgentSettings
     /// <summary>The optional approval decision consumer; defaults to off.</summary>
     public DecisionMode DecisionMode { get; init; } = DecisionMode.Off;
 
+    /// <summary>Whether decision-model suggestions appear beside interactive question options; defaults to off.</summary>
+    public bool QuestionSuggestions { get; init; }
+
     /// <summary>How much of a tool call the scrollback shows; defaults to collapsed.</summary>
     public ToolDetails ToolDetails { get; init; } = ToolDetails.Collapsed;
 
@@ -477,6 +480,12 @@ public static partial class SettingsStore
                             DecisionMode = ReadDecisionMode(property.Value, problems),
                         };
                         break;
+                    case "questionSuggestions":
+                        settings = settings with
+                        {
+                            QuestionSuggestions = ReadQuestionSuggestions(property.Value, problems),
+                        };
+                        break;
                     case "tui":
                         settings = settings with { Tui = ReadTui(property.Value, problems) };
                         break;
@@ -776,6 +785,17 @@ public static partial class SettingsStore
 
         problems.Add("'updateCheck' must be true or false");
         return true;
+    }
+
+    private static bool ReadQuestionSuggestions(JsonElement value, List<string> problems)
+    {
+        if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+        {
+            return value.GetBoolean();
+        }
+
+        problems.Add("'questionSuggestions' must be true or false");
+        return false;
     }
 
     /// <summary>

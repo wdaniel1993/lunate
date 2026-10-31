@@ -1,3 +1,4 @@
+using Lunate.Contracts;
 using static Lunate.Agent.Tests.AgentTestSupport;
 
 namespace Lunate.Agent.Tests;
@@ -5,9 +6,10 @@ namespace Lunate.Agent.Tests;
 public sealed class AskUserBoundaryTests
 {
     [Fact]
-    public async Task Question_call_does_not_suppress_approval_of_the_next_bash_call()
+    public async Task Suggested_question_answer_does_not_suppress_approval_of_the_next_bash_call()
     {
         var askUser = new AskUserTool();
+        bool suggestionWasShown = false;
         bool bashExecuted = false;
         var bash = new ScriptedTool(
             "bash",
@@ -36,19 +38,38 @@ public sealed class AskUserBoundaryTests
         var harness = new AgentHarness(
             client,
             Registry(askUser, bash),
-            new AgentHarnessOptions { Approver = approver }
+            new AgentHarnessOptions
+            {
+                Approver = approver,
+                QuestionSuggestionsEnabled = true,
+                QuestionDecisionAsync = (_, _) => Task.FromResult(QuestionDecision()),
+                AskUserAsync = (questions, _) =>
+                {
+                    suggestionWasShown =
+                        questions[0]
+                            .Options.Single(option => option.Label == "Yes")
+                            .DecisionSuggestedProbability == 0.91d;
+                    return Task.FromResult(
+                        new UserQuestionResult(
+                            UserQuestionStatus.Answered,
+                            [new UserQuestionAnswer(["Yes"], null)]
+                        )
+                    );
+                },
+            }
         );
 
         List<AgentEvent> events = await Run(harness);
 
         ApprovalRequest request = Assert.Single(approver.Requests);
         Assert.Same(bash, request.Tool);
+        Assert.True(suggestionWasShown);
         Assert.False(bashExecuted);
         Assert.Contains(
             events.OfType<ToolCallResult>(),
             result =>
                 result.CallId == "call_1"
-                && result.Output.Contains("unanswered", StringComparison.Ordinal)
+                && result.Output.Contains("Choice: Yes", StringComparison.Ordinal)
         );
         Assert.Contains(
             events.OfType<ToolCallResult>(),
@@ -57,6 +78,20 @@ public sealed class AskUserBoundaryTests
                 && result.Output.StartsWith("Denied:", StringComparison.Ordinal)
         );
     }
+
+    private static DecisionResponse QuestionDecision() =>
+        new(
+            new Dictionary<string, DecisionAnswer>(StringComparer.Ordinal)
+            {
+                ["question-1"] = new(
+                    "Yes",
+                    0.91d,
+                    [new("Yes", 0.91d), new("No", 0.09d)],
+                    "decision-model",
+                    "native"
+                ),
+            }
+        );
 
     [Fact]
     public async Task Subagent_question_calls_are_rejected_without_parent_bubbling()

@@ -676,7 +676,13 @@ public sealed partial class AgentHarness
                 _reads
             ),
             Subagents = _subagentRunner,
-            AgentState = new AgentToolContextState(_options.Session, _reads, _options.AskUserAsync),
+            AgentState = new AgentToolContextState(
+                _options.Session,
+                _reads,
+                _options.AskUserAsync,
+                _options.QuestionSuggestionsEnabled,
+                _options.QuestionDecisionAsync
+            ),
             ToolStubs = CallableToolStubs(),
             Models = _options.ModelRegistry is { } registry
                 ? new RunModelAccess(registry, this, channel, runId)

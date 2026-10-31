@@ -35,13 +35,33 @@ internal sealed partial class InteractiveSession
                 continue;
             }
 
-            ResolvedModelProfile profile = ModelSelectionResolver.ResolveChatModel(
-                profileName,
-                _settings,
-                _providerEntries,
-                _catalog
-            );
-            usages[usage] = GetClient(profile);
+            try
+            {
+                ResolvedModelProfile profile = ModelSelectionResolver.ResolveChatModel(
+                    profileName,
+                    _settings,
+                    _providerEntries,
+                    _catalog
+                );
+                usages[usage] = GetClient(profile);
+            }
+            catch (Exception exception)
+                when (usage == "decision"
+                    && exception
+                        is UnknownModelException
+                            or InvalidDataException
+                            or InvalidOperationException
+                            or ArgumentException
+                )
+            {
+                if (_warnedDecisionProfiles.Add(profileName))
+                {
+                    Notify(
+                        $"decision profile '{profileName}' is unavailable; decision suggestions are off: {exception.Message}",
+                        NoticeLevel.Warning
+                    );
+                }
+            }
         }
 
         return usages;
