@@ -313,8 +313,10 @@ fi
 
 echo "gate-tests: the shard spec parser must accept i/n and reject junk, zero and out-of-range"
 . "${SCRIPT_DIR}/test-parallel.sh"
-shard_got="$(shard_spec_parse '2/4' | tr '\n' ' ')"
-if [ "$shard_got" != "2 4 " ]; then
+shard_got="$(shard_spec_parse '2/4')"
+shard_i="${shard_got%% *}"
+shard_n="${shard_got#* }"
+if [ "$shard_i" != "2" ] || [ "$shard_n" != "4" ]; then
   echo "gate-tests: FAIL: shard_spec_parse '2/4' parsed as '$shard_got'" >&2
   exit 1
 fi
