@@ -115,6 +115,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         # The test phase sharded across two jobs per OS (#390): verify.sh's
         # --shard i/n partitions the solution's test projects by position, and
         # each shard runs its slice of both culture passes. Shard 1 also owns
