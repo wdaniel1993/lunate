@@ -144,7 +144,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
             .ToArray();
 
     internal static IReadOnlyList<string> CoreToolNames { get; } =
-    ["read", "write", "edit", "bash", "grep", "find", "ls"];
+    ["read", "write", "edit", "bash", "grep", "find", "ls", "decide"];
 
     private readonly ExtensionLoader _loader;
     private readonly IExtensionLog _log;

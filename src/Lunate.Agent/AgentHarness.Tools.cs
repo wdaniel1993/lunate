@@ -682,7 +682,11 @@ public sealed partial class AgentHarness
                 _options.AskUserAsync,
                 _options.QuestionSuggestionsEnabled,
                 _options.QuestionDecisionAsync
-            ),
+            )
+            {
+                DecideAsync = (request, decisionCt) =>
+                    EvaluateToolDecisionAsync(runId, request, channel, decisionCt),
+            },
             ToolStubs = CallableToolStubs(),
             Models = _options.ModelRegistry is { } registry
                 ? new RunModelAccess(registry, this, channel, runId)
