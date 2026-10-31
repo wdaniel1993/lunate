@@ -165,5 +165,12 @@ internal sealed partial class BashGuard
         string? notice,
         string probeState = "not run"
     ) =>
-        new(shell.ExecutablePath, [.. shell.ArgumentsPrefix], mechanism, Wrapped: false, notice, probeState);
+        new(
+            shell.ExecutablePath,
+            [.. shell.ArgumentsPrefix],
+            mechanism,
+            Wrapped: false,
+            notice,
+            probeState
+        );
 }

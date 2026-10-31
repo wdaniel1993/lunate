@@ -243,11 +243,7 @@ internal static class WelcomeHeaderRenderer
         }
     }
 
-    private static void AddGuardStatus(
-        List<string> lines,
-        WelcomeHeaderState state,
-        bool colored
-    )
+    private static void AddGuardStatus(List<string> lines, WelcomeHeaderState state, bool colored)
     {
         if (state.GuardStatus is { } guardStatus)
         {

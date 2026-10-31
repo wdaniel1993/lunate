@@ -44,9 +44,10 @@ internal sealed partial class BashGuard
         );
         if (exitCode != 0)
         {
-            string reason = output.Length > 0
-                ? output
-                : string.Create(CultureInfo.InvariantCulture, $"exit code {exitCode}");
+            string reason =
+                output.Length > 0
+                    ? output
+                    : string.Create(CultureInfo.InvariantCulture, $"exit code {exitCode}");
             return Unwrapped(
                 shell,
                 "none",

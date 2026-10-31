@@ -5,13 +5,15 @@ internal sealed record BashGuardStatus(string Mechanism, string ProbeState, bool
 {
     internal static BashGuardStatus Disabled { get; } = new("none", "not run", Enabled: false);
 
-    internal string ContextText => Enabled
-        ? $"bash guard: {Mechanism}; probe: {ProbeState}"
-        : "bash guard: none; probe: not run; disabled";
+    internal string ContextText =>
+        Enabled
+            ? $"bash guard: {Mechanism}; probe: {ProbeState}"
+            : "bash guard: none; probe: not run; disabled";
 
-    internal string HeaderText(bool unicode) => Enabled
-        ? $"bash guard {Mechanism}{Separator(unicode)}probe {ProbeState}"
-        : $"bash guard disabled{Separator(unicode)}none{Separator(unicode)}probe not run";
+    internal string HeaderText(bool unicode) =>
+        Enabled
+            ? $"bash guard {Mechanism}{Separator(unicode)}probe {ProbeState}"
+            : $"bash guard disabled{Separator(unicode)}none{Separator(unicode)}probe not run";
 
     private static string Separator(bool unicode) => unicode ? " · " : " - ";
 }

@@ -21,9 +21,7 @@ public sealed class BashGuardStatusSessionTests
         Task run = host.RunAsync();
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
-        string header = await host.WaitForScrollbackAsync(
-            $"lunate  v{ProductVersion.Build}"
-        );
+        string header = await host.WaitForScrollbackAsync($"lunate  v{ProductVersion.Build}");
 
         Assert.DoesNotContain("pre-existing hardlink", header, StringComparison.Ordinal);
         host.Console.SendText("/quit");
@@ -57,7 +55,8 @@ public sealed class BashGuardStatusSessionTests
         await host.WaitForApprovalAsync();
         host.Console.SendText("y");
         string scrollback = await host.WaitForScrollbackAsync(
-            text => text.Contains("exit 0", StringComparison.Ordinal) && !host.Session.IsBashRunning,
+            text =>
+                text.Contains("exit 0", StringComparison.Ordinal) && !host.Session.IsBashRunning,
             "the guarded bash result"
         );
 
@@ -105,13 +104,10 @@ public sealed class BashGuardStatusSessionTests
         Task run = host.RunAsync();
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
-        string header = await host.WaitForScrollbackAsync(
-            $"lunate  v{ProductVersion.Build}"
-        );
-        string expectedHeader =
-            enabled
-                ? $"bash guard {mechanism} · probe {probeState}"
-                : "bash guard disabled · none · probe not run";
+        string header = await host.WaitForScrollbackAsync($"lunate  v{ProductVersion.Build}");
+        string expectedHeader = enabled
+            ? $"bash guard {mechanism} · probe {probeState}"
+            : "bash guard disabled · none · probe not run";
         Assert.Contains(expectedHeader, header, StringComparison.Ordinal);
 
         host.Console.SendText("/context");
@@ -148,18 +144,22 @@ public sealed class BashGuardStatusSessionTests
             _ => throw new ArgumentOutOfRangeException(nameof(fixture), fixture, "unknown fixture"),
         };
 
-        return probe with { FileExists = _ => true };
+        return probe with
+        {
+            FileExists = _ => true,
+        };
     }
 
     private static Func<string, string?> EnvironmentWithKey()
     {
         Func<string, string?> baseline = PrintModeTestSupport.Environment();
-        return name => name switch
-        {
-            "LUNATE_UNICODE" => "1",
-            "OPENAI_API_KEY" => "test-key",
-            _ => baseline(name),
-        };
+        return name =>
+            name switch
+            {
+                "LUNATE_UNICODE" => "1",
+                "OPENAI_API_KEY" => "test-key",
+                _ => baseline(name),
+            };
     }
 
     private sealed class ExternalLinkFixture(string stateRoot) : IHardlinkScanFileSystem

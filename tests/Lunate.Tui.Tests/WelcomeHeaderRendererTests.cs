@@ -153,10 +153,7 @@ public sealed class WelcomeHeaderRendererTests
     [Fact]
     public void The_first_run_header_names_the_disabled_guard_and_unrun_probe()
     {
-        WelcomeHeaderState disabled = FirstRun with
-        {
-            GuardStatus = BashGuardStatus.Disabled,
-        };
+        WelcomeHeaderState disabled = FirstRun with { GuardStatus = BashGuardStatus.Disabled };
 
         string[] text = Text(disabled, width: 80, Capabilities(unicode: true, colored: false));
 
