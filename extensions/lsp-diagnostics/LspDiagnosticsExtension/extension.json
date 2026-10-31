@@ -32,6 +32,7 @@
         }
     },
     "capabilities": [
+        "verifies staged .ts and .tsx writes through the running language server before they are applied",
         "attaches language-server diagnostics to write/edit tool results",
         "one lazily started language server process per session, restarted after a crash"
     ]

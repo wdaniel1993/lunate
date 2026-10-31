@@ -26,9 +26,7 @@ internal static class TestSupport
         );
         var workspace = new Workspace(host.WorkingDirectory);
         // The loaded extension's manifest-matched verifiers gate the real write pipeline.
-        host.Tools.Add(
-            new WriteTool(workspace, verifierSelector: host.Runner.WriteVerifiers.Find)
-        );
+        host.Tools.Add(new WriteTool(workspace, verifierSelector: host.Runner.WriteVerifiers.Find));
         host.Tools.Add(new EditTool(workspace, verifierSelector: host.Runner.WriteVerifiers.Find));
         host.Tools.Add(new ReadTool(workspace));
         return host;

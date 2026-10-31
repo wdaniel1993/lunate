@@ -1,7 +1,7 @@
+using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Extensibility.Testing;
 using Microsoft.Extensions.AI;
-using System.Text.Json;
 
 namespace LspDiagnosticsExtension.Tests;
 
