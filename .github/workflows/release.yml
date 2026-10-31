@@ -161,19 +161,42 @@ jobs:
       # installs it by id from nuget.org, and `lunate install` is only as proven as the last package
       # a feed actually served. The sample is the reference extension — the one a user wants first.
       - name: Pack the extension package
-        run: dotnet pack samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj -c Release -o dist --nologo
+        run: dotnet pack extensions/subagents/SubagentsExtension/SubagentsExtension.csproj -c Release -o dist --nologo
+
+      # The extension contract is published on the same tag (#237): the stable pair — versioned
+      # with ExtensionApi, the contract the template installs from NuGet — and the preview pair
+      # (the embedded harness and the test kit), which must say preview in the metadata the feed
+      # serves. Each pack lands in dist/ beside the tool package.
+      - name: Pack the contract packages
+        run: |
+          set -euo pipefail
+          dotnet pack src/Lunate.Contracts/Lunate.Contracts.csproj -c Release -o dist --nologo
+          dotnet pack src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj -c Release -o dist --nologo
+          dotnet pack src/Lunate.Agent/Lunate.Agent.csproj -c Release -o dist --nologo
+          dotnet pack src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj -c Release -o dist --nologo
 
       # The page a user reads on nuget.org is a release artifact: 0.1.0 shipped without a licence
-      # and without a readme. The gate checks this on every commit; this checks the two packages the
-      # push is about to publish — the .nupkg itself, which is what the feed receives.
+      # and without a readme. The gate checks this on every commit; this checks every package the
+      # push is about to publish — the .nupkg itself, which is what the feed receives. The
+      # contract versions are not the repository <Version>: the stable pair is versioned with
+      # ExtensionApi, the preview pair 0.2.0-preview.<n>, so each is read from its csproj.
       - name: Check package metadata
         run: |
           set -euo pipefail
           version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)"
+          contract_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj)"
+          preview_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Lunate.Agent/Lunate.Agent.csproj)"
           bash scripts/check-package-metadata.sh "dist/lunate.${version}.nupkg" --id lunate
           bash scripts/check-package-metadata.sh \
             "dist/Lunate.Extensions.Subagents.${version}.nupkg" \
             --id Lunate.Extensions.Subagents
+          bash scripts/check-package-metadata.sh "dist/Lunate.Contracts.${contract_version}.nupkg" --id Lunate.Contracts
+          bash scripts/check-package-metadata.sh \
+            "dist/Lunate.Extensibility.Abstractions.${contract_version}.nupkg" --id Lunate.Extensibility.Abstractions
+          bash scripts/check-package-metadata.sh --prerelease \
+            "dist/Lunate.Agent.${preview_version}.nupkg" --id Lunate.Agent
+          bash scripts/check-package-metadata.sh --prerelease \
+            "dist/Lunate.Extensibility.Testing.${preview_version}.nupkg" --id Lunate.Extensibility.Testing
 
       - name: Sign in to nuget.org
         id: nuget
