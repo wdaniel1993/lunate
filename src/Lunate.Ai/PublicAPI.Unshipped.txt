@@ -1,47 +1,84 @@
 #nullable enable
-const Lunate.Ai.ModelCatalog.SupportedSchemaVersion = 2 -> int
+Lunate.Ai.CatalogSnapshot
+Lunate.Ai.CatalogSnapshot.<Clone>$() -> Lunate.Ai.CatalogSnapshot!
+Lunate.Ai.CatalogSnapshot.CatalogSnapshot(System.Collections.Generic.IReadOnlyList<Lunate.Ai.ModelInfo!>! Models, string! Json, string! SourceSha256) -> void
+Lunate.Ai.CatalogSnapshot.Deconstruct(out System.Collections.Generic.IReadOnlyList<Lunate.Ai.ModelInfo!>! Models, out string! Json, out string! SourceSha256) -> void
+Lunate.Ai.CatalogSnapshot.Equals(Lunate.Ai.CatalogSnapshot? other) -> bool
+Lunate.Ai.CatalogSnapshot.Json.get -> string!
+Lunate.Ai.CatalogSnapshot.Json.init -> void
+Lunate.Ai.CatalogSnapshot.Models.get -> System.Collections.Generic.IReadOnlyList<Lunate.Ai.ModelInfo!>!
+Lunate.Ai.CatalogSnapshot.Models.init -> void
+Lunate.Ai.CatalogSnapshot.SourceSha256.get -> string!
+Lunate.Ai.CatalogSnapshot.SourceSha256.init -> void
+Lunate.Ai.CatalogSnapshot.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Ai.CatalogSnapshot.Warnings.init -> void
 Lunate.Ai.ChatClientFactory
 Lunate.Ai.ChatClientFactory.ChatClientFactory(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool? enableOpenTelemetry = null, System.Func<Lunate.Ai.ModelInfo!, string?, Microsoft.Extensions.AI.IChatClient!>? providerClientFactory = null, System.Func<Microsoft.Extensions.AI.IChatClient!, Microsoft.Extensions.AI.IChatClient!>? recorderDecorator = null, System.Func<string!, string?>? namedKeySource = null) -> void
 Lunate.Ai.ChatClientFactory.Create(Lunate.Ai.ModelInfo! model) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.ChatClientFactory.Create(Lunate.Ai.ModelInfo! model, string? apiKey) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.CostCalculator
 Lunate.Ai.IChatClientFactory
 Lunate.Ai.IChatClientFactory.Create(Lunate.Ai.ModelInfo! model) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.IChatClientFactory.Create(Lunate.Ai.ModelInfo! model, string? apiKey) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.ModelCapabilityDescriptor (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelCapabilityDescriptor.Apis.get -> System.Collections.Generic.IReadOnlySet<string!>? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelCapabilityDescriptor.Apis.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelCapabilityDescriptor.Features.get -> System.Collections.Generic.IReadOnlySet<string!>? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelCapabilityDescriptor.Features.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelCapabilityDescriptor.InputModalities.get -> System.Collections.Generic.IReadOnlySet<string!>? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelCapabilityDescriptor.InputModalities.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelCapabilityDescriptor.ModelCapabilityDescriptor(System.Collections.Generic.IReadOnlySet<string!>? apis = null, System.Collections.Generic.IReadOnlySet<string!>? inputModalities = null, System.Collections.Generic.IReadOnlySet<string!>? outputModalities = null, System.Collections.Generic.IReadOnlySet<string!>? features = null) -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelCapabilityDescriptor.OutputModalities.get -> System.Collections.Generic.IReadOnlySet<string!>? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelCapabilityDescriptor.OutputModalities.init -> void (forwarded, contained in Lunate.Contracts)
 Lunate.Ai.ModelCatalog
 Lunate.Ai.ModelCatalog.Find(string! id) -> Lunate.Ai.ModelInfo?
-static Lunate.Ai.ModelCatalog.Load(string? userFilePath = null) -> Lunate.Ai.ModelCatalog!
 Lunate.Ai.ModelCatalog.Models.get -> System.Collections.Generic.IReadOnlyList<Lunate.Ai.ModelInfo!>!
-override Lunate.Ai.ModelInfo.Equals(object? obj) -> bool
-override Lunate.Ai.ModelInfo.GetHashCode() -> int
-override Lunate.Ai.ModelInfo.ToString() -> string!
-override Lunate.Ai.ModelPricing.Equals(object? obj) -> bool
-override Lunate.Ai.ModelPricing.GetHashCode() -> int
-override Lunate.Ai.ModelPricing.ToString() -> string!
-Lunate.Ai.ReasoningParameters
-static Lunate.Ai.ReasoningParameters.Apply(Microsoft.Extensions.AI.ChatOptions! options, Lunate.Ai.ModelInfo! model, Lunate.Ai.ThinkingLevel level) -> void
-static Lunate.Ai.ReasoningParameters.Describe(Lunate.Ai.ModelInfo! model, Lunate.Ai.ThinkingLevel level) -> string!
-Lunate.Ai.ThinkingLevel
-Lunate.Ai.ThinkingLevel.High = 3 -> Lunate.Ai.ThinkingLevel
-Lunate.Ai.ThinkingLevel.Low = 1 -> Lunate.Ai.ThinkingLevel
-Lunate.Ai.ThinkingLevel.Medium = 2 -> Lunate.Ai.ThinkingLevel
-Lunate.Ai.ThinkingLevel.Off = 0 -> Lunate.Ai.ThinkingLevel
-Lunate.Ai.ProviderErrors
-static Lunate.Ai.ProviderErrors.IsRetryable(System.Exception! exception) -> bool
-Lunate.Ai.RecordingChatClient
-Lunate.Ai.RecordingChatClient.RecordingChatClient(Microsoft.Extensions.AI.IChatClient! innerClient, string! fixturePath, string? modelId = null) -> void
-override Lunate.Ai.RecordingChatClient.GetResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.AI.ChatResponse!>!
-override Lunate.Ai.RecordingChatClient.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
-Lunate.Ai.ReplayChatClient
-Lunate.Ai.ReplayChatClient.ReplayChatClient(string! fixturePath) -> void
-Lunate.Ai.ReplayChatClient.Dispose() -> void
-Lunate.Ai.ReplayChatClient.GetResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.AI.ChatResponse!>!
-Lunate.Ai.ReplayChatClient.GetService(System.Type! serviceType, object? serviceKey = null) -> object?
-Lunate.Ai.ReplayChatClient.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
-Lunate.Ai.StreamAccumulator
-Lunate.Ai.StreamAccumulator.StreamAccumulator(Microsoft.Extensions.AI.IChatClient! innerClient) -> void
-const Lunate.Ai.StreamAccumulator.ArgumentsFragmentKey = "$arguments" -> string!
-static Lunate.Ai.StreamAccumulator.IsUnassembled(Microsoft.Extensions.AI.FunctionCallContent! call) -> bool
-override Lunate.Ai.StreamAccumulator.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
-Lunate.Ai.ChatClientFactory.Create(Lunate.Ai.ModelInfo! model, string? apiKey) -> Microsoft.Extensions.AI.IChatClient!
-Lunate.Ai.IChatClientFactory.Create(Lunate.Ai.ModelInfo! model, string? apiKey) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.ModelInfo (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.<Clone>$() -> Lunate.Ai.ModelInfo! (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.ApiType.get -> string? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.ApiType.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.AuthRef.get -> string? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.AuthRef.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Capabilities.get -> Lunate.Ai.ModelCapabilityDescriptor? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Capabilities.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.ContextWindow.get -> int (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.ContextWindow.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Deconstruct(out string! Id, out string! Provider, out System.Uri? Endpoint, out int ContextWindow, out bool SupportsTools, out string? AuthRef, out string? Reasoning) -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Endpoint.get -> System.Uri? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Endpoint.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Equals(Lunate.Ai.ModelInfo? other) -> bool (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Id.get -> string! (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Id.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.MaxOutput.get -> int? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.MaxOutput.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.ModelInfo(string! Id, string! Provider, System.Uri? Endpoint, int ContextWindow, bool SupportsTools, string? AuthRef = null, string? Reasoning = null) -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Pricing.get -> Lunate.Ai.ModelPricing? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Pricing.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Provider.get -> string! (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Provider.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Reasoning.get -> string? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.Reasoning.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.SupportsTools.get -> bool (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.SupportsTools.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.SupportsVision.get -> bool (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.SupportsVision.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.WireId.get -> string? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.WireId.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing.<Clone>$() -> Lunate.Ai.ModelPricing! (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing.CacheRead.get -> decimal? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing.CacheRead.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing.CacheWrite.get -> decimal? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing.CacheWrite.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing.ComputeCost(long inputTokens, long outputTokens, long cacheReadTokens, long cacheWriteTokens) -> decimal? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing.Deconstruct(out decimal? Input, out decimal? Output, out decimal? CacheRead, out decimal? CacheWrite) -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing.Equals(Lunate.Ai.ModelPricing? other) -> bool (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing.Input.get -> decimal? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing.Input.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing.ModelPricing(decimal? Input = null, decimal? Output = null, decimal? CacheRead = null, decimal? CacheWrite = null) -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing.Output.get -> decimal? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelPricing.Output.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelsDevCatalog
 Lunate.Ai.ProviderAdapter
 Lunate.Ai.ProviderAdapter.Anthropic = 1 -> Lunate.Ai.ProviderAdapter
 Lunate.Ai.ProviderAdapter.OpenAi = 0 -> Lunate.Ai.ProviderAdapter
@@ -63,11 +100,7 @@ Lunate.Ai.ProviderEntry.Name.init -> void
 Lunate.Ai.ProviderEntry.ProviderEntry(string! Name, string! Kind, System.Uri! BaseUrl, string! CredentialReference, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Headers = null, string? Region = null) -> void
 Lunate.Ai.ProviderEntry.Region.get -> string?
 Lunate.Ai.ProviderEntry.Region.init -> void
-override Lunate.Ai.ProviderEntry.Equals(object? obj) -> bool
-override Lunate.Ai.ProviderEntry.GetHashCode() -> int
-override Lunate.Ai.ProviderEntry.ToString() -> string!
-static Lunate.Ai.ProviderEntry.operator !=(Lunate.Ai.ProviderEntry? left, Lunate.Ai.ProviderEntry? right) -> bool
-static Lunate.Ai.ProviderEntry.operator ==(Lunate.Ai.ProviderEntry? left, Lunate.Ai.ProviderEntry? right) -> bool
+Lunate.Ai.ProviderErrors
 Lunate.Ai.ProviderPreset
 Lunate.Ai.ProviderPreset.<Clone>$() -> Lunate.Ai.ProviderPreset!
 Lunate.Ai.ProviderPreset.Adapter.get -> Lunate.Ai.ProviderAdapter
@@ -85,36 +118,62 @@ Lunate.Ai.ProviderPreset.KeyVariableAlias.init -> void
 Lunate.Ai.ProviderPreset.Name.get -> string!
 Lunate.Ai.ProviderPreset.Name.init -> void
 Lunate.Ai.ProviderPreset.ProviderPreset(string! Id, string! Name, Lunate.Ai.ProviderAdapter Adapter, System.Uri! BaseUrl, string! KeyVariable, string? KeyVariableAlias = null) -> void
-override Lunate.Ai.ProviderPreset.Equals(object? obj) -> bool
-override Lunate.Ai.ProviderPreset.GetHashCode() -> int
-override Lunate.Ai.ProviderPreset.ToString() -> string!
-static Lunate.Ai.ProviderPreset.operator !=(Lunate.Ai.ProviderPreset? left, Lunate.Ai.ProviderPreset? right) -> bool
-static Lunate.Ai.ProviderPreset.operator ==(Lunate.Ai.ProviderPreset? left, Lunate.Ai.ProviderPreset? right) -> bool
 Lunate.Ai.ProviderPresets
-static Lunate.Ai.ProviderPresets.All.get -> System.Collections.Generic.IReadOnlyList<Lunate.Ai.ProviderPreset!>!
-static Lunate.Ai.ProviderPresets.Find(string! id) -> Lunate.Ai.ProviderPreset?
-Lunate.Ai.CatalogSnapshot
-Lunate.Ai.CatalogSnapshot.<Clone>$() -> Lunate.Ai.CatalogSnapshot!
-Lunate.Ai.CatalogSnapshot.CatalogSnapshot(System.Collections.Generic.IReadOnlyList<Lunate.Ai.ModelInfo!>! Models, string! Json, string! SourceSha256) -> void
-Lunate.Ai.CatalogSnapshot.Deconstruct(out System.Collections.Generic.IReadOnlyList<Lunate.Ai.ModelInfo!>! Models, out string! Json, out string! SourceSha256) -> void
-Lunate.Ai.CatalogSnapshot.Equals(Lunate.Ai.CatalogSnapshot? other) -> bool
-Lunate.Ai.CatalogSnapshot.Json.get -> string!
-Lunate.Ai.CatalogSnapshot.Json.init -> void
-Lunate.Ai.CatalogSnapshot.Models.get -> System.Collections.Generic.IReadOnlyList<Lunate.Ai.ModelInfo!>!
-Lunate.Ai.CatalogSnapshot.Models.init -> void
-Lunate.Ai.CatalogSnapshot.SourceSha256.get -> string!
-Lunate.Ai.CatalogSnapshot.SourceSha256.init -> void
-Lunate.Ai.CatalogSnapshot.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Lunate.Ai.CatalogSnapshot.Warnings.init -> void
+Lunate.Ai.ReasoningParameters
+Lunate.Ai.RecordingChatClient
+Lunate.Ai.RecordingChatClient.RecordingChatClient(Microsoft.Extensions.AI.IChatClient! innerClient, string! fixturePath, string? modelId = null) -> void
+Lunate.Ai.ReplayChatClient
+Lunate.Ai.ReplayChatClient.Dispose() -> void
+Lunate.Ai.ReplayChatClient.GetResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.AI.ChatResponse!>!
+Lunate.Ai.ReplayChatClient.GetService(System.Type! serviceType, object? serviceKey = null) -> object?
+Lunate.Ai.ReplayChatClient.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
+Lunate.Ai.ReplayChatClient.ReplayChatClient(string! fixturePath) -> void
+Lunate.Ai.StreamAccumulator
+Lunate.Ai.StreamAccumulator.StreamAccumulator(Microsoft.Extensions.AI.IChatClient! innerClient) -> void
+Lunate.Ai.ThinkingLevel
+Lunate.Ai.ThinkingLevel.High = 3 -> Lunate.Ai.ThinkingLevel
+Lunate.Ai.ThinkingLevel.Low = 1 -> Lunate.Ai.ThinkingLevel
+Lunate.Ai.ThinkingLevel.Medium = 2 -> Lunate.Ai.ThinkingLevel
+Lunate.Ai.ThinkingLevel.Off = 0 -> Lunate.Ai.ThinkingLevel
+const Lunate.Ai.ModelCatalog.SupportedSchemaVersion = 2 -> int
+const Lunate.Ai.ModelsDevCatalog.SourceName = "models.dev" -> string!
+const Lunate.Ai.ModelsDevCatalog.SourceUrl = "https://models.dev/api.json" -> string!
+const Lunate.Ai.StreamAccumulator.ArgumentsFragmentKey = "$arguments" -> string!
 override Lunate.Ai.CatalogSnapshot.Equals(object? obj) -> bool
 override Lunate.Ai.CatalogSnapshot.GetHashCode() -> int
 override Lunate.Ai.CatalogSnapshot.ToString() -> string!
+override Lunate.Ai.ModelInfo.Equals(object? obj) -> bool (forwarded, contained in Lunate.Contracts)
+override Lunate.Ai.ModelInfo.GetHashCode() -> int (forwarded, contained in Lunate.Contracts)
+override Lunate.Ai.ModelInfo.ToString() -> string! (forwarded, contained in Lunate.Contracts)
+override Lunate.Ai.ModelPricing.Equals(object? obj) -> bool (forwarded, contained in Lunate.Contracts)
+override Lunate.Ai.ModelPricing.GetHashCode() -> int (forwarded, contained in Lunate.Contracts)
+override Lunate.Ai.ModelPricing.ToString() -> string! (forwarded, contained in Lunate.Contracts)
+override Lunate.Ai.ProviderEntry.Equals(object? obj) -> bool
+override Lunate.Ai.ProviderEntry.GetHashCode() -> int
+override Lunate.Ai.ProviderEntry.ToString() -> string!
+override Lunate.Ai.ProviderPreset.Equals(object? obj) -> bool
+override Lunate.Ai.ProviderPreset.GetHashCode() -> int
+override Lunate.Ai.ProviderPreset.ToString() -> string!
+override Lunate.Ai.RecordingChatClient.GetResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.AI.ChatResponse!>!
+override Lunate.Ai.RecordingChatClient.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
+override Lunate.Ai.StreamAccumulator.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
 static Lunate.Ai.CatalogSnapshot.operator !=(Lunate.Ai.CatalogSnapshot? left, Lunate.Ai.CatalogSnapshot? right) -> bool
 static Lunate.Ai.CatalogSnapshot.operator ==(Lunate.Ai.CatalogSnapshot? left, Lunate.Ai.CatalogSnapshot? right) -> bool
-Lunate.Ai.ModelsDevCatalog
-const Lunate.Ai.ModelsDevCatalog.SourceName = "models.dev" -> string!
-const Lunate.Ai.ModelsDevCatalog.SourceUrl = "https://models.dev/api.json" -> string!
-static Lunate.Ai.ModelsDevCatalog.Generate(string! json, System.Collections.Generic.IReadOnlyList<Lunate.Ai.ProviderPreset!>! presets) -> Lunate.Ai.CatalogSnapshot!
-Lunate.Ai.CostCalculator
 static Lunate.Ai.CostCalculator.Compute(Lunate.Ai.ModelInfo? model, long inputTokens, long outputTokens, long cacheReadTokens = 0, long cacheWriteTokens = 0) -> decimal?
 static Lunate.Ai.CostCalculator.Format(decimal cost) -> string!
+static Lunate.Ai.ModelCatalog.Load(string? userFilePath = null) -> Lunate.Ai.ModelCatalog!
+static Lunate.Ai.ModelInfo.operator !=(Lunate.Ai.ModelInfo? left, Lunate.Ai.ModelInfo? right) -> bool (forwarded, contained in Lunate.Contracts)
+static Lunate.Ai.ModelInfo.operator ==(Lunate.Ai.ModelInfo? left, Lunate.Ai.ModelInfo? right) -> bool (forwarded, contained in Lunate.Contracts)
+static Lunate.Ai.ModelPricing.operator !=(Lunate.Ai.ModelPricing? left, Lunate.Ai.ModelPricing? right) -> bool (forwarded, contained in Lunate.Contracts)
+static Lunate.Ai.ModelPricing.operator ==(Lunate.Ai.ModelPricing? left, Lunate.Ai.ModelPricing? right) -> bool (forwarded, contained in Lunate.Contracts)
+static Lunate.Ai.ModelsDevCatalog.Generate(string! json, System.Collections.Generic.IReadOnlyList<Lunate.Ai.ProviderPreset!>! presets) -> Lunate.Ai.CatalogSnapshot!
+static Lunate.Ai.ProviderEntry.operator !=(Lunate.Ai.ProviderEntry? left, Lunate.Ai.ProviderEntry? right) -> bool
+static Lunate.Ai.ProviderEntry.operator ==(Lunate.Ai.ProviderEntry? left, Lunate.Ai.ProviderEntry? right) -> bool
+static Lunate.Ai.ProviderErrors.IsRetryable(System.Exception! exception) -> bool
+static Lunate.Ai.ProviderPreset.operator !=(Lunate.Ai.ProviderPreset? left, Lunate.Ai.ProviderPreset? right) -> bool
+static Lunate.Ai.ProviderPreset.operator ==(Lunate.Ai.ProviderPreset? left, Lunate.Ai.ProviderPreset? right) -> bool
+static Lunate.Ai.ProviderPresets.All.get -> System.Collections.Generic.IReadOnlyList<Lunate.Ai.ProviderPreset!>!
+static Lunate.Ai.ProviderPresets.Find(string! id) -> Lunate.Ai.ProviderPreset?
+static Lunate.Ai.ReasoningParameters.Apply(Microsoft.Extensions.AI.ChatOptions! options, Lunate.Ai.ModelInfo! model, Lunate.Ai.ThinkingLevel level) -> void
+static Lunate.Ai.ReasoningParameters.Describe(Lunate.Ai.ModelInfo! model, Lunate.Ai.ThinkingLevel level) -> string!
+static Lunate.Ai.StreamAccumulator.IsUnassembled(Microsoft.Extensions.AI.FunctionCallContent! call) -> bool
