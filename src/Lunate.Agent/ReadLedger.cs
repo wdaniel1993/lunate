@@ -30,9 +30,9 @@ internal sealed class ReadLedger : IReadLedger
         {
             if (_live.Remove(canonical, out ReadVersion? previous))
             {
-                if (previous.CallId is { } callId)
+                if (previous.CallId is { } previousCallId)
                 {
-                    _staleReadNotices[callId] = SupersededNotice(previous.DisplayPath);
+                    _staleReadNotices[previousCallId] = SupersededNotice(previous.DisplayPath);
                 }
             }
 
@@ -48,9 +48,9 @@ internal sealed class ReadLedger : IReadLedger
         {
             if (_live.Remove(canonical, out ReadVersion? previous))
             {
-                if (previous.CallId is { } callId)
+                if (previous.CallId is { } previousCallId)
                 {
-                    _staleReadNotices[callId] = SupersededNotice(previous.DisplayPath);
+                    _staleReadNotices[previousCallId] = SupersededNotice(previous.DisplayPath);
                 }
             }
 
