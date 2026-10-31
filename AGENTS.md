@@ -7,6 +7,7 @@ This repo is developed with OpenCode and OpenSpec (schema: `intent-driven`).
 
 ## Workflow (OpenSpec)
 
+- OpenSpec is the only plan format. Plans, ledgers and resume notes for a change live in its `openspec/changes/<name>/` folder (design.md, tasks.md, or notes.md there), never in a skill's or tool's own directory. A session never descopes a maintainer requirement on its own; it files the gap as an issue in the same milestone and says so in the PR.
 - Work happens through OpenSpec changes. Never hand-write files under `openspec/changes/` or `openspec/specs/`; use the opsx commands/skills and the `openspec` CLI (new → propose → continue → apply → verify → sync → archive).
 - For propose/apply/verify/archive workflows, use the local `openspec-git-discipline` skill: proposals land on `main` before apply; the archive is the final commit of the implementation PR, added after review and before merge.
 - OpenSpec specs are the source of truth for behaviour. If spec and code disagree, stop and report — fix the spec first.
