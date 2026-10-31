@@ -1,4 +1,3 @@
-using System.Text;
 using Lunate.Coding;
 using Microsoft.Extensions.AI;
 using static Lunate.Agent.Tests.AgentTestSupport;
@@ -8,7 +7,7 @@ namespace Lunate.Agent.Tests;
 public sealed class ContextStaleReadTests
 {
     [Fact]
-    public async Task An_edit_from_an_invalidated_read_is_refused_and_stubbed()
+    public async Task An_edit_from_an_invalidated_read_is_refused_while_projection_waits()
     {
         using var temp = new TempDirectory();
         string contents = string.Join('\n', Enumerable.Range(1, 2_000).Select(Line)) + "\n";
@@ -89,8 +88,7 @@ public sealed class ContextStaleReadTests
                 .OfType<FunctionResultContent>(),
             result => result.CallId == "read-call"
         );
-        Assert.Contains("[stale:", priorRead.Result!.ToString(), StringComparison.Ordinal);
-        Assert.DoesNotContain("     1|", priorRead.Result.ToString(), StringComparison.Ordinal);
+        Assert.Contains("     1|", priorRead.Result!.ToString(), StringComparison.Ordinal);
         Assert.Contains(
             session.Entries.OfType<SessionMessageEntry>(),
             entry =>
@@ -107,12 +105,7 @@ public sealed class ContextStaleReadTests
             .OfType<FunctionResultContent>()
             .Single(result => result.CallId == "read-call")
             .Result!.ToString()!;
-        long savedTokens =
-            (
-                Encoding.UTF8.GetByteCount(originalRead)
-                - Encoding.UTF8.GetByteCount(priorRead.Result!.ToString()!)
-            ) / 4;
-        Assert.True(savedTokens >= 4_000, $"the stale read saves {savedTokens} estimated tokens");
+        Assert.Equal(originalRead, priorRead.Result.ToString());
     }
 
     [Fact]

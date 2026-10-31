@@ -117,6 +117,9 @@ public sealed record AgentHarnessOptions
     /// <summary>The number of most recent turns compaction keeps verbatim.</summary>
     public int CompactionKeepTurns { get; init; } = CompactionReducer.DefaultKeepTurns;
 
+    /// <summary>The number of model turns between request-time projection rewrites.</summary>
+    public int ProjectionBatchTurns { get; init; } = 4;
+
     /// <summary>
     /// The cumulative input+output token budget of this run, checked before each model call; null
     /// means unlimited. The subagent runner sets the child run's budget to the tighter of the

@@ -32,6 +32,12 @@ internal sealed partial class InteractiveSession
         lines.Add(Row("thinkingFull", BooleanLiteral(_settings.ThinkingFull)));
         lines.Add(Row("toolDetails", ToolDetailsLiteral(_settings.ToolDetails)));
         lines.Add(Row("toolResultLimit", LimitText(_settings.ToolOutputLimit)));
+        lines.Add(
+            Row(
+                "projection.batchTurns",
+                _settings.ProjectionBatchTurns.ToString(CultureInfo.InvariantCulture)
+            )
+        );
         lines.Add(Row("tui.theme", _settings.Tui.Theme));
         lines.Add(Row("tui.keys", KeysText(_settings.Tui.Keys)));
         lines.Add(Row("startupHeader", BooleanLiteral(_settings.StartupHeader)));
@@ -61,6 +67,9 @@ internal sealed partial class InteractiveSession
             "thinkingFull" => BooleanLiteral(_settings.ThinkingFull),
             "toolDetails" => ToolDetailsLiteral(_settings.ToolDetails),
             "toolResultLimit" => LimitText(_settings.ToolOutputLimit),
+            "projection.batchTurns" => _settings.ProjectionBatchTurns.ToString(
+                CultureInfo.InvariantCulture
+            ),
             "tui.theme" => _settings.Tui.Theme,
             "tui.keys" => KeysText(_settings.Tui.Keys),
             "startupHeader" => BooleanLiteral(_settings.StartupHeader),
@@ -204,6 +213,7 @@ internal sealed partial class InteractiveSession
                 or "thinkingFull"
                 or "toolDetails"
                 or "toolResultLimit"
+                or "projection.batchTurns"
                 or "tui.theme"
                 or "tui.keys"
                 or "startupHeader"
@@ -215,7 +225,7 @@ internal sealed partial class InteractiveSession
                 or "subagents"
                 or "tui.fullscreen";
 
-    private static string Row(string key, string value) => key.PadRight(16) + value;
+    private static string Row(string key, string value) => key.PadRight(24) + value;
 
     private static string ApprovalLiteral(ApprovalPolicy policy) =>
         policy == ApprovalPolicy.AutoEdit ? "auto-edit" : "ask";

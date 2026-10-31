@@ -187,6 +187,7 @@ public sealed partial class AgentHarness
         _replacedEntryIds = replaces;
         _lastInputTokens = null;
         _lastRequestUtf8 = 0;
+        _projectionBatchPending = true;
 
         if (channel is not null)
         {

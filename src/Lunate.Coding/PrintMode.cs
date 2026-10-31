@@ -667,6 +667,7 @@ internal static class PrintMode
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = settings.ToolOutputLimit,
             SpillThresholdTokens = settings.SpillThresholdTokens,
+            ProjectionBatchTurns = settings.ProjectionBatchTurns,
             // The same redactor masks the model-facing text whether or not a session exists.
             ToolOutputMask = redaction.Redact,
             SubagentLimits = settings.Subagents,
