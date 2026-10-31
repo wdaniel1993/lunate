@@ -1,12 +1,28 @@
 # lsp-diagnostics
 
-A first-party Lunate extension that shows the model what a language server thinks about the file it
-just wrote: after every successful `write` or `edit` of a C# file, the tool result carries the file's
-errors and warnings from its language server.
+A first-party Lunate extension that shows the model what a language server thinks about a TypeScript
+or C# file before and after a write: a write verifier answers for `*.ts`/`*.tsx` before the staged
+text is applied, and after every successful `write` or `edit` of a C# file the tool result carries
+the file's errors and warnings from the same language server.
 
 The model no longer guesses whether the code it wrote compiles or contains obvious problems — the
-diagnostics arrive in the same tool result the next turn reads, before the model reasons about its
-own change.
+verification answer and the diagnostics arrive before the model reasons about its own change.
+
+## Write verification
+
+The extension is the second consumer of the public write-verifier seam (after `Lunate.Roslyn` for
+`*.cs`): its manifest declares a `typescript` verifier for `*.ts`/`*.tsx` patterns. The host calls
+it after approval, between read-and-normalize and apply-and-write, and the verifier asks the
+language server the session already runs for the staged content's diagnostics — verification starts
+no process of its own.
+
+- **Errors refuse the write** with the diagnostics attached as `StructuredContent`; nothing lands on
+  disk, and the refusal names the errors and what to do next. Warnings verify.
+- **Degradation, not blocking**: a server that is slow, absent, or crashes answers `unverified` with
+  a reason — the write proceeds and the notice carries what failed and what to do next. Never a
+  silent pass, never a blocked turn.
+- The whole round trip is bounded by `timeoutMs` (see Configuration) plus the host's own verifier
+  deadline; a timeout behaves like every other degradation.
 
 ## What it looks like
 
@@ -22,7 +38,10 @@ The same capped list is attached as structured content on the result, so tooling
 structured data sees the diagnostics typed (`path` plus one entry per diagnostic) instead of parsing
 the text.
 
-## Behaviour
+## Behaviour (post-write hook)
+
+The section below describes the `ToolResultReady` hook, which is separate from the write verifier
+and keeps its own scope:
 
 - **Applies to** `write` and `edit` calls whose `path` argument ends in `.cs` and resolves inside the
   worktree. Everything else — other tools, non-C# files, a missing path, no workspace — passes
