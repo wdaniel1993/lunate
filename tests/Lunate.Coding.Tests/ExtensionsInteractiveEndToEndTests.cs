@@ -5,7 +5,7 @@ namespace Lunate.Coding.Tests;
 /// <summary>
 /// The interactive <c>/extensions</c> notice end to end (design D2): the state-group order with
 /// the loaded extension's registered counts and the denied extension's declared counts, the empty
-/// store and the <c>--no-extensions</c> views — all without a model call.
+/// store's composed builtin and the <c>--no-extensions</c> views — all without a model call.
 /// </summary>
 public sealed class ExtensionsInteractiveEndToEndTests
 {
@@ -104,7 +104,7 @@ public sealed class ExtensionsInteractiveEndToEndTests
     }
 
     [Fact]
-    public async Task Extensions_says_none_configured_in_an_empty_store()
+    public async Task Extensions_lists_the_inactive_builtin_in_an_empty_store()
     {
         using var host = new InteractiveSessionHost();
         Task run = host.RunAsync();
@@ -112,8 +112,25 @@ public sealed class ExtensionsInteractiveEndToEndTests
 
         host.Console.SendText("/extensions");
         host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "extensions: none configured");
+        // An empty store is not an empty view: the builtin composes and is the one row.
+        await InteractiveSessionCommandTests.WaitForFrameAsync(
+            host,
+            "roslyn 1.0.0 (builtin) loaded in "
+        );
 
+        // The notice wraps inside the 80-column frame, so the counts and the withheld tool's rule
+        // are asserted as the two runs that do not straddle the wrap.
+        Assert.Contains("tools 5,", host.LastFrame, StringComparison.Ordinal);
+        Assert.Contains(
+            "'roslyn__diagnostics' (workspace-root-has-file)",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain(
+            "extensions: none configured",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
         Assert.Empty(host.Client.Requests);
         host.Console.SendText("/quit");
         host.Console.SendEnter();

@@ -170,7 +170,6 @@ internal sealed partial class InteractiveSession : IDisposable
     private Workspace _workspace = null!;
     private CredentialRedactor _redaction = null!;
     private ToolRegistry _tools = null!;
-    private WorkspaceServices? _workspaceServices;
     private Func<string, ToolRegistry>? _workspaceTools;
     private readonly List<ITool> _inheritedTools = [];
     private Session? _session;
@@ -407,8 +406,6 @@ internal sealed partial class InteractiveSession : IDisposable
                 }
 
                 await DisposeExtensionsAsync();
-                _workspaceServices?.Dispose();
-                _workspaceServices = null;
                 // Every exit path leaves the viewer's alternate screen, exceptions included.
                 _viewer.Close();
                 // The full-screen mode's screen goes back after the viewer's, so the pairing
@@ -492,7 +489,6 @@ internal sealed partial class InteractiveSession : IDisposable
         // Before anything of this session's own state is created: a store inside the tree this
         // session governs could have its trust records written by that tree.
         LunateHome.StoreOutsideWorkspace(_workspace.WorktreeRoot, _workspace.RepoRoot);
-        _workspaceServices = new WorkspaceServices(_settings.Roslyn.MaxLoadedWorkspaces);
         _sessionDirectory =
             _options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(_workspace);
         StartInitialSession();
@@ -544,18 +540,11 @@ internal sealed partial class InteractiveSession : IDisposable
             runner.SlowHook += OnSlowHook;
         }
 
-        // The bus exists only when the extension host composed; scan-only without extensions.
-        if (_extensions is { } extensionHost)
-        {
-            _workspaceServices.Connect(extensionHost.FileChanges);
-        }
-
         // Skills compose after the extension host (its sources contribute) and before the tools
         // (the read tool carries their allowance); discovery and the trust question run here.
         await ComposeSkillsAsync(ct);
         _tools = HarnessFactory.CreateTools(
             _workspace,
-            services: _workspaceServices,
             skillReadAllowance: _skillAllowance,
             log: _extensions?.Log,
             extraTools: _settings.Tools.Extra,
@@ -582,8 +571,8 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         _workspaceTools = HarnessFactory.CreateWorkspaceTools(
-            _workspaceServices,
-            _inheritedTools,
+            root => _extensions?.ComposeTools(new Workspace(root)) ?? [],
+            [.. _inheritedTools.Where(tool => _extensions?.IsWorkspaceBoundTool(tool) != true)],
             root => _skills?.ReadRootsFor(root) ?? [],
             log: _extensions?.Log,
             extraTools: _settings.Tools.Extra,
@@ -617,7 +606,7 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>
     /// Resolves the configured model: an extension-registered id (virtual models included) comes
     /// from the registry with its derived capabilities; everything else stays a catalog lookup.
-    /// With <c>--no-extensions</c> the registry never exists, so extension ids fail as unknown.
+    /// With <c>--no-extensions</c> the registry is empty, so extension ids fail as unknown.
     /// </summary>
     private void ResolveSessionModel()
     {
@@ -680,8 +669,9 @@ internal sealed partial class InteractiveSession : IDisposable
     /// already isolated by the host. The configured MCP servers are already composed, so a
     /// registration sharing a configured server's name is skipped before listing and shown as
     /// shadowed by `/mcp`. The host's MCP tools are listed once, here, and a server whose process
-    /// exits later fires one notice. With <c>--no-extensions</c> the host composes only the
-    /// built-in set: no store is scanned, no trust question is asked and no third-party load runs.
+    /// exits later fires one notice. With <c>--no-extensions</c> the host composes nothing at all —
+    /// built-ins included: no store is scanned, no trust question is asked and no third-party load
+    /// runs.
     /// </summary>
     private async Task ComposeExtensionsAsync(CancellationToken ct)
     {
@@ -697,6 +687,7 @@ internal sealed partial class InteractiveSession : IDisposable
                     ?? (message => Notify(message, NoticeLevel.Warning)),
                 ModelCatalog = _catalog,
                 ClientFactory = _factory,
+                WorkspaceServiceCapLimit = _settings.Roslyn.MaxLoadedWorkspaces,
             };
             _extensions = await ExtensionSession
                 .StartAsync(_workspace.Identity, seams, ct)
@@ -789,7 +780,10 @@ internal sealed partial class InteractiveSession : IDisposable
                 foreach (ITool tool in extensions.ComposeTools(_workspace))
                 {
                     _tools.Add(tool);
-                    _inheritedTools.Add(tool);
+                    if (!extensions.IsWorkspaceBoundTool(tool))
+                    {
+                        _inheritedTools.Add(tool);
+                    }
                 }
 
                 ExtensionMcpServers servers = extensions.ComposeMcpServers(

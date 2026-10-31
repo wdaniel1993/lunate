@@ -28,9 +28,9 @@ boundary), ADR-0017 (extension architecture), ADR-0021 (per-run workspaces) and 
 (first-party extension tier). The extension primitives' accepted design is archived at
 `openspec/changes/archive/2026-10-29-extension-contract/design.md`.
 
-The one proposed architecture choice is how `Lunate.Coding` gets a typed built-in factory while
-having no direct project reference to `Lunate.Roslyn`. It is recorded for maintainer sign-off in
-`adr.md`; implementation must not start until accepted.
+The accepted architecture choice is how `Lunate.Coding` gets a typed built-in factory while having
+no direct project reference to `Lunate.Roslyn`. ADR-0026 records maintainer sign-off and its five
+constraints; implementation follows those constraints.
 
 ### Component view
 
@@ -97,13 +97,16 @@ same host-supplied built-in, not a second Roslyn tool implementation.
 
 ## Decisions
 
-### D1 — Put the typed built-in adapter in a separate host integration project (proposed)
+### D1 — Put the typed built-in adapter in a separate host integration project (accepted)
 
 Create an internal, non-packable `Lunate.Roslyn.BuiltIn` project that owns the `roslyn` manifest and
 `IExtensionFactory`, references `Lunate.Roslyn` and the existing extension contract, and exposes the
-host-supplied `BuiltInExtension` descriptor. `Lunate.Coding` references this adapter to populate its
-existing `BuiltIns` seam; it no longer references or names Roslyn implementation types. The adapter
-is not a user-installed extension and does not create a collectible load context.
+host-supplied `BuiltInExtension` descriptor. `Lunate.Coding` references this adapter only to populate
+its existing `BuiltIns` seam; it no longer references or names Roslyn implementation types. The
+adapter is not a user-installed extension and does not create a collectible load context. The
+`Lunate.Roslyn` and adapter project references must remain within the accepted dependency closure:
+the extension contract, Roslyn/MSBuild dependencies and the BCL, with no direct edge to
+`Lunate.Agent`, `Lunate.Coding` or `Lunate.Extensibility`.
 
 This is the direct, typed composition that fits the existing `BuiltInExtension(Manifest,
 Func<IExtensionFactory>)` contract and keeps the host's extension loader generic. Keeping the factory
@@ -112,8 +115,11 @@ that dependency, weaken compile-time validation and make single-file publish fai
 detect. Making `Lunate.Extensibility` depend on the product's Roslyn feature would invert ownership.
 The new project adds one small assembly boundary but no NuGet package or public API.
 
-**Pending:** this new project/dependency boundary is a proposal, not an accepted architecture
-decision. The ADR step records it as proposed; maintainer sign-off blocks implementation.
+The separate adapter keeps Roslyn implementation types out of `Lunate.Coding`'s compile and load
+closure. Its Coding reference has one purpose: supplying the host's built-in factory list. Tests
+enforce both the dependency closure and this single-edge rule. ADR-0026 records the maintainer's
+five sign-off constraints, including assembly-level proof of lazy loading, unchanged compatibility
+and #237 publication ordering.
 
 ### D2 — Register one `roslyn` workspace service; preserve event and settings semantics
 
@@ -179,7 +185,7 @@ unload or reload action. `--no-extensions` continues to include this built-in.
 ## Risks / Trade-offs
 
 - **A new adapter project is an architecture and dependency-graph change** -> keep it internal and
-  non-packable, record it in the proposed ADR and stop for maintainer sign-off before apply.
+  non-packable, and enforce the accepted ADR-0026 dependency closure and Coding single-edge rule.
 - **Factory creation accidentally loads Roslyn/MSBuild at startup** -> keep backend creation behind
   the service factory, assert assembly absence before first call, and compare the startup floor.
 - **File-change routing creates an unbounded second cache or misses updates** -> only index live
@@ -196,7 +202,7 @@ unload or reload action. `--no-extensions` continues to include this built-in.
 
 1. Capture and commit the pre-migration evidence and deterministic tool-result fixtures before any
    composition edits.
-2. After the proposed dependency boundary is accepted, add the built-in adapter and prove factory,
+2. Add the built-in adapter and prove factory,
    manifest cross-check, lease lifecycle, lazy loading and file-change routing in isolation.
 3. Route all coding frontends and `lunate mcp roslyn` through the same built-in/evaluator. Preserve
    the host cap setting and `/extensions` built-in/inactive reporting.
@@ -210,12 +216,13 @@ Rollback is a code revert. There is no session rewrite or new persistent state; 
 recorded tool names. A running process remains on its original registry until it exits, and a later
 resume composes the binary's own tool set.
 
-## Open Questions
+## Decisions taken
 
-- **Maintainer sign-off (blocking):** accept or reject the proposed `Lunate.Roslyn.BuiltIn` project as
-  the typed host-composition boundary that removes the direct Coding-to-Roslyn reference. If rejected,
-  stop and revise this design/ADR before implementation; do not substitute reflection or an API change
-  without a new decision.
-- The precise baseline capture machine and the current `scripts/memory.sh roslyn` completion method
-  are implementation-time choices; the evidence format, fixtures, existing budgets and comparison
-  are fixed here.
+- ADR-0026 is accepted with maintainer sign-off dated 2026-10-30. Its five constraints govern the
+  implementation; the adapter remains the typed boundary selected by this design.
+- Keep the existing two-workspace cap, compatibility surface and session format. Restore the guide's
+  “built only on the public extension API” positioning only after the dependency-closure,
+  single-edge, assembly-level lazy-loading and unchanged compatibility/golden/e2e checks pass. Issue
+  #237 may publish `Lunate.Extensibility.Abstractions` as stable only after that sentence is restored.
+- The card forbids delegation, so the implementation and acceptance checks are carried out in this
+  session without subagents.

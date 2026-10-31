@@ -16,7 +16,8 @@ public sealed class AcpQuestionTests
     public async Task Ask_user_without_a_non_approval_input_mechanism_is_unanswered_without_permission()
     {
         using var temp = new TempDirectory();
-        using var workspaceServices = new WorkspaceServices(4);
+        // C# tools now arrive through the composed extension host; this test only exercises the
+        // core ask_user tool, so the harness is built without a host (and without a store).
         var model = new AcpScriptedChatClient()
             .Enqueue(
                 AcpScripts.Call(
@@ -54,7 +55,6 @@ public sealed class AcpQuestionTests
                 host: null,
                 mcpTools: [],
                 inheritedTools: [],
-                workspaceServices,
                 new LaunchOptions { Model = "gpt-4o-mini" },
                 new AcpChatClientFactory(model),
                 temp.File("sessions")

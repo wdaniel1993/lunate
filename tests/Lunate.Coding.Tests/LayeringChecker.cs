@@ -40,10 +40,10 @@ internal static class LayeringChecker
             ("Lunate.Extensibility.Testing", "Lunate.Extensibility.Abstractions"),
             ("Lunate.Extensibility.Testing", "Lunate.Extensibility.Remote"),
             ("Lunate.Protocols", "Lunate.Agent"),
-            ("Lunate.Roslyn", "Lunate.Agent"),
-            // The C# write verifier implements the public verifier contract, so Roslyn and its
-            // tests bind to the same abstractions every extension does.
             ("Lunate.Roslyn", "Lunate.Extensibility.Abstractions"),
+            // The typed host adapter is the only boundary between Coding and the Roslyn feature.
+            ("Lunate.Roslyn.BuiltIn", "Lunate.Extensibility.Abstractions"),
+            ("Lunate.Roslyn.BuiltIn", "Lunate.Roslyn"),
             ("Lunate.Roslyn.Tests", "Lunate.Roslyn"),
             ("Lunate.Roslyn.Tests", "Lunate.Agent"),
             ("Lunate.Roslyn.Tests", "Lunate.Extensibility.Abstractions"),
@@ -55,8 +55,8 @@ internal static class LayeringChecker
             // The composition owns the compile factory as well: the first build loads the compiler.
             ("Lunate.Coding", "Lunate.Extensibility.Compile"),
             ("Lunate.Coding", "Lunate.Protocols"),
-            // The composition owns the per-workspace Roslyn services and composes the cs_* tools.
-            ("Lunate.Coding", "Lunate.Roslyn"),
+            // Coding uses the adapter only when constructing its host-supplied built-in factory list.
+            ("Lunate.Coding", "Lunate.Roslyn.BuiltIn"),
             ("Lunate.Coding", "Lunate.Tui"),
             ("Lunate.Agent.Tests", "Lunate.Agent"),
             // The prefix-stability test composes the real Coding system prompt to pin the
@@ -64,6 +64,7 @@ internal static class LayeringChecker
             ("Lunate.Agent.Tests", "Lunate.Coding"),
             ("Lunate.Ai.Tests", "Lunate.Ai"),
             ("Lunate.Coding.Tests", "Lunate.Coding"),
+            ("Lunate.Coding.Tests", "Lunate.Roslyn.BuiltIn"),
             ("Lunate.Coding.Tests", "HelloExtension"),
             ("Lunate.Coding.Tests", "CommandExtension"),
             ("Lunate.Coding.Tests", "McpExtension"),

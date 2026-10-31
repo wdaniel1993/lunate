@@ -87,13 +87,11 @@ public sealed class SystemPromptParityTests
     )
     {
         var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
-        using var services = new WorkspaceServices(4);
         AgentHarness harness = AcpMode.CreateHarness(
             new AcpSessionContext(root, null, null),
             null,
             [],
             [],
-            services,
             launch,
             new FakeChatClientFactory(client),
             temp.File("acp-sessions")

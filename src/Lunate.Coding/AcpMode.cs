@@ -36,27 +36,24 @@ internal static class AcpMode
         McpToolSet? mcp = null;
         List<ITool> mcpTools = [];
         List<ITool> inheritedTools = [];
-        var workspaceServices = new WorkspaceServices(RoslynSettings.DefaultMaxLoadedWorkspaces);
         try
         {
             var workspace = new Workspace(Environment.CurrentDirectory);
             LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot);
             IExtensionLog log = extensions?.Log ?? new StderrExtensionLog(errors);
             AgentSettings settings = SettingsStore.Resolve(null, null);
-            WorkspaceServices configured = new(settings.Roslyn.MaxLoadedWorkspaces);
-            workspaceServices.Dispose();
-            workspaceServices = configured;
-
-            // The host composes in every mode: with --no-extensions it composes only the built-in
-            // set — the loader skips the store scans, so nothing third-party is discovered,
-            // trusted or loaded (design §1).
-            host = ComposeExtensions(extensions, workspace, errors, ct);
-
-            // The bus exists only when the extension host composed; scan-only without extensions.
-            if (host is not null)
-            {
-                workspaceServices.Connect(host.FileChanges);
-            }
+            // The host composes in every mode: with --no-extensions it composes nothing at all —
+            // built-ins included — so no store scan, trust question or third-party load runs
+            // (design §1).
+            host = ComposeExtensions(
+                (extensions ?? new ExtensionSeams()) with
+                {
+                    WorkspaceServiceCapLimit = settings.Roslyn.MaxLoadedWorkspaces,
+                },
+                workspace,
+                errors,
+                ct
+            );
 
             mcp = McpComposition
                 .ComposeAsync(
@@ -81,7 +78,9 @@ internal static class AcpMode
                 // the withheld ones are recorded for the /extensions view.
                 IReadOnlyList<ITool> extensionTools = host.ComposeTools(workspace);
                 mcpTools.AddRange(extensionTools);
-                inheritedTools.AddRange(extensionTools);
+                inheritedTools.AddRange(
+                    extensionTools.Where(tool => !host.IsWorkspaceBoundTool(tool))
+                );
                 // The configured names are the collision baseline: a same-named registration is
                 // skipped before listing (the configured server wins); nothing starts before.
                 ExtensionMcpServers servers = host.ComposeMcpServers(
@@ -128,7 +127,6 @@ internal static class AcpMode
             // answer every editor request with an agent that is missing what the user configured.
             errors.WriteLine($"lunate: the session composition failed: {exception.Message}");
             DisposeComposition(host, mcp, errors);
-            workspaceServices.Dispose();
             return 1;
         }
 
@@ -138,15 +136,7 @@ internal static class AcpMode
                 .RunAsync(
                     input,
                     output,
-                    context =>
-                        CreateHarness(
-                            context,
-                            host,
-                            mcpTools,
-                            inheritedTools,
-                            workspaceServices,
-                            launch
-                        ),
+                    context => CreateHarness(context, host, mcpTools, inheritedTools, launch),
                     ct
                 )
                 .GetAwaiter()
@@ -165,7 +155,6 @@ internal static class AcpMode
         finally
         {
             DisposeComposition(host, mcp, errors);
-            workspaceServices.Dispose();
         }
     }
 
@@ -237,7 +226,6 @@ internal static class AcpMode
         ExtensionSession? host,
         IReadOnlyList<ITool> mcpTools,
         List<ITool> inheritedTools,
-        WorkspaceServices workspaceServices,
         LaunchOptions? launch,
         IChatClientFactory? factory = null,
         string? sessionDirectory = null,
@@ -266,8 +254,7 @@ internal static class AcpMode
         var refusalTracker = new WriteVerificationRefusalTracker();
         ToolRegistry tools = HarnessFactory.CreateTools(
             workspace,
-            context.FileAccess,
-            workspaceServices,
+            files: context.FileAccess,
             log: host?.Log,
             extraTools: effective.Tools.Extra,
             redaction: redaction,
@@ -325,8 +312,8 @@ internal static class AcpMode
             ModelRegistry = host?.ModelRegistry,
             ModelId = model.Id,
             WorkspaceTools = HarnessFactory.CreateWorkspaceTools(
-                workspaceServices,
-                inheritedTools,
+                root => host?.ComposeTools(new Workspace(root)) ?? [],
+                [.. inheritedTools.Where(tool => host?.IsWorkspaceBoundTool(tool) != true)],
                 log: host?.Log,
                 extraTools: effective.Tools.Extra,
                 redaction: redaction,

@@ -105,7 +105,7 @@ public sealed class OptionalToolRegistrationTests
     {
         using var temp = new TempDirectory();
         using var services = new WorkspaceServices(2, root => new FakeWorkspaceBackend(root));
-        Func<string, ToolRegistry> factory = HarnessFactory.CreateWorkspaceTools(
+        Func<string, ToolRegistry> factory = RoslynTestHarness.CreateWorkspaceTools(
             services,
             [],
             extraTools: ["find"]

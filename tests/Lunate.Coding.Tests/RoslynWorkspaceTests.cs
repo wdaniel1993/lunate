@@ -53,7 +53,7 @@ public sealed class RoslynWorkspaceTests
         IAgentEvents events
     )
     {
-        ToolRegistry tools = HarnessFactory.CreateTools(new Workspace(root), services: services);
+        ToolRegistry tools = RoslynTestHarness.CreateTools(new Workspace(root), services: services);
         ITool diagnostics = tools.Find("cs_diagnostics")!;
         JsonElement args = JsonSerializer.SerializeToElement(new { scope = "solution" });
         return await diagnostics

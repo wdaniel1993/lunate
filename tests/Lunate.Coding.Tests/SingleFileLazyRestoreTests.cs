@@ -139,7 +139,9 @@ public sealed class SingleFileLazyRestoreTests
             }
         );
 
-        Assert.Single(session.Descriptors);
+        // The packaged hello extension plus the always-composed builtin.
+        Assert.Equal(2, session.Descriptors.Count);
+        Assert.Single(session.Descriptors, descriptor => descriptor.Id == "hello");
         SingleFileExtension candidate = Assert.Single(session.SingleFileExtensions);
         Assert.Equal("acme-tools", candidate.Id);
         Assert.Equal(SingleFileExtensionState.NotBuilt, candidate.State);

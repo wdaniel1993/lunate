@@ -9,16 +9,21 @@ flowchart TD
     Coding["Lunate.Coding<br/>the lunate executable"] --> Agent["Lunate.Agent<br/>loop, tools, events"]
     Coding --> Protocols["Lunate.Protocols<br/>MCP client, ACP server"]
     Coding --> Tui["Lunate.Tui<br/>terminal UI"]
+    Coding --> RoslynBuiltIn["Lunate.Roslyn.BuiltIn<br/>manifest + typed factory"]
+    Coding --> ExtHost["Lunate.Extensibility<br/>extension host"]
+    Coding -. "built-in descriptor" .-> ExtHost
+    RoslynBuiltIn --> Roslyn["Lunate.Roslyn<br/>semantic C# backend"]
+    RoslynBuiltIn --> ExtApi["Lunate.Extensibility.Abstractions<br/>contract + activation evaluator"]
+    Roslyn --> ExtApi
+    Coding -. "evaluates manifest rule" .-> ExtApi
     Protocols --> Agent
     Agent --> Ai["Lunate.Ai<br/>model pipeline, catalog"]
-    Coding --> Roslyn["Lunate.Roslyn<br/>semantic C# tools"]
-    Roslyn -->|"tool model"| Agent
     Ai --> Providers(["Provider APIs<br/>OpenAI-compatible, Anthropic"])
     Protocols -. "stdio / HTTP" .-> Mcp(["MCP servers<br/>separate process"])
     Protocols -. "ACP" .-> Editor(["Editor (ACP client)<br/>separate process"])
 ```
 
-Arrows point from a project to what it depends on or calls; dashed edges are runtime-only connections — separate processes. `Lunate.Coding` is the composition root: it wires the TUI, the protocols and the agent, and composes the five `cs_*` tools from `Lunate.Roslyn`, which references `Lunate.Agent` for the tool model. `Lunate.Roslyn` is not loaded through the extension loader today; the [surface audit](eval/roslyn-surface-audit.md) records where it leaves the contract and 0.2 closes the gap. The layering rule and its enforcement live in the [repo-foundation spec](../openspec/specs/repo-foundation/spec.md); the extension contract arrives with T-36 in the [guide](guide.md) (see the [extensibility spec](spec/extensibility.md)).
+Solid arrows are project references; dashed arrows are runtime composition or connections to separate processes. `Lunate.Coding` is the composition root. It supplies the Roslyn built-in descriptor to the extension host and runs the shared activation filter, which evaluates the manifest rule through the public abstractions API for chat, print, ACP, child runs and MCP. The adapter owns the typed factory and bridges the extension contract to `Lunate.Roslyn`. `Lunate.Coding` references the adapter only to provide the built-in factory list, and neither Roslyn project references upward into the host. The adapter and backend do not load Roslyn/MSBuild assemblies until the first C# tool call. See [ADR-0026](../adr/0026-roslyn-built-in-boundary.md) and the [extensions spec](../openspec/specs/extensions/spec.md).
 
 ## The model pipeline
 

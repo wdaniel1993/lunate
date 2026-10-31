@@ -5,10 +5,10 @@ namespace Lunate.Coding.Tests;
 
 /// <summary>
 /// The composed built-in at the composition level (spec: Built-in extension provenance, the
-/// <c>--no-extensions</c> and the <c>/extensions</c> scenarios): the flag composes only the
-/// built-in set, its tools register and run while no store is read; a failing built-in is
-/// reported and the session keeps the rest; <c>/extensions</c> and the reload surfaces treat it
-/// as <c>builtin</c> and refuse reload with the teaching message.
+/// <c>--no-extensions</c> and the <c>/extensions</c> scenarios): the flag composes nothing at all,
+/// built-ins included, and reads no store; a failing built-in is reported and the session keeps
+/// the rest; <c>/extensions</c> and the reload surfaces treat a built-in as <c>builtin</c> and
+/// refuse reload with the teaching message.
 /// </summary>
 public sealed class ExtensionBuiltInCompositionTests
 {
@@ -16,7 +16,7 @@ public sealed class ExtensionBuiltInCompositionTests
         "extension 'pinboard' is a built-in; built-ins load with the host and cannot be reloaded or unloaded.";
 
     [Fact]
-    public void Print_mode_with_the_flag_composes_only_the_builtin_set_and_runs_its_tool()
+    public void Print_mode_with_the_flag_composes_no_builtins_either()
     {
         using var temp = new TempDirectory();
         string store = temp.File("store");
@@ -25,9 +25,9 @@ public sealed class ExtensionBuiltInCompositionTests
         HelloFixture.WriteSettings(store, "hello", helloMarker);
         string builtinMarker = temp.File("builtin-marker.txt");
         var log = new RecordingExtensionLog();
-        var client = new ScriptedChatClient()
-            .Enqueue(Scripts.Call("call-1", "pinboard__ping", Scripts.Args()), Scripts.ToolCalls())
-            .Enqueue(Scripts.Text("done"), Scripts.Stop());
+        // No tool call: under the flag the built-in's tool must not be offered, so the scripted
+        // model only answers. A call would fail the run instead of proving the absence.
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("done"), Scripts.Stop());
         PrintModeOptions printOptions = PrintModeTestSupport.BaseOptions(
             temp,
             new FakeChatClientFactory(client)
@@ -37,7 +37,7 @@ public sealed class ExtensionBuiltInCompositionTests
             {
                 StorePath = store,
                 Log = log,
-                NoExtensions = true,
+                // An explicit built-in list is not a way around the flag: the host composes none.
                 BuiltIns = [BuiltinFixture.Marker("pinboard", builtinMarker)],
             },
         };
@@ -54,9 +54,9 @@ public sealed class ExtensionBuiltInCompositionTests
 
         Assert.Equal(0, exitCode);
         Assert.Equal("done", output.ToString());
-        Assert.True(
+        Assert.False(
             File.Exists(builtinMarker),
-            "the composed built-in's tool must run under --no-extensions"
+            "--no-extensions must not compose a built-in either"
         );
         Assert.False(File.Exists(helloMarker), "--no-extensions must not read the extension store");
     }

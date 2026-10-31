@@ -60,6 +60,7 @@
     <Project Path="src/Lunate.Extensibility/Lunate.Extensibility.csproj" />
     <Project Path="src/Lunate.Protocols/Lunate.Protocols.csproj" />
     <Project Path="src/Lunate.Roslyn/Lunate.Roslyn.csproj" />
+    <Project Path="src/Lunate.Roslyn.BuiltIn/Lunate.Roslyn.BuiltIn.csproj" />
     <Project Path="src/Lunate.Tui/Lunate.Tui.csproj" />
   </Folder>
   <Folder Name="/templates/">

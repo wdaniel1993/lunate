@@ -3,6 +3,7 @@ using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
+using Lunate.Roslyn.BuiltIn;
 
 namespace Lunate.Coding;
 
@@ -28,9 +29,19 @@ internal sealed record ExtensionSeams
     /// <summary>
     /// The extensions the host composes out of its own assemblies (manifest plus factory), in
     /// composition order, before anything found in the store; empty by default. A
-    /// <c>--no-extensions</c> session composes only these.
+    /// <c>--no-extensions</c> session composes none of these.
     /// </summary>
     public IReadOnlyList<BuiltInExtension>? BuiltIns { get; init; }
+
+    /// <summary>
+    /// True composes the built-in set but nothing from the store (the <c>lunate mcp roslyn</c>
+    /// composition): no store scan, no trust, no third-party load. Unlike
+    /// <see cref="NoExtensions"/>, the built-ins still compose.
+    /// </summary>
+    public bool BuiltInsOnly { get; init; }
+
+    /// <summary>The host's per-workspace service ceiling, which may lower built-in manifest caps.</summary>
+    public int? WorkspaceServiceCapLimit { get; init; }
 
     /// <summary>The session catalog the model registry falls back to; null disables the fallback.</summary>
     public ModelCatalog? ModelCatalog { get; init; }
@@ -39,10 +50,9 @@ internal sealed record ExtensionSeams
     public IChatClientFactory? ClientFactory { get; init; }
 
     /// <summary>
-    /// True composes only the built-in set (the <c>--no-extensions</c> flag): the host still loads
-    /// what <see cref="BuiltIns"/> declares, but extension hooks, renderers, widgets and extension
-    /// MCP servers beyond it are absent — no store scan, no trust, no third-party load. Configured
-    /// <c>mcp.json</c> servers are unaffected.
+    /// True composes no extensions at all (the <c>--no-extensions</c> flag): built-ins included,
+    /// plus no store scan, no trust and no third-party load. Configured <c>mcp.json</c> servers are
+    /// unaffected. The flag says what it means, so nothing the host owns composes under it.
     /// </summary>
     public bool NoExtensions { get; init; }
 
@@ -120,6 +130,15 @@ internal readonly record struct ExtensionCounts(int Tools, int Commands, int Hoo
 /// </summary>
 internal sealed class ExtensionSession : IAsyncDisposable
 {
+    private static IReadOnlyList<BuiltInExtension> DefaultBuiltIns { get; } =
+        RoslynBuiltInFactory
+            .BuiltInFactories.Select(factory => new BuiltInExtension(
+                factory.ManifestPath,
+                factory.Manifest,
+                factory.Factory
+            ))
+            .ToArray();
+
     internal static IReadOnlyList<string> CoreToolNames { get; } =
     ["read", "write", "edit", "bash", "grep", "find", "ls"];
 
@@ -192,8 +211,11 @@ internal sealed class ExtensionSession : IAsyncDisposable
             GlobalPackagesFolder = seams.GlobalPackagesFolder,
             ReservedCommands = Commands.BuiltinNames,
             ReservedToolNames = CoreToolNames,
-            BuiltIns = seams.BuiltIns ?? [],
-            BuiltInsOnly = seams.NoExtensions,
+            // --no-extensions disables the flag's namesake entirely, built-ins included; the
+            // built-ins-only composition (mcp roslyn) keeps them and still skips the store.
+            BuiltIns = seams.NoExtensions ? [] : seams.BuiltIns ?? DefaultBuiltIns,
+            BuiltInsOnly = seams.NoExtensions || seams.BuiltInsOnly,
+            WorkspaceServiceCapLimit = seams.WorkspaceServiceCapLimit,
         };
         var loader = new ExtensionLoader(options);
         // Created eagerly, but it only holds the factory: nothing NuGet-shaped exists until a
@@ -370,6 +392,29 @@ internal sealed class ExtensionSession : IAsyncDisposable
 
         return active;
     }
+
+    internal static bool RoslynIsActive(
+        string workspaceRoot,
+        IReadOnlyList<BuiltInExtension>? builtIns = null
+    )
+    {
+        BuiltInExtension? roslyn = (builtIns ?? DefaultBuiltIns).FirstOrDefault(builtIn =>
+            builtIn.Manifest.Id == "roslyn"
+        );
+        return roslyn is not null
+            && roslyn.Manifest.ToolActivation.TryGetValue("*", out var rule)
+            && ToolActivationEvaluator.Evaluate(rule, workspaceRoot);
+    }
+
+    /// <summary>
+    /// Whether a tool registered by this host carries a manifest activation rule and therefore
+    /// must be recomposed for a child workspace instead of inherited from the parent root.
+    /// </summary>
+    internal bool IsWorkspaceBoundTool(ITool tool) =>
+        _loader
+            .Tools.List()
+            .OfType<ExtensionToolAdapter>()
+            .Any(adapter => ReferenceEquals(adapter, tool) && adapter.ActivationRule is not null);
 
     /// <summary>
     /// The tools of one extension the composition withheld at the run root, each with the

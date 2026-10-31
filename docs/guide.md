@@ -17,19 +17,20 @@ Three consequences follow, and they decide priorities:
 - **The core stays language-agnostic.** Nothing in the loop, the tools or the session model may
   assume C# semantics; TypeScript, Python and Go repositories are first-class citizens.
 - **.NET depth lives in `Lunate.Roslyn`**, the semantic C# layer behind the five `cs_*` tools.
-  Today the composition root wires those tools in directly rather than loading them through the
-  extension contract, and `Lunate.Roslyn` references `Lunate.Agent` for the tool model; the
-  [surface audit](eval/roslyn-surface-audit.md) records every such point with a `file:line`. The
-  extensibility story is proven by the reference-extension fitness suite, not by the flagship.
-  Moving `Lunate.Roslyn` onto the contract is 0.2 work, and the positioning claim returns when the
-  audit's gaps are closed — not before.
+  The flagship C# feature is built only on the public extension API: the host supplies the
+  `Lunate.Roslyn.BuiltIn` adapter, whose manifest declares the tools, workspace service, aliases and
+  activation rule. `Lunate.Coding` references that adapter only to supply the built-in factory list;
+  the adapter and backend stay within the extension-abstractions dependency boundary (ADR-0026).
+  Issue #237 may publish `Lunate.Extensibility.Abstractions` as stable only after this positioning
+  sentence is restored. The [surface audit](eval/roslyn-surface-audit.md) records the pre-migration
+  state as of 2026-10-28.
 - **Any configured model can serve a decision.** The user chooses the model; Lunate checks the
   response contract, retries one malformed response, and ensures decisions can only tighten the
   approval result.
 
 **Why it should exist next to Pi and OpenCode**
 
-- **Agent-shaped C# tools with zero setup:** name-based lookup (find symbol, find references), on-demand compile diagnostics, and refactors returned as diffs through the approval policy — no plugin or language server to install, and clear messages for restore, SDK and partial-load problems. The head-to-head suite shows outcome parity between lightweight agents on small tasks — what differs is cost and how each one extends: Lunate ran the suite at roughly a fifth of the tokens, and its harness is C# you can read and change.
+- **Agent-shaped C# tools with zero setup:** name-based lookup (find symbol, find references), compile checks after edits, and refactors returned as per-file plans — verified changes still go through the ordinary edit/write approval policy. No plugin or language server to install, and clear messages for restore, SDK and partial-load problems. The head-to-head suite shows outcome parity between lightweight agents on small tasks — what differs is cost and how each one extends: Lunate ran the suite at roughly a fifth of the tokens, and its harness is C# you can read and change.
 - **One file, no runtime to install:** self-contained single file, fast start, no Node or Python runtime, and extensions loaded at runtime like Pi's.
 - **Editor and local-model friendly:** runs inside Zed or JetBrains via ACP and works with any OpenAI-compatible endpoint, including the home lab.
 
@@ -56,7 +57,7 @@ These claims age quickly, so the Phase 5 gate tests them head to head: the same 
 
 Every feature request and every OpenCode plan is checked against these seven rules; when in doubt, leave it out or make it an extension.
 
-1. **Primitives, not features.** The core ships four tools: `read`, `write`, `edit`, `bash`. Everything else (Roslyn, MCP, the optional `grep`/`find`/`ls` search tools) is opt-in.
+1. **Primitives, not features.** The core ships four tools: `read`, `write`, `edit`, `bash`. Roslyn is a built-in offered only when its manifest activation rule matches the workspace; configured MCP servers and optional `grep`/`find`/`ls` tools remain separate from the core set.
 2. **Robust, never silently wrong.** Tools tolerate harmless differences (line endings, indentation) but refuse anything ambiguous. Every fallback is visible: the result says which match tier was used and the TUI shows the diff.
 3. **Performance budgets are a gate.** Startup time and idle memory are measured in CI on every commit. Heavy components (Roslyn, MCP servers, extensions) load on first use, never at startup.
 4. **Small system prompt.** Under 1,000 tokens, asserted in a test — the base prompt; the session skills index is a separate section with its own cap. Project rules come from `AGENTS.md`, not from the harness.
@@ -70,7 +71,7 @@ Three core projects with strict downward dependencies, like Tau's `tau_coding �
 
 The architecture overview lives in [`architecture.md`](architecture.md) — the component map, the model pipeline, one run and the event path as diagrams.
 
-Arrows point from a project to what it depends on or calls; dashed edges are runtime-only connections — separate processes. `Lunate.Protocols` references `Lunate.Agent` (MCP tools become `ITool`s, ACP drives the loop); `Lunate.Tui` references no other Lunate project; `Lunate.Coding` is the composition root and constructs the five `cs_*` tools from `Lunate.Roslyn` at startup, and the Roslyn backend behind them is created per workspace on the first C# tool call. `Lunate.Roslyn` is not loaded through the extension loader today — the [surface audit](eval/roslyn-surface-audit.md) records the gap and 0.2 closes it.
+Arrows point from a project to what it depends on or calls; dashed edges are runtime-only connections — separate processes. `Lunate.Protocols` references `Lunate.Agent` (MCP tools become `ITool`s, ACP drives the loop); `Lunate.Tui` references no other Lunate project. `Lunate.Coding` supplies the Roslyn built-in descriptor to the extension host; the host evaluates the manifest rule for each composition, and `Lunate.Roslyn.BuiltIn` adapts the contract to the Roslyn backend. Roslyn and MSBuild assemblies remain unloaded until the first active C# tool call. See [`architecture.md`](architecture.md) and [ADR-0026](../adr/0026-roslyn-built-in-boundary.md).
 
 **Solution layout**
 
@@ -96,8 +97,9 @@ lunate/
   src/Lunate.Agent/            # loop on IChatClient, events, ITool, sessions, compaction, extension contract
   src/Lunate.Tui/              # Spectre output, own input line and live area
   src/Lunate.Protocols/        # MCP client and ACP server on the SDKs
-  src/Lunate.Roslyn/           # semantic C# tools; composed by the host today (audit: docs/eval)
-  src/Lunate.Coding/           # exe: lunate (self-contained single file): TUI, print and ACP modes, extension loader
+  src/Lunate.Roslyn/           # semantic C# backend, behind the extension contract
+  src/Lunate.Roslyn.BuiltIn/   # host-supplied roslyn manifest and typed extension factory
+  src/Lunate.Coding/           # exe: lunate (self-contained single file): TUI, print and ACP modes, composition root
   tests/Lunate.*.Tests/        # one test project per src project
   tests/Lunate.TestSupport/    # shared test helpers (TestMcpServer resolution); no tests of its own
   tests/fixtures/streams/      # recorded provider streams (JSONL)
@@ -521,7 +523,7 @@ An extension is an assembly implementing the `Lunate.Extensibility.Abstractions`
 - An extension registers tools through `IExtensionContext.RegisterTool`; the model-facing name is `<extension-id>__<name>`, the manifest `tools` list must declare every registered tool, and unloading the extension removes its tools and cancels in-flight calls.
 - An extension registers commands through `IExtensionContext.RegisterCommandSource`; the manifest `commands` list must declare every provided command. A declared command with no provider reads `declared, not provided` in `/extensions` and is never offered or dispatched, and a command name that collides with a built-in refuses the load. Commands from every source — built-ins, skills and extensions — compose into the session's one registry with the built-in commands first; `/help` lists them all (built-in groups first, then a `skills`, `extensions` and `templates` section when non-empty) and every diagnostic names a command by its source-qualified id (`builtin:help`, `skill:review`, `ext:<id>:<name>`), never in the typed text. Unloading an extension with a command still running cancels it, says so in a notice naming the command's id, waits up to five seconds for the handler to return and then unloads, so a stuck handler is logged instead of hanging teardown.
 - Project-local extensions run code from the repository: one-time trust per repository, re-prompted when the extension files change.
-- `Lunate.Roslyn` does not use this mechanism yet: the host composes its five `cs_*` tools directly, and the [surface audit](eval/roslyn-surface-audit.md) lists the four contract gaps that keep it out. Closing them is 0.2 work; until then this section describes the sample extensions, not the flagship.
+- The host-supplied Roslyn built-in uses the same manifest, extension factory, tool adapters and workspace-service registry as other built-ins. It is not installed, trust-gated or unloadable. `/extensions` reports it with scope `builtin`, and shows its tools active or inactive with the manifest rule and reason. `--no-extensions` composes nothing at all — the built-in included — so a run with the flag has no extension tools, built-in or third-party.
 - External tools can also come through MCP (`~/.lunate/mcp.json`, see Protocols).
 - The architecture is proven by a fitness suite of reference extensions (permission gates, memory, LSP, MCP, subagents, code mode, model routing, UI, worktree tasks) running in CI — a sample that needs a workaround means the core is missing a primitive.
 
@@ -742,13 +744,17 @@ public interface IAcpServer
 
 `tests/tools/TestMcpServer` is a tiny MCP server with two normal tools, one slow tool and one crashing tool. ACP is tested with an in-process client over a pipe pair. Before closing Phase 5, run one real session in Zed.
 
-## Roslyn extension (the .NET edge)
+## Built-in Roslyn C# tools (the .NET edge)
 
-`Lunate.Roslyn` gives the model **agent-shaped C# tools**: name-based lookup, on-demand compile diagnostics, and refactors returned as diffs. The host composes those tools directly today rather than loading them through the extension contract (see the [surface audit](eval/roslyn-surface-audit.md)); C# language servers run Roslyn underneath too — the difference this project bets on is tool design, not the engine: no plugin or server to set up, diagnostics straight from the compilation, and load problems reported as clear messages. That edge depends on implementing ADR 0006's operational rules well (restore check, SDK mismatch, partial loads), not on Roslyn itself.
+`Lunate.Roslyn` gives the model **agent-shaped C# tools**: name-based lookup, compile checks after edits, and refactors returned as plans. The host-supplied `Lunate.Roslyn.BuiltIn` adapter declares the five stable `cs_*` names through the public extension contract; the coding host and `lunate mcp roslyn` use the same manifest activation evaluator. C# language servers run Roslyn underneath too — the difference this project bets on is tool design, not the engine: no plugin or server to set up, diagnostics straight from the compilation, and load problems reported as clear messages. That edge depends on implementing ADR-0006's operational rules well (restore check, SDK mismatch, partial loads), not on Roslyn itself.
 
 **Loading model**
 
-Roslyn loads in process on the first C# tool call. `MSBuildLocator` finds the installed .NET SDK, and `MSBuildWorkspace` opens the solution for the working directory and keeps it loaded for the session. File changes made by `write` and `edit` are applied to the workspace, so it stays current without reloading. The five `cs_*` tools are offered only where the workspace looks like C# (a `.sln`, `.slnx` or `.csproj` at the root — a cheap scan, no Roslyn load); child runs in a worktree get their own tools bound to their root. Backends are keyed per worktree root and the loaded-workspace cap (`roslyn.maxLoadedWorkspaces`, default 2, least-recently-used unloaded) never unloads a workspace under an in-flight call; up to 2× the reference-workspace budget is the documented worst case (ADR-0021). Without an installed .NET SDK the C# tools are simply not offered. If memory on very large solutions becomes a problem, the same tools can move into a child process later without changing their contracts.
+The `roslyn` built-in manifest activates the five C# tools when a direct child of the workspace root matches `*.sln`, `*.slnx` or `*.csproj`. Chat, print, ACP, child runs and the MCP server all use the host's `ToolActivationEvaluator`; a non-matching root offers no C# tools. MCP uses client-declared roots, or its launch directory when no roots are declared. The decision is made at composition; a running session keeps its tool registry until restart or resume.
+
+The backend is created lazily on the first C# tool call. `MSBuildLocator` finds the installed .NET SDK, and `MSBuildWorkspace` opens the solution for that call's workspace root. Each call leases the `roslyn` workspace service for its root and releases the lease when the call ends. The host registry caps loaded workspaces at two; `roslyn.maxLoadedWorkspaces` may lower, but not raise, that manifest cap. File changes are routed to already-created services, so source changes stay current without an activation scan or service creation on the event path. The five model-facing names, results, session format and rollback compatibility are unchanged. A missing SDK is reported when a C# tool is called; it does not change manifest activation.
+
+The built-in changes composition only. Existing sessions resume without conversion; the current binary composes its own tools on restart or resume, and a rollback to the pre-migration host can read sessions written by the migrated host. No session-format or recorded tool-name change is involved.
 
 **Tools, in build order**
 
@@ -758,7 +764,7 @@ Roslyn loads in process on the first C# tool call. `MSBuildLocator` finds the in
 | `cs_find_symbol` | Definition location and signature for a type or member name | Navigates large solutions without grepping |
 | `cs_find_references` | All references to a symbol | Safe changes to public APIs |
 | `cs_outline` | Types and member signatures of a file, no bodies | Cheap context for big files |
-| `cs_rename` | Applies a solution-wide rename, returns changed files | Refactoring that grep-and-replace gets wrong |
+| `cs_rename` | Returns a solution-wide rename plan as per-file line edits; it does not write files | Refactoring that grep-and-replace gets wrong |
 
 Phase 5 ships `cs_diagnostics` and `cs_find_symbol`, because they carry the main claim (a compile check right after an edit). The other three follow in Phase 6. Tests use small solutions in `tests/fixtures/solutions/` (a console app, and a library with a test project) so a workspace loads in seconds.
 
@@ -807,7 +813,7 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-21 | 4 | Approval prompt, status footer, key bindings | T-18 | Scripted key tests for every binding |
 | T-22 | 4 | Wire events, steering, `Esc` cancel, slash commands, pickers — **split**: part 1 `add-interactive-session` (events → scrollback/live, steering seam, `Esc`, approval adapter, history, E2E snapshot); part 2 (commands `/model` `/new` `/resume` `/compact` `/quit`, pickers, `/command` Tab completion) | T-09, T-18 to T-21 | End-to-end scripted session snapshot |
 | T-23 | 4 | Compaction as `IChatReducer` (loop-invoked; not `ReducingChatClient`) | T-11 | Replay: long session compacts; tool pairs never split |
-| T-25 | 5 | `Lunate.Roslyn` extension: `ICSharpBackend` + in-process backend (ADR 0014), `MSBuildLocator`, workspace load, file sync, `cs_diagnostics` | T-36 | Detects an error introduced by `edit`; first-call budget met |
+| T-25 | 5 | Roslyn C# tools: `ICSharpBackend` + in-process backend (ADR-0014), `MSBuildLocator`, workspace load, file sync, `cs_diagnostics` | T-36 | Detects an error introduced by `edit`; first-call budget met |
 | T-26 | 5 | `cs_find_symbol` | T-25 | Finds definitions in fixture solutions |
 | T-27 | 5 | ACP server: SDK choice (ADR), initialize, session, prompt, updates, cancel | T-09 | In-process client tests |
 | T-28 | 5 | ACP permissions and editor file system | T-27 | Approval round trip; one real Zed session |
@@ -1019,7 +1025,7 @@ These decisions are settled; the foundational ones are recorded as durable ADRs 
 | Native AOT | No; self-contained single file with ReadyToRun, held to performance budgets | Models and network dominate latency; JIT keeps runtime extensions, in-process Roslyn and all SDKs |
 | Model types | IChatClient and Microsoft.Extensions.AI types everywhere; own types only for tools and events | Microsoft-maintained .NET standard; MCP SDK fits directly |
 | Agent events | Own AgentEvent, named and sequenced like AG-UI | Thin mappings to TUI, ACP and a possible web UI; no dependency on a moving protocol |
-| Roslyn | In process, composed by the host; moving onto the extension contract is the 0.2 target | No sidecar needed without AOT |
+| Roslyn | In-process backend behind the host-supplied built-in extension contract; manifest activation and workspace-service leases | No sidecar needed without AOT |
 | Extensions | Loaded at runtime from global and project folders | Pi-style extensibility |
 
 **Resolved after review**

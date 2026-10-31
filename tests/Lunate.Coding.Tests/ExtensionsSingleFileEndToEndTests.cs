@@ -171,10 +171,16 @@ public sealed class ExtensionsSingleFileEndToEndTests
 
         Assert.Equal(ExtensionsCommand.ExitOk, exitCode);
         Assert.Equal(string.Empty, errors.ToString());
+        string[] lines = output
+            .ToString()
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        // The builtin is a packaged listing row, so it comes first; single-file candidates follow.
+        Assert.Equal(2, lines.Length);
+        Assert.StartsWith("roslyn 1.0.0 (builtin) loaded in ", lines[0], StringComparison.Ordinal);
         Assert.Equal(
             "acme-tools 1.0.0 (project, single file) not-built, tools 1, commands 0, hooks 0, services 0"
                 + " — not trusted yet; /extensions reload asks before it builds",
-            output.ToString().Trim()
+            lines[1]
         );
     }
 }

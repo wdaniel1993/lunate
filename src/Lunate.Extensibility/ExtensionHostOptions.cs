@@ -39,9 +39,10 @@ public sealed class ExtensionHostOptions
     public IReadOnlyList<BuiltInExtension> BuiltIns { get; init; } = [];
 
     /// <summary>
-    /// True composes only the built-in set (the <c>--no-extensions</c> composition): discovery
+    /// True composes only the built-in set (the <c>lunate mcp roslyn</c> composition): discovery
     /// skips the store scans and the single-file candidates, so no third-party extension is
-    /// discovered, trusted or loaded. Built-ins from <see cref="BuiltIns"/> still load.
+    /// discovered, trusted or loaded. Built-ins from <see cref="BuiltIns"/> still load. The
+    /// <c>--no-extensions</c> composition uses this with an empty built-in list.
     /// </summary>
     public bool BuiltInsOnly { get; init; }
 

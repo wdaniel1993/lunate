@@ -1,0 +1,32 @@
+[
+  {
+    "Name": "cs_diagnostics",
+    "Arguments": "{\u0022scope\u0022:\u0022solution\u0022}",
+    "Output": "No compiler errors or warnings in the whole solution.",
+    "IsError": false
+  },
+  {
+    "Name": "cs_find_symbol",
+    "Arguments": "{\u0022name\u0022:\u0022Calculator\u0022}",
+    "Output": "found 1 definition for \u0027Calculator\u0027\nsrc/ConsoleApp/Calculator.cs:3 \u2014 Calculator",
+    "IsError": false
+  },
+  {
+    "Name": "cs_find_references",
+    "Arguments": "{\u0022name\u0022:\u0022Calculator\u0022}",
+    "Output": "found 1 references to \u0027Calculator\u0027\ndefinition: src/ConsoleApp/Calculator.cs:3 \u2014 Calculator\n  src/ConsoleApp/Program.cs:3:30",
+    "IsError": false
+  },
+  {
+    "Name": "cs_outline",
+    "Arguments": "{\u0022file\u0022:\u0022src/ConsoleApp/Calculator.cs\u0022}",
+    "Output": "found 5 declarations in \u0027src/ConsoleApp/Calculator.cs\u0027\nnamespace ConsoleApp (line 1)\n  public static class Calculator (line 3)\n    public static int Add(int left, int right) (line 5)\n    public static int Add(int left, int right, int third) (line 7)\n    public static int Divide(int left, int right) (line 9)",
+    "IsError": false
+  },
+  {
+    "Name": "cs_rename",
+    "Arguments": "{\u0022name\u0022:\u0022Calculator\u0022,\u0022newName\u0022:\u0022Counter\u0022}",
+    "Output": "planned 2 change(s) in 2 file(s); nothing was changed \u2014 apply via edit/write\nsrc/ConsoleApp/Calculator.cs:3: public static class Calculator \u2192 public static class Counter\nsrc/ConsoleApp/Program.cs:3: Console.WriteLine($\u00221 \u002B 2 = {Calculator.Add(1, 2)}\u0022); \u2192 Console.WriteLine($\u00221 \u002B 2 = {Counter.Add(1, 2)}\u0022);",
+    "IsError": false
+  }
+]
