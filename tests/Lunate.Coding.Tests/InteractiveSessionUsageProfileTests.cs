@@ -46,7 +46,7 @@ public sealed class InteractiveSessionUsageProfileTests
                 }
               },
               "usages": { "chat": "chat-profile" },
-              "decisions": { "profile": "decision-profile", "tool": true }
+              "decisions": { "profile": "decision-profile", "tool": "on" }
             }
             """
         );
@@ -111,7 +111,7 @@ public sealed class InteractiveSessionUsageProfileTests
                 }
               },
               "usages": { "chat": "chat-profile" },
-              "decisions": { "profile": "decision-profile", "tool": false }
+              "decisions": { "profile": "decision-profile", "tool": "off" }
             }
             """
         );
@@ -168,7 +168,7 @@ public sealed class InteractiveSessionUsageProfileTests
                 }
               },
               "usages": { "chat": "chat-profile" },
-              "decisions": { "tool": true }
+              "decisions": { "tool": "on" }
             }
             """
         );

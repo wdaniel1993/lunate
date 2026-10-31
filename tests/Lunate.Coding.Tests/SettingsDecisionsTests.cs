@@ -22,7 +22,7 @@ public sealed class SettingsDecisionsTests
             "approvalsThreshold": 0.75,
             "routing": "enforce",
             "routingProfiles": ["routing-one", "routing-two"],
-            "tool": true,
+            "tool": "on",
             "questions": "suggest"
           }
         }
@@ -153,14 +153,14 @@ public sealed class SettingsDecisionsTests
     }
 
     [Fact]
-    public void Tool_must_be_a_boolean()
+    public void Tool_accepts_only_off_and_on()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            Resolve(Json(""" "decisions": { "tool": "on" } """), _ => null)
+            Resolve(Json(""" "decisions": { "tool": "true" } """), _ => null)
         );
 
         Assert.Contains(
-            "'decisions.tool' must be true or false",
+            "'decisions.tool' must be 'off' or 'on'",
             exception.Message,
             StringComparison.Ordinal
         );
@@ -273,7 +273,7 @@ public sealed class SettingsDecisionsTests
                 "approvals": "enforce",
                 "routing": "enforce",
                 "routingProfiles": ["routing-one", "routing-two"],
-                "tool": true,
+                "tool": "on",
                 "questions": "suggest"
               }
             }
@@ -294,7 +294,7 @@ public sealed class SettingsDecisionsTests
         using var temp = new TempDirectory();
         File.WriteAllText(
             temp.File("project-settings.json"),
-            """{ "schemaVersion": 2, "decisions": { "tool": true } }"""
+            """{ "schemaVersion": 2, "decisions": { "tool": "on" } }"""
         );
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
