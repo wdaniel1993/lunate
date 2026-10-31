@@ -49,6 +49,26 @@ public sealed class HighRiskCallTests
     ) => Assert.Equal(expected, IsBash(command));
 
     [Fact]
+    public void A_docker_volume_of_the_configured_state_root_is_high_risk()
+    {
+        Assert.True(IsBash("docker run -v \"$LUNATE_HOME:/state\" image"));
+    }
+
+    [Fact]
+    public void A_podman_bind_mount_beneath_the_state_root_is_high_risk()
+    {
+        string source = Path.Combine(Store, "nested", "cache");
+        Assert.True(IsBash($"podman run --mount type=bind,source={source},target=/state image"));
+    }
+
+    [Fact]
+    public void An_ordinary_container_mount_outside_the_state_root_is_not_high_risk()
+    {
+        string source = Path.Combine(Home, "other");
+        Assert.False(IsBash($"docker run --volume=\"{source}:/data\" image"));
+    }
+
+    [Fact]
     public void A_write_of_a_path_inside_the_state_root_is_high_risk()
     {
         Assert.True(
