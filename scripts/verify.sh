@@ -166,8 +166,8 @@ trap 'exit 143' TERM
 # The docs profile: prose only. No build, no publish, no tests and no startup measurement, so a
 # docs or proposal pull request cannot go red on a flake in the suite it never runs. What prose can
 # break is (a) the generated regions drifting from the code they mirror, (b) the docs tree becoming
-# a build input or a test's subject, (c) Markdown lint, and (d) the OpenSpec tree. Those are the four
-# steps; `openspec validate` dominates the wall clock.
+# a build input or a test's subject, (c) ADR numbering, (d) Markdown lint, and (e) the OpenSpec tree.
+# Those are the five steps; `openspec validate` dominates the wall clock.
 docs_profile() {
   step "tools"
   if ! command -v python3 >/dev/null 2>&1; then
