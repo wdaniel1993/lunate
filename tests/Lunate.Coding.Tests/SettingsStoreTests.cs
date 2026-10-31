@@ -28,8 +28,23 @@ public sealed class SettingsStoreTests
         Assert.Equal(new SubagentLimits(), settings.Subagents);
         Assert.True(settings.StartupHeader);
         Assert.True(settings.UpdateCheck);
+        Assert.Equal(DecisionQuestionsMode.Off, settings.Decisions.Questions);
         Assert.False(settings.Tui.Fullscreen);
         Assert.Empty(settings.Favorites);
+    }
+
+    [Fact]
+    public void Question_suggestions_can_be_enabled_in_user_settings()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """{"schemaVersion":2,"decisions":{"questions":"suggest"}}"""
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal(DecisionQuestionsMode.Suggest, settings.Decisions.Questions);
     }
 
     [Fact]

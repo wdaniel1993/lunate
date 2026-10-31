@@ -45,7 +45,11 @@ public sealed class QuestionDecisionSuggestionTests
         host.Console.SendText("Choose a plan.");
         host.Console.SendEnter();
         await host.WaitForFrameAsync("Which plan should I use?");
-        Assert.Contains("Flexible (recommended)", host.Frames, StringComparison.Ordinal);
+        Assert.Contains(
+            "Flexible (suggested · decision model 0.80)",
+            host.Frames,
+            StringComparison.Ordinal
+        );
         host.Advance(301);
         host.Console.SendEscape();
         await host.WaitUntilAsync(() => chat.Requests.Count == 2);
@@ -107,7 +111,11 @@ public sealed class QuestionDecisionSuggestionTests
         host.Console.SendText("Choose a plan and write a file.");
         host.Console.SendEnter();
         await host.WaitForFrameAsync("Which plan should I use?");
-        Assert.Contains("Flexible (recommended)", host.Frames, StringComparison.Ordinal);
+        Assert.Contains(
+            "Flexible (suggested · decision model 0.80)",
+            host.Frames,
+            StringComparison.Ordinal
+        );
         host.Advance(301);
         host.Console.SendEnter();
         await host.WaitForApprovalAsync();

@@ -1,6 +1,10 @@
 namespace Lunate.Tui;
 
-internal sealed record SelectListQuestionOption(string Label, string Description);
+internal sealed record SelectListQuestionOption(
+    string Label,
+    string Description,
+    double? DecisionSuggestedProbability = null
+);
 
 internal enum QuestionPromptStatus
 {

@@ -35,26 +35,65 @@ internal sealed partial class InteractiveSession
                 continue;
             }
 
-            ResolvedModelProfile profile = ModelSelectionResolver.ResolveChatModel(
-                profileName,
-                _settings,
-                _providerEntries,
-                _catalog
-            );
-            usages[usage] = GetClient(profile);
+            try
+            {
+                ResolvedModelProfile profile = ModelSelectionResolver.ResolveChatModel(
+                    profileName,
+                    _settings,
+                    _providerEntries,
+                    _catalog
+                );
+                usages[usage] = GetClient(profile);
+            }
+            catch (Exception exception)
+                when (usage == "decision"
+                    && exception
+                        is UnknownModelException
+                            or InvalidDataException
+                            or InvalidOperationException
+                            or ArgumentException
+                )
+            {
+                if (_warnedDecisionProfiles.Add(profileName))
+                {
+                    Notify(
+                        $"decision profile '{profileName}' is unavailable; decision suggestions are off: {exception.Message}",
+                        NoticeLevel.Warning
+                    );
+                }
+            }
         }
 
         // The decision profile is configured in the decisions block, not as a usage.
         if (_settings.Decisions.Profile is { } decisionProfile)
         {
-            usages["decision"] = GetClient(
-                ModelSelectionResolver.ResolveChatModel(
-                    decisionProfile,
-                    _settings,
-                    _providerEntries,
-                    _catalog
+            try
+            {
+                usages["decision"] = GetClient(
+                    ModelSelectionResolver.ResolveChatModel(
+                        decisionProfile,
+                        _settings,
+                        _providerEntries,
+                        _catalog
+                    )
+                );
+            }
+            catch (Exception exception)
+                when (exception
+                        is UnknownModelException
+                            or InvalidDataException
+                            or InvalidOperationException
+                            or ArgumentException
                 )
-            );
+            {
+                if (_warnedDecisionProfiles.Add(decisionProfile))
+                {
+                    Notify(
+                        $"decision profile '{decisionProfile}' is unavailable; decision suggestions are off: {exception.Message}",
+                        NoticeLevel.Warning
+                    );
+                }
+            }
         }
 
         return usages;

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.Contracts;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 
@@ -12,6 +13,48 @@ namespace Lunate.Coding.Tests;
 public sealed class ExtensionSessionTests
 {
     private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
+
+    [Fact]
+    public async Task Configured_decision_service_is_exposed_through_the_core_service_bridge()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        var agentService = new TestAgentDecisionService();
+        await using var host = await ExtensionSession.StartAsync(
+            Identity(worktree),
+            new ExtensionSeams
+            {
+                StorePath = temp.File("store"),
+                Log = new RecordingExtensionLog(),
+                AgentDecisionService = agentService,
+            },
+            Ct
+        );
+
+        Assert.NotNull(host.DecisionService);
+        Assert.True(
+            host.Services.TryGetCore<IDecisionService>("core/decision", out var registered)
+        );
+        Assert.Same(host.DecisionService, registered);
+
+        DecisionResponse response = await host.DecisionService.DecideAsync(
+            new DecisionRequest(
+                JsonDocument.Parse("{}").RootElement.Clone(),
+                [
+                    new DecisionQuestion(
+                        "question-1",
+                        "Choose",
+                        DecisionQuestionKind.Choice,
+                        ["A", "B"]
+                    ),
+                ]
+            ),
+            Ct
+        );
+
+        Assert.Same(response, agentService.Response);
+    }
 
     [Fact]
     public async Task An_empty_store_composes_only_the_inactive_roslyn_builtin()
@@ -611,6 +654,28 @@ public sealed class ExtensionSessionTests
 
     private static WorkspaceInfo Identity(string worktree) =>
         new(Workspace.Canonicalize(worktree), null, null);
+
+    private sealed class TestAgentDecisionService : IAgentDecisionService
+    {
+        public DecisionResponse Response { get; } =
+            new(
+                new Dictionary<string, DecisionAnswer>(StringComparer.Ordinal)
+                {
+                    ["question-1"] = new(
+                        "B",
+                        0.82d,
+                        [new("A", 0.18d), new("B", 0.82d)],
+                        "decision-model",
+                        "adapter"
+                    ),
+                }
+            );
+
+        public Task<DecisionResponse> DecideAsync(
+            DecisionRequest request,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult(Response);
+    }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
     {

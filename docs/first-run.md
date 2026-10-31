@@ -124,6 +124,11 @@ Decision spend is charged to the `decision` usage and `/cost` distinguishes the 
 recommendation whose probability reaches `approvalsThreshold` turns the ask into a user prompt (and
 denies it when no user is present); below the threshold the ordinary approval flow runs unchanged.
 
+With `questions: suggest`, the decision model adds a probability marker beside its top option. The
+user still chooses; the suggestion never selects an option, answers a skipped question, or approves a
+tool call. Without a configured decision profile, the ordinary question picker remains available and
+the layer reports unavailable without an error state.
+
 Decision use is the user's choice, not a model-intelligence verdict. The consumer is off by default
 and must be enabled in user settings. Any configured model may be used; known structured-output
 support is checked as a technical requirement, while unknown capability facts are allowed. A

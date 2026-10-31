@@ -1,4 +1,5 @@
 using Lunate.Ai;
+using Lunate.Contracts;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
@@ -32,8 +33,6 @@ public sealed record AgentHarnessOptions
     /// only when this is on and a decision usage resolves.
     /// </summary>
     public bool DecideTool { get; init; }
-
-    internal bool SuggestQuestions { get; init; }
 
     /// <summary>The maximum number of model calls per run.</summary>
     public int MaxSteps { get; init; } = 50;
@@ -80,6 +79,16 @@ public sealed record AgentHarnessOptions
         CancellationToken,
         Task<UserQuestionResult>
     >? AskUserAsync { get; init; }
+
+    /// <summary>Whether the interactive question picker may show decision-profile suggestions.</summary>
+    internal bool QuestionSuggestionsEnabled { get; init; }
+
+    /// <summary>The host's <c>IDecisionService</c> bridge; null when no configured profile is available.</summary>
+    internal Func<
+        DecisionRequest,
+        CancellationToken,
+        Task<DecisionResponse>
+    >? QuestionDecisionAsync { get; init; }
 
     /// <summary>The steering queue the loop drains before each model request; null disables steering.</summary>
     public SteeringQueue? Steering { get; init; }

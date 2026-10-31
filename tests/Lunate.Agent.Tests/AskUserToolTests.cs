@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Lunate.Contracts;
 
 namespace Lunate.Agent.Tests;
 
@@ -118,6 +119,93 @@ public sealed class AskUserToolTests
     }
 
     [Fact]
+    public async Task Decision_suggestion_is_display_only_and_preserves_the_users_choice()
+    {
+        IReadOnlyList<UserQuestion>? presented = null;
+        DecisionRequest? decisionRequest = null;
+        RecordingAgentEvents events = new();
+        ToolContext context = CreateContext(
+            (questions, _) =>
+            {
+                presented = questions;
+                return Task.FromResult(
+                    new UserQuestionResult(
+                        UserQuestionStatus.Answered,
+                        [new UserQuestionAnswer(["Option 1"], null)]
+                    )
+                );
+            },
+            questionSuggestionsEnabled: true,
+            questionDecisionAsync: (request, _) =>
+            {
+                decisionRequest = request;
+                return Task.FromResult(DecisionResponseFor("Option 2", 0.82d));
+            },
+            events: events
+        );
+
+        ToolResult result = await Execute(new AskUserTool(), context, Arguments(1, 2));
+
+        Assert.Equal(DecisionQuestionKind.Choice, decisionRequest!.Questions[0].Kind);
+        Assert.Equal(["Option 1", "Option 2"], decisionRequest.Questions[0].Answers);
+        Assert.Equal("Option 2", presented![0].Options[1].Label);
+        Assert.Equal(0.82d, presented[0].Options[1].DecisionSuggestedProbability);
+        Assert.Contains("Question 1: Option 1", result.Output, StringComparison.Ordinal);
+        DecisionEvaluated evaluated = Assert.Single(events.Events.OfType<DecisionEvaluated>());
+        Assert.Equal("question-1", evaluated.QuestionId);
+        Assert.Equal("adapter", evaluated.Method);
+        Assert.Equal(0.82d, evaluated.Probability);
+    }
+
+    [Fact]
+    public async Task Skipped_question_is_not_auto_answered_after_a_decision_suggestion()
+    {
+        bool prompted = false;
+        ToolContext context = CreateContext(
+            (_, _) =>
+            {
+                prompted = true;
+                return Task.FromResult(new UserQuestionResult(UserQuestionStatus.Skipped, []));
+            },
+            questionSuggestionsEnabled: true,
+            questionDecisionAsync: (_, _) => Task.FromResult(DecisionResponseFor("Option 1", 0.91d))
+        );
+
+        ToolResult result = await Execute(new AskUserTool(), context, Arguments(1, 2));
+
+        Assert.True(prompted);
+        Assert.Equal("unanswered: user skipped. State an assumption and continue.", result.Output);
+    }
+
+    [Fact]
+    public async Task No_user_does_not_invoke_decision_service_or_auto_answer()
+    {
+        bool decided = false;
+        ToolContext context = new("/repo", new RecordingAgentEvents())
+        {
+            AgentState = new AgentToolContextState(
+                null,
+                null,
+                AskUserAsync: null,
+                QuestionSuggestionsEnabled: true,
+                QuestionDecisionAsync: (_, _) =>
+                {
+                    decided = true;
+                    return Task.FromResult(DecisionResponseFor("Option 1", 0.99d));
+                }
+            ),
+        };
+
+        ToolResult result = await Execute(new AskUserTool(), context, Arguments(1, 2));
+
+        Assert.False(decided);
+        Assert.Equal(
+            "unanswered: no user present. State an assumption and continue.",
+            result.Output
+        );
+    }
+
+    [Fact]
     public async Task Makes_free_text_available_alongside_selected_options()
     {
         IReadOnlyList<UserQuestion>? received = null;
@@ -206,12 +294,40 @@ public sealed class AskUserToolTests
     }
 
     private static ToolContext CreateContext(
-        Func<IReadOnlyList<UserQuestion>, CancellationToken, Task<UserQuestionResult>> handler
+        Func<IReadOnlyList<UserQuestion>, CancellationToken, Task<UserQuestionResult>> handler,
+        bool questionSuggestionsEnabled = false,
+        Func<DecisionRequest, CancellationToken, Task<DecisionResponse>>? questionDecisionAsync =
+            null,
+        RecordingAgentEvents? events = null
     ) =>
-        new("/repo", new RecordingAgentEvents())
+        new("/repo", events ?? new RecordingAgentEvents())
         {
-            AgentState = new AgentToolContextState(null, null, handler),
+            RunId = "run",
+            AgentState = new AgentToolContextState(
+                null,
+                null,
+                handler,
+                questionSuggestionsEnabled,
+                questionDecisionAsync
+            ),
         };
+
+    private static DecisionResponse DecisionResponseFor(string answer, double probability) =>
+        new(
+            new Dictionary<string, DecisionAnswer>(StringComparer.Ordinal)
+            {
+                ["question-1"] = new(
+                    answer,
+                    probability,
+                    [
+                        new("Option 1", answer == "Option 1" ? probability : 1d - probability),
+                        new("Option 2", answer == "Option 2" ? probability : 1d - probability),
+                    ],
+                    "decision-model",
+                    "adapter"
+                ),
+            }
+        );
 
     private static Task<UserQuestionResult> AnswerAll(IReadOnlyList<UserQuestion> questions) =>
         Task.FromResult(

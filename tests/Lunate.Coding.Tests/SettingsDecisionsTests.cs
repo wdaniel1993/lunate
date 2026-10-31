@@ -70,7 +70,15 @@ public sealed class SettingsDecisionsTests
     [Fact]
     public void Old_flat_keys_are_refused_without_aliases()
     {
-        foreach (string bad in new[] { "decisionMode", "routingMode", "routingProfiles" })
+        foreach (
+            string bad in new[]
+            {
+                "decisionMode",
+                "routingMode",
+                "routingProfiles",
+                "questionSuggestions",
+            }
+        )
         {
             InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
                 Resolve(Json($""" "{bad}": "off" """), _ => null)
