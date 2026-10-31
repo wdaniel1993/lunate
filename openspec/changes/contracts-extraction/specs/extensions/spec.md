@@ -1,3 +1,31 @@
+## ADDED Requirements
+
+### Requirement: Contracts owns the shared tool and event types
+
+The public tool and event contracts SHALL be defined in `Lunate.Contracts`, while Agent-owned event
+delivery implementations remain in `Lunate.Agent`.
+
+#### Scenario: Shared types live in Contracts
+
+- **GIVEN** the public tool and event contracts
+- **WHEN** their defining assemblies are inspected
+- **THEN** `ITool`, tool context/results/declarations/annotations and every `AgentEvent` subtype are
+  defined in `Lunate.Contracts`, while the event channel and sequence validator remain in
+  `Lunate.Agent`
+
+### Requirement: A copied Contracts assembly shares the host identity
+
+The extension host SHALL ignore extension-supplied copies of `Lunate.Contracts` and bind the
+extension to the host's assembly.
+
+#### Scenario: A Contracts copy shares the host's type identity
+
+- **GIVEN** a packaged extension directory or locked package that carries its own
+  `Lunate.Contracts.dll`
+- **WHEN** the extension loads
+- **THEN** the copy is ignored, the extension resolves `ITool` and `AgentEvent` from the host's
+  `Lunate.Contracts` assembly, and only one Contracts identity is loaded
+
 ## MODIFIED Requirements
 
 ### Requirement: Extension contract assembly
@@ -16,20 +44,12 @@ extension id, settings, secrets and a log sink. The current API version SHALL be
 `Lunate.Contracts` and `Lunate.Extensibility.Abstractions` SHALL be versioned in lockstep under
 `ExtensionApi`.
 
-#### Scenario: An extension compiles against the contract assemblies only
+#### Scenario: An extension compiles against the contract only
 
 - **GIVEN** an extension project referencing `Lunate.Contracts`,
   `Lunate.Extensibility.Abstractions` and `Microsoft.Extensions.AI.Abstractions`
 - **WHEN** it is built
 - **THEN** it compiles without a direct reference to `Lunate.Agent` or another Lunate assembly
-
-#### Scenario: Shared types live in Contracts
-
-- **GIVEN** the public tool and event contracts
-- **WHEN** their defining assemblies are inspected
-- **THEN** `ITool`, tool context/results/declarations/annotations and every `AgentEvent` subtype are
-  defined in `Lunate.Contracts`, while the event channel and sequence validator remain in
-  `Lunate.Agent`
 
 #### Scenario: The API version is queryable
 
@@ -130,15 +150,7 @@ the host owns those assemblies.
 - **WHEN** it loads
 - **THEN** the host's copy is used and the row and the log name the directory once
 
-#### Scenario: A Contracts copy shares the host's type identity
-
-- **GIVEN** a packaged extension directory or locked package that carries its own
-  `Lunate.Contracts.dll`
-- **WHEN** the extension loads
-- **THEN** the copy is ignored, the extension resolves `ITool` and `AgentEvent` from the host's
-  `Lunate.Contracts` assembly, and only one Contracts identity is loaded
-
-#### Scenario: The template keeps both contracts out of the output
+#### Scenario: The template keeps the contract out of the output
 
 - **GIVEN** the packaged-extension template
 - **WHEN** its project file is read
