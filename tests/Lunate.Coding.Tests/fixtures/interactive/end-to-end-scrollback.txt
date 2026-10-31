@@ -2,6 +2,7 @@
 lunate  v<version>+<build>
 gpt-4o-mini · 128,000 ctx
 <workspace>
+bash guard none · probe not run
 extensions … · MCP … · skills …
 /help · /model · /skills · /extensions · ctrl+o transcript · Esc cancels · /quit
 extensions 0 · MCP 0 · skills 0
@@ -22,5 +23,6 @@ all done
 lunate  v<version>+<build>
 gpt-4o · 128,000 ctx
 <workspace>
+bash guard none · probe not run
 extensions 0 · MCP 0 · skills 0
 /help · /model · /skills · /extensions · ctrl+o transcript · Esc cancels · /quit
