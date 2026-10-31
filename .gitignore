@@ -26,3 +26,6 @@ TestResults/
 
 # Per-task worker worktrees (kanban dispatcher creates <repo>/.worktrees/<task-id>)
 .worktrees/
+
+# Agent scratch directories (plans, ledgers, resume notes) — OpenSpec is the only plan format
+.superpowers/
