@@ -1232,6 +1232,11 @@ Lunate.Agent.AgentCompactingContext.ParentRunId.init -> void
 Lunate.Agent.AgentContextBuildingContext.ParentRunId.get -> string?
 Lunate.Agent.AgentContextBuildingContext.ParentRunId.init -> void
 Lunate.Agent.AgentHarness.SubagentUsage.get -> Lunate.Agent.SubagentUsage
+Lunate.Agent.AgentHarness.ContextSavings.get -> Lunate.Agent.ContextSavings!
+Lunate.Agent.AgentHarnessOptions.ProjectionMaskTurns.get -> int
+Lunate.Agent.AgentHarnessOptions.ProjectionMaskTurns.init -> void
+Lunate.Agent.AgentHarnessOptions.ProjectionMaskErrorTurns.get -> int
+Lunate.Agent.AgentHarnessOptions.ProjectionMaskErrorTurns.init -> void
 Lunate.Agent.AgentHarnessOptions.SubagentLimits.get -> Lunate.Agent.SubagentLimits!
 Lunate.Agent.AgentHarnessOptions.SubagentLimits.init -> void
 Lunate.Agent.AgentHarnessOptions.DecisionMode.get -> Lunate.Agent.DecisionMode
@@ -1625,6 +1630,22 @@ const Lunate.Agent.ImageLimits.DownscalingUnavailable = "downscaling is not avai
 const Lunate.Agent.ImageLimits.Formats = "PNG, JPEG, GIF or WebP" -> string!
 const Lunate.Agent.ImageLimits.MaxBytes = 5242880 -> int
 const Lunate.Agent.ImageLimits.MaxPerMessage = 4 -> int
+Lunate.Agent.ContextSavings
+Lunate.Agent.ContextSavings.<Clone>$() -> Lunate.Agent.ContextSavings!
+Lunate.Agent.ContextSavings.ContextSavings(long Spills, long Masking, long ReadStubs) -> void
+Lunate.Agent.ContextSavings.Deconstruct(out long Spills, out long Masking, out long ReadStubs) -> void
+Lunate.Agent.ContextSavings.Equals(Lunate.Agent.ContextSavings? other) -> bool
+override Lunate.Agent.ContextSavings.Equals(object? obj) -> bool
+override Lunate.Agent.ContextSavings.GetHashCode() -> int
+override Lunate.Agent.ContextSavings.ToString() -> string!
+Lunate.Agent.ContextSavings.Masking.get -> long
+Lunate.Agent.ContextSavings.Spills.get -> long
+Lunate.Agent.ContextSavings.ReadStubs.get -> long
+Lunate.Agent.ContextSavings.Masking.init -> void
+Lunate.Agent.ContextSavings.Spills.init -> void
+Lunate.Agent.ContextSavings.ReadStubs.init -> void
+static Lunate.Agent.ContextSavings.operator !=(Lunate.Agent.ContextSavings? left, Lunate.Agent.ContextSavings? right) -> bool
+static Lunate.Agent.ContextSavings.operator ==(Lunate.Agent.ContextSavings? left, Lunate.Agent.ContextSavings? right) -> bool
 const Lunate.Agent.ImageLimits.MaxSide = 4096 -> int
 override Lunate.Agent.ImageAttachment.Equals(object? obj) -> bool
 override Lunate.Agent.ImageAttachment.GetHashCode() -> int

@@ -672,6 +672,8 @@ internal static class PrintMode
             ToolOutputLimit = settings.ToolOutputLimit,
             SpillThresholdTokens = settings.SpillThresholdTokens,
             ProjectionBatchTurns = settings.ProjectionBatchTurns,
+            ProjectionMaskTurns = settings.ProjectionMaskTurns,
+            ProjectionMaskErrorTurns = settings.ProjectionMaskErrorTurns,
             // The same redactor masks the model-facing text whether or not a session exists.
             ToolOutputMask = redaction.Redact,
             SubagentLimits = settings.Subagents,

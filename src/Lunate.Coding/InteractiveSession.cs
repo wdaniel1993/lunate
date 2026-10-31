@@ -891,6 +891,8 @@ internal sealed partial class InteractiveSession : IDisposable
             ToolOutputLimit = _settings.ToolOutputLimit,
             SpillThresholdTokens = _settings.SpillThresholdTokens,
             ProjectionBatchTurns = _settings.ProjectionBatchTurns,
+            ProjectionMaskTurns = _settings.ProjectionMaskTurns,
+            ProjectionMaskErrorTurns = _settings.ProjectionMaskErrorTurns,
             // The same redactor masks the model-facing text; the interactive session always has one.
             ToolOutputMask = _redaction.Redact,
             SubagentLimits = _settings.Subagents,

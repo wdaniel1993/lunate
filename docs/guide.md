@@ -279,6 +279,8 @@ internal sealed class ToolDeclaration(ITool tool) : AIFunction { /* Name, Descri
 
 After a file changes, a later edit or write based on an earlier read is refused until the model reads the current version. Superseded read text stays byte-for-byte stable in the request between projection batch points; a compaction or every `projection.batchTurns` model turns (default 4) replaces it with a one-line stale notice. The session retains the original transcript.
 
+At the same batch points, a successful tool result older than `projection.maskTurns` model turns (default 8; `LUNATE_PROJECTION_MASK_TURNS` overrides it) becomes a one-line stub that carries its spill pointer where one exists; error results are kept longer — older than `projection.maskErrorTurns` (default 32; `LUNATE_PROJECTION_MASK_ERROR_TURNS` overrides it, never below the success window) — because a failure the model learned from is context, not noise. Masking is request-time like the read stubs; the session entry keeps the original text. `/context` reports the tokens kept out of the window by spills, masking and read stubs as three separate numbers.
+
 Known credential values in tool-result text are replaced with `[redacted:<name>]` before the text reaches the model, event stream, session or spill file. Masking is exact-value only; the existing redaction at rest remains defense in depth.
 
 MCP tools arrive from the SDK as functions and are wrapped as `ITool`s, so they go through the same approval policy. Do not use `AIFunctionFactory`: it builds tools by reflection and hides the schema.
@@ -458,7 +460,8 @@ Tools: read, write, edit, bash{extra_tools}.
 
 `~/.lunate/settings.json` holds profiles, usage assignments, approval policy, output limits and
 write-verification mode, plus `projection.batchTurns` (default 4;
-`LUNATE_PROJECTION_BATCH_TURNS` overrides it);
+`LUNATE_PROJECTION_BATCH_TURNS` overrides it) and the observation-mask windows
+`projection.maskTurns` (default 8) and `projection.maskErrorTurns` (default 32);
 `~/.lunate/providers.json` holds named provider instances; and `~/.lunate/auth.json` holds stored
 keys. Provider instances select one of the twelve built-in kinds as a template and may override its
 endpoint. Credentials and optional header values are references (`auth:`, `env:`, or `helper:`), not

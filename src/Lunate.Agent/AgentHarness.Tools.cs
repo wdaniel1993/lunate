@@ -62,6 +62,7 @@ public sealed partial class AgentHarness
         }
 
         toolActivity?.SetTag(AgentTelemetry.ToolIsErrorAttribute, result.IsError);
+        RecordObservation(callId, result.IsError);
         string output = AdmitToolOutput(runId, callId, result, channel);
         channel.Emit(
             new ToolCallResult(runId, callId, output, result.IsError, result.Details)
@@ -186,9 +187,15 @@ public sealed partial class AgentHarness
             channel.Emit(new ToolOutputSpillFailed(runId, error));
         }
 
-        return spill.Path is { } path
-            ? ToolOutput.RenderPointer(output, path, includePreview)
-            : ToolOutput.Truncate(output, _options.ToolOutputLimit, spill.TooLarge);
+        if (spill.Path is { } path)
+        {
+            RecordSpillPath(callId, path);
+            string rendered = ToolOutput.RenderPointer(output, path, includePreview);
+            RecordSpillSaving(output, rendered);
+            return rendered;
+        }
+
+        return ToolOutput.Truncate(output, _options.ToolOutputLimit, spill.TooLarge);
     }
 
     private static string JoinAnswerAndTranscript(string answer, string transcript) =>
@@ -230,6 +237,7 @@ public sealed partial class AgentHarness
     )
     {
         string callId = call.CallId ?? string.Empty;
+        RecordObservation(callId, true);
         string output = SyntheticOutput(call, cancelled);
         channel.Emit(new ToolCallResult(runId, callId, output, IsError: true));
         AppendHistoryMessage(
@@ -243,6 +251,7 @@ public sealed partial class AgentHarness
         foreach (FunctionCallContent call in _danglingCalls)
         {
             string callId = call.CallId ?? string.Empty;
+            RecordObservation(callId, true);
             AppendHistoryMessage(
                 new ChatMessage(
                     ChatRole.Tool,

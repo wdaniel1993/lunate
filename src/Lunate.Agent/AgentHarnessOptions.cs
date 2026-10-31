@@ -121,6 +121,20 @@ public sealed record AgentHarnessOptions
     public int ProjectionBatchTurns { get; init; } = 4;
 
     /// <summary>
+    /// The mask window for successful tool results, in model turns: at a batch point a success
+    /// result whose turn age exceeds it becomes a one-line stub carrying its spill pointer where
+    /// one exists (ADR-0012 addendum, sign-off condition (c)).
+    /// </summary>
+    public int ProjectionMaskTurns { get; init; } = 8;
+
+    /// <summary>
+    /// The mask window for error tool results, in model turns; must be at least
+    /// <see cref="ProjectionMaskTurns"/>. A failure the model learned from is context, not noise,
+    /// so errors are kept longer.
+    /// </summary>
+    public int ProjectionMaskErrorTurns { get; init; } = 32;
+
+    /// <summary>
     /// The cumulative input+output token budget of this run, checked before each model call; null
     /// means unlimited. The subagent runner sets the child run's budget to the tighter of the
     /// per-child and the tree's remaining budget.
