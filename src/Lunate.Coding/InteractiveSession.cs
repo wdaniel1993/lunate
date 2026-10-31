@@ -928,7 +928,8 @@ internal sealed partial class InteractiveSession : IDisposable
             QuestionDecisionAsync =
                 _settings.Decisions.Questions == DecisionQuestionsMode.Suggest
                 && _settings.Decisions.Profile is not null
-                    ? _extensions?.DecisionService?.DecideAsync
+                && _extensions?.DecisionService is { } decisionService
+                    ? decisionService.DecideAsync
                     : null,
             RoutingProfiles = routingProfiles,
             ApprovalsThreshold = _settings.Decisions.ApprovalsThreshold,
