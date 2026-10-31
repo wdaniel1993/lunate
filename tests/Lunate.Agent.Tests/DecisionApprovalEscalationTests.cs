@@ -68,7 +68,11 @@ public sealed class DecisionApprovalEscalationTests
     {
         DecisionRun run = await RunAsync(new RecordingApprover(decision: true), threshold: 0.87);
 
-        Assert.True(Assert.Single(Assert.IsType<RecordingApprover>(run.Approver).PromptRequests).EscalationRequested);
+        Assert.True(
+            Assert
+                .Single(Assert.IsType<RecordingApprover>(run.Approver).PromptRequests)
+                .EscalationRequested
+        );
         Assert.Equal(1, run.Executions);
     }
 
@@ -77,7 +81,11 @@ public sealed class DecisionApprovalEscalationTests
     {
         DecisionRun run = await RunAsync(new RecordingApprover(decision: true));
 
-        Assert.True(Assert.Single(Assert.IsType<RecordingApprover>(run.Approver).PromptRequests).EscalationRequested);
+        Assert.True(
+            Assert
+                .Single(Assert.IsType<RecordingApprover>(run.Approver).PromptRequests)
+                .EscalationRequested
+        );
         Assert.Equal(1, run.Executions);
     }
 

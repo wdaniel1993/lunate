@@ -104,7 +104,6 @@ public sealed class SettingsProfileCapabilitiesTests
         Assert.Equal(DecisionMode.Enforce, settings.Decisions.Routing);
     }
 
-
     [Fact]
     public void User_profile_can_override_open_capability_categories()
     {

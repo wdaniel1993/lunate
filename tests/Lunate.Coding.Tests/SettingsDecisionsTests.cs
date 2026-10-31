@@ -28,10 +28,7 @@ public sealed class SettingsDecisionsTests
         }
         """;
 
-    private static AgentSettings Resolve(
-        string json,
-        Func<string, string?>? environment = null
-    )
+    private static AgentSettings Resolve(string json, Func<string, string?>? environment = null)
     {
         using var temp = new TempDirectory();
         string path = temp.File("settings.json");
@@ -88,10 +85,7 @@ public sealed class SettingsDecisionsTests
     public void Unknown_keys_inside_the_block_name_the_field()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            Resolve(
-                Json(""" "decisions": { "unknownKey": true } """),
-                _ => null
-            )
+            Resolve(Json(""" "decisions": { "unknownKey": true } """), _ => null)
         );
 
         Assert.Contains("'decisions.unknownKey'", exception.Message, StringComparison.Ordinal);
@@ -140,10 +134,7 @@ public sealed class SettingsDecisionsTests
     public void An_out_of_range_or_non_number_threshold_is_refused_naming_the_field(string bad)
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            Resolve(
-                Json($$""" "decisions": { "approvalsThreshold": {{bad}} } """),
-                _ => null
-            )
+            Resolve(Json($$""" "decisions": { "approvalsThreshold": {{bad}} } """), _ => null)
         );
 
         Assert.Contains(
@@ -171,18 +162,11 @@ public sealed class SettingsDecisionsTests
     public void Questions_accepts_only_off_and_suggest()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            Resolve(
-                Json(""" "decisions": { "questions": "enforce" } """),
-                _ => null
-            )
+            Resolve(Json(""" "decisions": { "questions": "enforce" } """), _ => null)
         );
 
         Assert.Contains("'decisions.questions'", exception.Message, StringComparison.Ordinal);
-        Assert.Contains(
-            "must be 'off' or 'suggest'",
-            exception.Message,
-            StringComparison.Ordinal
-        );
+        Assert.Contains("must be 'off' or 'suggest'", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -242,10 +226,7 @@ public sealed class SettingsDecisionsTests
     public void Routing_refuses_unknown_profile_names_even_when_off()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            Resolve(
-                Json(""" "decisions": { "routingProfiles": ["missing"] } """),
-                _ => null
-            )
+            Resolve(Json(""" "decisions": { "routingProfiles": ["missing"] } """), _ => null)
         );
 
         Assert.Contains(
@@ -263,10 +244,7 @@ public sealed class SettingsDecisionsTests
             Enumerable.Range(0, 256).Select(i => $"\"routing-{i}\"")
         );
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            Resolve(
-                Json($$""" "decisions": { "routingProfiles": [{{entries}}] } """),
-                _ => null
-            )
+            Resolve(Json($$""" "decisions": { "routingProfiles": [{{entries}}] } """), _ => null)
         );
 
         Assert.Contains("255", exception.Message, StringComparison.Ordinal);
@@ -328,10 +306,7 @@ public sealed class SettingsDecisionsTests
     public void Usages_can_not_select_the_decision_profile_any_more()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            Resolve(
-                Json(""" "usages": { "decision": "decision-profile" } """),
-                _ => null
-            )
+            Resolve(Json(""" "usages": { "decision": "decision-profile" } """), _ => null)
         );
 
         Assert.Contains(
