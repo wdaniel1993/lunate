@@ -118,10 +118,7 @@ public sealed class DecideToolTests
         Assert.Equal(["safe", "risk", "quality"], results.EnumerateObject().Select(p => p.Name));
         Assert.Equal("yes", results.GetProperty("safe").GetProperty("answer").GetString());
         Assert.Equal(0.8, results.GetProperty("safe").GetProperty("probability").GetDouble());
-        Assert.Equal(
-            2,
-            results.GetProperty("risk").GetProperty("distribution").GetArrayLength()
-        );
+        Assert.Equal(2, results.GetProperty("risk").GetProperty("distribution").GetArrayLength());
         Assert.Contains(
             events.OfType<ToolCallResult>(),
             result => result.CallId == "write-call" && result.IsError
@@ -164,7 +161,9 @@ public sealed class DecideToolTests
         public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
         {
             ToolNames.Add(request.Tool.Name);
-            return ValueTask.FromResult(allowedTools.Contains(request.Tool.Name, StringComparer.Ordinal));
+            return ValueTask.FromResult(
+                allowedTools.Contains(request.Tool.Name, StringComparer.Ordinal)
+            );
         }
     }
 }
