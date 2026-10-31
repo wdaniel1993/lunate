@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace Lunate.Agent;
 
-internal sealed class AskUserTool : ITool
+internal sealed partial class AskUserTool : ITool
 {
     private const string DescriptionText =
         "Ask the user only to make decisions that belong to them. Do not ask permission to proceed, and do not ask for facts you can discover with your tools. Answers are information only and never approve tools. Ask 1–4 concise questions; each has 2–4 labelled options with one-line descriptions, single- or multi-select, and an optional recommended option. The user may also enter free text alongside or instead of selected options.";
@@ -29,9 +29,23 @@ internal sealed class AskUserTool : ITool
             return new ToolResult(error!, IsError: true);
         }
 
-        if (ctx.AgentState is not AgentToolContextState { AskUserAsync: { } askUser })
+        if (
+            ctx.AgentState is not AgentToolContextState state
+            || state.AskUserAsync is not { } askUser
+        )
         {
             return Unanswered("no user present");
+        }
+
+        if (state.QuestionSuggestionsEnabled)
+        {
+            questions = await AddDecisionSuggestionsAsync(
+                    questions!,
+                    state.QuestionDecisionAsync,
+                    ctx,
+                    ct
+                )
+                .ConfigureAwait(false);
         }
 
         UserQuestionResult response = await askUser(questions!, ct).ConfigureAwait(false);
@@ -269,28 +283,4 @@ internal sealed class AskUserTool : ITool
         using JsonDocument document = JsonDocument.Parse(schemaJson);
         return document.RootElement.Clone();
     }
-}
-
-internal sealed record UserQuestion(
-    string Header,
-    string Question,
-    IReadOnlyList<UserQuestionOption> Options,
-    bool MultiSelect,
-    bool AllowFreeText
-);
-
-internal sealed record UserQuestionOption(string Label, string Description, bool Recommended);
-
-internal sealed record UserQuestionAnswer(IReadOnlyList<string> SelectedOptions, string? Text);
-
-internal sealed record UserQuestionResult(
-    UserQuestionStatus Status,
-    IReadOnlyList<UserQuestionAnswer> Answers
-);
-
-internal enum UserQuestionStatus
-{
-    Answered,
-    Skipped,
-    Unavailable,
 }

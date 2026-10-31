@@ -95,6 +95,12 @@ request. `/model` changes only the chat profile; `provider/model` selects throug
 and a bare model id must be unique. Subagents and compaction default to chat when unassigned;
 compaction uses `fast` only when explicitly selected.
 
+Set `"questionSuggestions": true` in user settings to show a separately marked decision-model
+ranking beside interactive question options. It is off by default and uses only the configured
+`decision` usage profile. A missing or invalid profile warns and leaves the ordinary question picker
+available without a suggestion. The marker never selects an option, answers a skipped question, or
+approves a tool call.
+
 Model routing is separate from the approval decision. In user settings, set `routingMode` to `shadow`
 to record a suggested profile without changing the configured chat model, or `enforce` to use the
 selected profile; `off` is the default. `routingProfiles` names 2–255 configured profiles that the

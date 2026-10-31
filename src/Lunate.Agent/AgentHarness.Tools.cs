@@ -683,7 +683,13 @@ public sealed partial class AgentHarness
                 _reads
             ),
             Subagents = _subagentRunner,
-            AgentState = new AgentToolContextState(_options.Session, _reads, _options.AskUserAsync)
+            AgentState = new AgentToolContextState(
+                _options.Session,
+                _reads,
+                _options.AskUserAsync,
+                _options.QuestionSuggestionsEnabled,
+                _options.QuestionDecisionAsync
+            )
             {
                 DecideAsync = (request, decisionCt) =>
                     EvaluateToolDecisionAsync(runId, request, channel, decisionCt),

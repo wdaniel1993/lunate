@@ -161,6 +161,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
 
     private ExtensionSession(
         ExtensionLoader loader,
+        IDecisionService? decisionService,
         IExtensionLog log,
         FileChangeBus fileChanges,
         SingleFileExtensionRestorer singleFileRestorer,
@@ -171,6 +172,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
     )
     {
         _loader = loader;
+        DecisionService = decisionService;
         _log = log;
         _fileChanges = fileChanges;
         _singleFileRestorer = singleFileRestorer;
@@ -222,12 +224,11 @@ internal sealed class ExtensionSession : IAsyncDisposable
             WorkspaceServiceCapLimit = seams.WorkspaceServiceCapLimit,
         };
         var loader = new ExtensionLoader(options);
+        IDecisionService? decisionService = null;
         if (seams.AgentDecisionService is { } agentDecisionService)
         {
-            loader.Services.RegisterCore(
-                "core/decision",
-                new DecisionServiceAdapter(agentDecisionService)
-            );
+            decisionService = new DecisionServiceAdapter(agentDecisionService);
+            loader.Services.RegisterCore("core/decision", decisionService);
         }
 
         // Created eagerly, but it only holds the factory: nothing NuGet-shaped exists until a
@@ -355,6 +356,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
 
         return new ExtensionSession(
             loader,
+            decisionService,
             log,
             fileChanges,
             singleFileRestorer,
@@ -367,6 +369,9 @@ internal sealed class ExtensionSession : IAsyncDisposable
 
     /// <summary>The harness hook seam over the loaded extensions' hook runner.</summary>
     internal AgentHookAdapter Hooks => _hooks;
+
+    /// <summary>The configured core decision service; null when no usable decision profile exists.</summary>
+    internal IDecisionService? DecisionService { get; }
 
     /// <summary>The session's file change bus (the <c>core/file-bus</c> handle); the modes hand it to the harness.</summary>
     internal FileChangeBus FileChanges => _fileChanges;

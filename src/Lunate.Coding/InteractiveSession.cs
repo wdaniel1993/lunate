@@ -254,6 +254,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private ExtensionSession? _extensions;
     private McpToolSet? _mcp;
     private readonly List<UserNotice> _pendingNotices = [];
+    private readonly HashSet<string> _warnedDecisionProfiles = new(StringComparer.Ordinal);
     private bool _composed;
     private bool _promptEchoed;
     private bool _turnWroteOutput;
@@ -917,6 +918,11 @@ internal sealed partial class InteractiveSession : IDisposable
             ToolOutputMask = _redaction.Redact,
             SubagentLimits = _settings.Subagents,
             DecisionMode = _settings.DecisionMode,
+            QuestionSuggestionsEnabled = _settings.QuestionSuggestions,
+            QuestionDecisionAsync =
+                _settings.QuestionSuggestions && _extensions?.DecisionService is { } decisionService
+                    ? decisionService.DecideAsync
+                    : null,
             RoutingMode = _settings.RoutingMode,
             RoutingProfiles = routingProfiles,
             Approver = _approver,
@@ -2176,7 +2182,8 @@ internal sealed partial class InteractiveSession : IDisposable
                 question
                     .Options.Select(option => new SelectListQuestionOption(
                         option.Label,
-                        option.Description
+                        option.Description,
+                        option.DecisionSuggestedProbability
                     ))
                     .ToArray(),
                 question.MultiSelect,
