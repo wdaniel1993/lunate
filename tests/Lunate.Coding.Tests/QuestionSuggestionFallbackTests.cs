@@ -73,6 +73,11 @@ public sealed class QuestionSuggestionFallbackTests
         );
         if (expectedWarning is not null)
         {
+            await host.WaitUntilAsync(() =>
+                notices.Entries.Any(notice =>
+                    notice.Text.Contains(expectedWarning, StringComparison.Ordinal)
+                )
+            );
             Assert.Contains(
                 notices.Entries,
                 notice => notice.Text.Contains(expectedWarning, StringComparison.Ordinal)
