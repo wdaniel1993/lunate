@@ -57,6 +57,12 @@ public sealed record AgentSettings
     /// <summary>The number of model turns between request-time projection rewrites.</summary>
     public int ProjectionBatchTurns { get; init; } = 4;
 
+    /// <summary>The mask window for successful tool results, in model turns.</summary>
+    public int ProjectionMaskTurns { get; init; } = 8;
+
+    /// <summary>The mask window for error tool results, in model turns; at least the success window.</summary>
+    public int ProjectionMaskErrorTurns { get; init; } = 32;
+
     /// <summary>The resolved subagent limits (the <c>subagents</c> section; defaults 4/100000/500000).</summary>
     public SubagentLimits Subagents { get; init; } = new();
 
@@ -142,6 +148,8 @@ public static partial class SettingsStore
     private const string ToolOutputLimitVariable = "LUNATE_TOOL_OUTPUT_LIMIT";
     private const string ToolSpillThresholdVariable = "LUNATE_TOOL_SPILL_THRESHOLD";
     private const string ProjectionBatchTurnsVariable = "LUNATE_PROJECTION_BATCH_TURNS";
+    private const string ProjectionMaskTurnsVariable = "LUNATE_PROJECTION_MASK_TURNS";
+    private const string ProjectionMaskErrorTurnsVariable = "LUNATE_PROJECTION_MASK_ERROR_TURNS";
     private const string StartupHeaderVariable = "LUNATE_STARTUP_HEADER";
     private const string UpdateCheckVariable = "LUNATE_UPDATE_CHECK";
     private const string SubagentConcurrencyVariable = "LUNATE_SUBAGENTS_CONCURRENCY";
@@ -406,12 +414,15 @@ public static partial class SettingsStore
                         };
                         break;
                     case "projection":
+                        (int batchTurns, int maskTurns, int maskErrorTurns) = ReadProjection(
+                            property.Value,
+                            problems
+                        );
                         settings = settings with
                         {
-                            ProjectionBatchTurns = ReadProjectionBatchTurns(
-                                property.Value,
-                                problems
-                            ),
+                            ProjectionBatchTurns = batchTurns,
+                            ProjectionMaskTurns = maskTurns,
+                            ProjectionMaskErrorTurns = maskErrorTurns,
                         };
                         break;
                     case "subagents":
@@ -624,37 +635,77 @@ public static partial class SettingsStore
         return (limit, spillThresholdTokens);
     }
 
-    private static int ReadProjectionBatchTurns(JsonElement value, List<string> problems)
+    private static (int BatchTurns, int MaskTurns, int MaskErrorTurns) ReadProjection(
+        JsonElement value,
+        List<string> problems
+    )
     {
         if (value.ValueKind != JsonValueKind.Object)
         {
             problems.Add("'projection' must be an object");
-            return 4;
+            return (4, 8, 32);
         }
 
         int batchTurns = 4;
+        int maskTurns = 8;
+        int maskErrorTurns = 32;
         foreach (JsonProperty property in value.EnumerateObject())
         {
-            if (property.Name != "batchTurns")
+            switch (property.Name)
             {
-                problems.Add($"unknown key 'projection.{property.Name}'");
-                continue;
-            }
+                case "batchTurns":
+                    if (
+                        property.Value.ValueKind == JsonValueKind.Number
+                        && property.Value.TryGetInt32(out int parsedBatch)
+                        && parsedBatch >= 1
+                    )
+                    {
+                        batchTurns = parsedBatch;
+                    }
+                    else
+                    {
+                        problems.Add("'projection.batchTurns' must be a positive integer");
+                    }
 
-            if (
-                property.Value.ValueKind != JsonValueKind.Number
-                || !property.Value.TryGetInt32(out int parsed)
-                || parsed < 1
-            )
-            {
-                problems.Add("'projection.batchTurns' must be a positive integer");
-                continue;
-            }
+                    break;
+                case "maskTurns":
+                case "maskErrorTurns":
+                    if (
+                        property.Value.ValueKind == JsonValueKind.Number
+                        && property.Value.TryGetInt32(out int parsedMask)
+                        && parsedMask >= 1
+                    )
+                    {
+                        if (property.Name == "maskTurns")
+                        {
+                            maskTurns = parsedMask;
+                        }
+                        else
+                        {
+                            maskErrorTurns = parsedMask;
+                        }
+                    }
+                    else
+                    {
+                        problems.Add($"'projection.{property.Name}' must be a positive integer");
+                    }
 
-            batchTurns = parsed;
+                    break;
+                default:
+                    problems.Add($"unknown key 'projection.{property.Name}'");
+                    break;
+            }
         }
 
-        return batchTurns;
+        if (maskErrorTurns < maskTurns)
+        {
+            problems.Add(
+                "'projection.maskErrorTurns' must be at least 'projection.maskTurns' so error results are kept longer"
+            );
+            maskErrorTurns = maskTurns;
+        }
+
+        return (batchTurns, maskTurns, maskErrorTurns);
     }
 
     /// <summary>
@@ -1072,7 +1123,60 @@ public static partial class SettingsStore
             }
         }
 
+        string? projectionMaskTurns = environment(ProjectionMaskTurnsVariable);
+        if (!string.IsNullOrEmpty(projectionMaskTurns))
+        {
+            if (
+                int.TryParse(
+                    projectionMaskTurns,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out int parsedMask
+                )
+                && parsedMask >= 1
+            )
+            {
+                settings = settings with { ProjectionMaskTurns = parsedMask };
+            }
+            else
+            {
+                problems.Add(
+                    $"{ProjectionMaskTurnsVariable} must be a positive integer, but was '{projectionMaskTurns}'"
+                );
+            }
+        }
+
+        string? projectionMaskErrorTurns = environment(ProjectionMaskErrorTurnsVariable);
+        if (!string.IsNullOrEmpty(projectionMaskErrorTurns))
+        {
+            if (
+                int.TryParse(
+                    projectionMaskErrorTurns,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out int parsedMaskError
+                )
+                && parsedMaskError >= 1
+            )
+            {
+                settings = settings with { ProjectionMaskErrorTurns = parsedMaskError };
+            }
+            else
+            {
+                problems.Add(
+                    $"{ProjectionMaskErrorTurnsVariable} must be a positive integer, but was '{projectionMaskErrorTurns}'"
+                );
+            }
+        }
+
         string? startupHeader = environment(StartupHeaderVariable);
+        if (settings.ProjectionMaskErrorTurns < settings.ProjectionMaskTurns)
+        {
+            problems.Add(
+                "the resolved projection.maskErrorTurns must be at least the resolved projection.maskTurns so error results are kept longer"
+            );
+        }
+
         if (!string.IsNullOrEmpty(startupHeader))
         {
             if (TryParseSwitch(startupHeader, out bool parsedHeader))
