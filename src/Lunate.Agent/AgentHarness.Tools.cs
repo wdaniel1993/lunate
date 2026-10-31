@@ -62,7 +62,7 @@ public sealed partial class AgentHarness
         }
 
         toolActivity?.SetTag(AgentTelemetry.ToolIsErrorAttribute, result.IsError);
-        string output = AdmitToolOutput(runId, callId, result, channel);
+        string output = AdmitToolOutput(runId, callId, toolName, args, result, channel);
         channel.Emit(
             new ToolCallResult(runId, callId, output, result.IsError, result.Details)
             {
@@ -87,6 +87,8 @@ public sealed partial class AgentHarness
     private string AdmitToolOutput(
         string runId,
         string callId,
+        string toolName,
+        JsonElement args,
         ToolResult result,
         AgentEventChannel channel
     )
@@ -105,19 +107,25 @@ public sealed partial class AgentHarness
 
         return fullOutput is { } transcript
             ? AdmitTranscript(runId, callId, output, transcript, channel)
-            : AdmitOutput(runId, callId, output, channel);
+            : AdmitOutput(runId, callId, output, channel, IsKnownSpillRead(toolName, args));
     }
 
     private string AdmitOutput(
         string runId,
         string callId,
         string output,
-        AgentEventChannel channel
+        AgentEventChannel channel,
+        bool knownSpillRead
     )
     {
         if (_options.Session is not { } session)
         {
             return ToolOutput.Truncate(output, _options.ToolOutputLimit);
+        }
+
+        if (knownSpillRead)
+        {
+            return output;
         }
 
         if (
@@ -132,6 +140,39 @@ public sealed partial class AgentHarness
         }
 
         return Spill(runId, callId, output, session, channel, includePreview: true);
+    }
+
+    private bool IsKnownSpillRead(string toolName, JsonElement args)
+    {
+        if (
+            !string.Equals(toolName, "read", StringComparison.Ordinal)
+            || _options.Session is not { } session
+            || args.ValueKind != JsonValueKind.Object
+            || !args.TryGetProperty("path", out JsonElement pathElement)
+            || pathElement.ValueKind != JsonValueKind.String
+        )
+        {
+            return false;
+        }
+
+        try
+        {
+            string path = pathElement.GetString()!;
+            string absolutePath = Path.GetFullPath(
+                Path.IsPathRooted(path) ? path : Path.Combine(_options.WorkingDirectory, path)
+            );
+            return ToolOutputSpill.IsKnownFile(session, absolutePath);
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+                        or NotSupportedException
+            )
+        {
+            return false;
+        }
     }
 
     private string AdmitTranscript(
@@ -375,7 +416,7 @@ public sealed partial class AgentHarness
             throw;
         }
 
-        string output = AdmitToolOutput(runId, nestedCallId, result, channel);
+        string output = AdmitToolOutput(runId, nestedCallId, toolName, args, result, channel);
         channel.Emit(
             new ToolCallResult(runId, nestedCallId, output, result.IsError, result.Details)
             {
@@ -633,6 +674,8 @@ public sealed partial class AgentHarness
                 _reads
             ),
             Reads = _reads,
+            SpillThresholdTokens = _options.SpillThresholdTokens,
+            ToolOutputLimit = _options.ToolOutputLimit,
             Subagents = _subagentRunner,
             Session = _options.Session,
             AskUserAsync = _options.AskUserAsync,

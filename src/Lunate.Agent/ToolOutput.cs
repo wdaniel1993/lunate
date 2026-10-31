@@ -13,6 +13,8 @@ public static class ToolOutput
 {
     private const int PointerPreviewLimit = 2_000;
 
+    internal const int DefaultSpillThresholdTokens = 2_000;
+
     /// <summary>The default output budget, in characters.</summary>
     public const int DefaultLimit = 30_000;
 

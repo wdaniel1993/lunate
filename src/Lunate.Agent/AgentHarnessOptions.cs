@@ -71,7 +71,7 @@ public sealed record AgentHarnessOptions
     public int ToolOutputLimit { get; init; } = ToolOutput.DefaultLimit;
 
     /// <summary>The estimated-token threshold above which a tool result is spilled.</summary>
-    public int SpillThresholdTokens { get; init; } = 2_000;
+    public int SpillThresholdTokens { get; init; } = ToolOutput.DefaultSpillThresholdTokens;
 
     /// <summary>
     /// The exact-value mask applied to a tool result's model-facing output at admission, before
