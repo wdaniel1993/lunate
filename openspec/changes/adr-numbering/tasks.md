@@ -11,4 +11,4 @@
 ## 3. Document and verify
 
 - [x] 3.1 Add the numbering rule and explicit addendum convention to `docs/guide.md` so the next ADR author finds it; no ADR README exists.
-- [ ] 3.2 Run `bash scripts/verify.sh --profile docs` and `openspec validate --all --strict`; both must pass after the maintainer-approved 0027 resolution.
+- [x] 3.2 Run `bash scripts/verify.sh --profile docs` and `openspec validate --all --strict`; both must pass after the maintainer-approved 0027 resolution.
