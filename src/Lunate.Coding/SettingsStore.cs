@@ -48,6 +48,12 @@ public sealed record AgentSettings
     /// <summary>Whether decision-model suggestions appear beside interactive question options; defaults to off.</summary>
     public bool QuestionSuggestions { get; init; }
 
+    /// <summary>The optional model-routing decision consumer; defaults to off.</summary>
+    internal DecisionMode RoutingMode { get; init; } = DecisionMode.Off;
+
+    /// <summary>The named profiles the model-routing consumer may select.</summary>
+    internal IReadOnlyList<string> RoutingProfiles { get; init; } = [];
+
     /// <summary>How much of a tool call the scrollback shows; defaults to collapsed.</summary>
     public ToolDetails ToolDetails { get; init; } = ToolDetails.Collapsed;
 
@@ -184,6 +190,7 @@ public static partial class SettingsStore
             settings = ParseFile(path, problems);
         }
 
+        ValidateRoutingSettings(settings, problems);
         settings = ApplyEnvironment(
             settings,
             environment ?? Environment.GetEnvironmentVariable,
@@ -484,6 +491,18 @@ public static partial class SettingsStore
                         settings = settings with
                         {
                             QuestionSuggestions = ReadQuestionSuggestions(property.Value, problems),
+                        };
+                        break;
+                    case "routingMode":
+                        settings = settings with
+                        {
+                            RoutingMode = ReadRoutingMode(property.Value, problems),
+                        };
+                        break;
+                    case "routingProfiles":
+                        settings = settings with
+                        {
+                            RoutingProfiles = ReadRoutingProfiles(property.Value, problems),
                         };
                         break;
                     case "tui":

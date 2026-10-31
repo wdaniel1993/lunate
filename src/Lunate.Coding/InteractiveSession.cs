@@ -891,6 +891,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private AgentHarness BuildHarness(ModelInfo model)
     {
         IReadOnlyDictionary<string, UsageModelClient>? usageModels = ResolveUsageModels(model);
+        IReadOnlyDictionary<string, UsageModelClient>? routingProfiles = ResolveRoutingProfiles();
         UsageModelClient? chatModel = usageModels?.GetValueOrDefault("chat");
         ModelInfo resolvedModel = chatModel?.Model ?? model;
         List<string> toolNames = [.. _tools.Tools.Select(tool => tool.Name)];
@@ -922,6 +923,8 @@ internal sealed partial class InteractiveSession : IDisposable
                 _settings.QuestionSuggestions && _extensions?.DecisionService is { } decisionService
                     ? decisionService.DecideAsync
                     : null,
+            RoutingMode = _settings.RoutingMode,
+            RoutingProfiles = routingProfiles,
             Approver = _approver,
             AskUserAsync = AskUserAsync,
             Hooks = _extensions?.Hooks,

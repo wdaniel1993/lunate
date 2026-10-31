@@ -16,6 +16,12 @@ public sealed record AgentHarnessOptions
     /// <summary>Whether the configured decision profile observes or can veto approval asks.</summary>
     public DecisionMode DecisionMode { get; init; } = DecisionMode.Off;
 
+    /// <summary>Whether the configured decision profile can choose a model profile for this exchange.</summary>
+    public DecisionMode RoutingMode { get; init; } = DecisionMode.Off;
+
+    /// <summary>The named model profiles available to the routing decision.</summary>
+    public IReadOnlyDictionary<string, UsageModelClient>? RoutingProfiles { get; init; }
+
     /// <summary>The maximum number of model calls per run.</summary>
     public int MaxSteps { get; init; } = 50;
 

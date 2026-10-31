@@ -101,6 +101,13 @@ ranking beside interactive question options. It is off by default and uses only 
 available without a suggestion. The marker never selects an option, answers a skipped question, or
 approves a tool call.
 
+Model routing is separate from the approval decision. In user settings, set `routingMode` to `shadow`
+to record a suggested profile without changing the configured chat model, or `enforce` to use the
+selected profile; `off` is the default. `routingProfiles` names 2–255 configured profiles that the
+router may choose. An unavailable decision profile or an invalid response leaves the configured chat
+model in use. Routing decisions are charged to the `decision` usage and `/cost` distinguishes the
+`native` and `adapter` methods.
+
 Decision use is the user's choice, not a model-intelligence verdict. The consumer is off by default
 and must be enabled in user settings. Any configured model may be used; known structured-output
 support is checked as a technical requirement, while unknown capability facts are allowed. A

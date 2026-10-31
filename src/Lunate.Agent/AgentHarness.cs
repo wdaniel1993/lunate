@@ -204,6 +204,25 @@ public sealed partial class AgentHarness
 
     private static void ValidateOptions(AgentHarnessOptions options)
     {
+        if (
+            options.RoutingMode != DecisionMode.Off
+            && options.RoutingProfiles is not { Count: >= 2 }
+        )
+        {
+            throw new ArgumentException(
+                "Model routing needs at least two configured routing profiles.",
+                nameof(AgentHarnessOptions.RoutingProfiles)
+            );
+        }
+
+        if (options.RoutingProfiles is { Count: > 255 })
+        {
+            throw new ArgumentException(
+                "Model routing cannot offer more than 255 profiles.",
+                nameof(AgentHarnessOptions.RoutingProfiles)
+            );
+        }
+
         if (options.MaxSteps < 1)
         {
             throw new ArgumentOutOfRangeException(
@@ -587,11 +606,8 @@ public sealed partial class AgentHarness
             }
         }
 
-        // Style `inline` models embed their reasoning in the text stream (design D4); every other
-        // model's text flows straight through.
-        InlineThinkingSplitter? inlineSplitter = DeclaredModel() is { Reasoning: "inline" }
-            ? new InlineThinkingSplitter()
-            : null;
+        // Routing resolves after the request is built; its selected model also owns stream options.
+        InlineThinkingSplitter? inlineSplitter = null;
         UsageModelClient? usageModel = ResolveUsageModel(_options.Usage);
         List<ChatMessage> request = [];
 
@@ -627,6 +643,20 @@ public sealed partial class AgentHarness
                 request = InsertAddedContext(request, built.AddedMessages);
             }
 
+            usageModel = await EvaluateRoutingDecisionAsync(
+                runId,
+                request,
+                usageModel,
+                channel,
+                ct
+            );
+            // Style `inline` models embed their reasoning in the text stream (design D4); every
+            // other model's text flows straight through.
+            inlineSplitter =
+                (usageModel?.Model ?? DeclaredModel())?.Reasoning == "inline"
+                    ? new InlineThinkingSplitter()
+                    : null;
+
             using (
                 ModelRouteObserver.Scope(
                     (requested, resolved) =>
@@ -640,7 +670,11 @@ public sealed partial class AgentHarness
                 await foreach (
                     ChatResponseUpdate update in (
                         usageModel?.Client ?? _client
-                    ).GetStreamingResponseAsync(request, BuildOptions(activeTools), ct)
+                    ).GetStreamingResponseAsync(
+                        request,
+                        BuildOptions(activeTools, usageModel?.Model),
+                        ct
+                    )
                 )
                 {
                     if (_options.Hooks is { } streamHook)
@@ -709,11 +743,11 @@ public sealed partial class AgentHarness
         }
         catch (Exception exception)
             when (HasImageContent(request)
-                && HasUnknownImageSupport(DeclaredModel())
+                && HasUnknownImageSupport(usageModel?.Model ?? DeclaredModel())
                 && IsImageInputRejection(exception)
             )
         {
-            ModelInfo model = DeclaredModel()!;
+            ModelInfo model = usageModel?.Model ?? DeclaredModel()!;
             throw new InvalidDataException(
                 $"model {model.Id} doesn't accept images; switch profile or remove the image.",
                 exception
@@ -1215,7 +1249,10 @@ public sealed partial class AgentHarness
         return copy;
     }
 
-    private ChatOptions BuildOptions(IReadOnlyList<string>? activeTools)
+    private ChatOptions BuildOptions(
+        IReadOnlyList<string>? activeTools,
+        ModelInfo? modelOverride = null
+    )
     {
         ChatOptions options;
         if (activeTools is null)
@@ -1236,7 +1273,7 @@ public sealed partial class AgentHarness
             };
         }
 
-        if (DeclaredModel() is { } model)
+        if ((modelOverride ?? DeclaredModel()) is { } model)
         {
             ReasoningParameters.Apply(options, model, _options.ThinkingLevel);
         }
