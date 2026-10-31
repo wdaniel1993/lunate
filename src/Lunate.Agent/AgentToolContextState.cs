@@ -14,6 +14,12 @@ internal sealed record AgentToolContextState(
         Task<DecisionResponse>
     >? DecideAsync { get; init; }
 
+    internal Func<
+        IReadOnlyList<UserQuestion>,
+        CancellationToken,
+        Task<IReadOnlyList<UserQuestion>>
+    >? SuggestQuestionsAsync { get; init; }
+
     internal static Session? SessionFor(ToolContext context) =>
         (context.AgentState as AgentToolContextState)?.Session;
 

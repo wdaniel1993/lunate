@@ -60,6 +60,67 @@ public sealed class QuestionDecisionSuggestionTests
         await run;
     }
 
+    [Fact]
+    public async Task Choosing_a_suggested_option_does_not_approve_a_write()
+    {
+        using var models = new TempDirectory();
+        string modelsPath = models.File("models.json");
+        File.WriteAllText(
+            modelsPath,
+            """
+            {"schemaVersion":2,"models":[
+              {"id":"chat-model","provider":"openai","contextWindow":64000,"supportsTools":true},
+              {"id":"decision-model","provider":"openai","contextWindow":64000,"supportsTools":false}
+            ]}
+            """
+        );
+        var client = new ScriptedChatClient()
+            .Enqueue(QuestionCall(), Scripts.ToolCalls())
+            .Enqueue(
+                Scripts.Text(
+                    """{"results":{"question-1":{"answer":"Flexible","probabilities":{"Simple":0.2,"Flexible":0.8}}}}"""
+                ),
+                Scripts.Stop()
+            )
+            .Enqueue(
+                Scripts.Call(
+                    "write-call",
+                    "write",
+                    Scripts.Args(("path", "note.txt"), ("content", "not approved"))
+                ),
+                Scripts.ToolCalls()
+            )
+            .Enqueue(Scripts.Text("done"), Scripts.Stop());
+        var factory = new QuestionSuggestionFactory(
+            new Dictionary<string, IChatClient>(StringComparer.Ordinal)
+            {
+                ["chat-model"] = client,
+                ["decision-model"] = client,
+            }
+        );
+        using var host = new InteractiveSessionHost(factory: factory, modelsPath: modelsPath);
+        Configure(host, includeDecision: true, suggest: true);
+        SaveProvider(host);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("Choose a plan and write a file.");
+        host.Console.SendEnter();
+        await host.WaitForFrameAsync("Which plan should I use?");
+        Assert.Contains("Flexible (recommended)", host.Frames, StringComparison.Ordinal);
+        host.Advance(301);
+        host.Console.SendEnter();
+        await host.WaitForApprovalAsync();
+
+        Assert.Equal("write", host.Session.PendingApproval!.ToolName);
+        Assert.False(File.Exists(host.Temp.File("note.txt")));
+        host.Console.SendText("n");
+        await host.WaitUntilAsync(() => client.Requests.Count == 3);
+        Assert.False(File.Exists(host.Temp.File("note.txt")));
+        host.Console.Complete();
+        await run;
+    }
+
     private static ChatResponseUpdate QuestionCall() =>
         Scripts.Call(
             "question-call",
@@ -90,7 +151,7 @@ public sealed class QuestionDecisionSuggestionTests
         string decisionModel = includeDecision
             ? ",\n    \"decision\": { \"provider\": \"router\", \"model\": \"decision-model\" }"
             : string.Empty;
-        string decisionProfile = includeDecision ? "\"profile\": \"decision\", " : string.Empty;
+        string decisionProfile = includeDecision ? "\"profile\": \"decision\"" : string.Empty;
         string questions = suggest ? "\"questions\": \"suggest\"" : string.Empty;
         string separator = includeDecision && suggest ? ", " : string.Empty;
         File.WriteAllText(

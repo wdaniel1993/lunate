@@ -20,8 +20,9 @@ Decisions taken while implementing:
   `DecideTool` (default false). `UsageModelClient.DecisionThreshold` is removed with
   the profile threshold.
 - `decisions` stays user-scoped: project settings may not carry it.
-- The `questions` consumer (display-only) is issue #344, not yet implemented; this
-  card adds only its setting value (`off | suggest`).
+- The `questions` consumer is display-only: `suggest` marks the highest-probability option but never
+  answers a skipped question or grants tool approval. An unavailable profile leaves the ordinary
+  question flow intact.
 - Follow-up to note when this change archives: provider-store's released text
   ("usages SHALL include … `decision`") needs its own catch-up delta since the
   selector moves into the `decisions` block.

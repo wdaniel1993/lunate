@@ -34,10 +34,16 @@ internal sealed class AskUserTool : ITool
             return Unanswered("no user present");
         }
 
-        UserQuestionResult response = await askUser(questions!, ct).ConfigureAwait(false);
+        IReadOnlyList<UserQuestion> promptedQuestions = questions!;
+        if (ctx.AgentState is AgentToolContextState { SuggestQuestionsAsync: { } suggestQuestions })
+        {
+            promptedQuestions = await suggestQuestions(promptedQuestions, ct).ConfigureAwait(false);
+        }
+
+        UserQuestionResult response = await askUser(promptedQuestions, ct).ConfigureAwait(false);
         return response.Status switch
         {
-            UserQuestionStatus.Answered => FormatAnswers(questions!, response.Answers),
+            UserQuestionStatus.Answered => FormatAnswers(promptedQuestions, response.Answers),
             UserQuestionStatus.Skipped => Unanswered("user skipped"),
             _ => Unanswered("no user present"),
         };

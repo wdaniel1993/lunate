@@ -33,6 +33,8 @@ public sealed record AgentHarnessOptions
     /// </summary>
     public bool DecideTool { get; init; }
 
+    internal bool SuggestQuestions { get; init; }
+
     /// <summary>The maximum number of model calls per run.</summary>
     public int MaxSteps { get; init; } = 50;
 

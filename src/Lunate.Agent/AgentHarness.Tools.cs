@@ -688,6 +688,10 @@ public sealed partial class AgentHarness
             {
                 DecideAsync = (request, decisionCt) =>
                     EvaluateToolDecisionAsync(runId, request, channel, decisionCt),
+                SuggestQuestionsAsync = _options.SuggestQuestions
+                    ? (questions, questionCt) =>
+                        EvaluateQuestionSuggestionsAsync(runId, questions, channel, questionCt)
+                    : null,
             },
             ToolStubs = CallableToolStubs(),
             Models = _options.ModelRegistry is { } registry

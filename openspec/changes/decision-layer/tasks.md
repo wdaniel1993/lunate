@@ -46,7 +46,7 @@
       outside the approval seam (such as `ask_user`) are not evaluated. Move `DecisionApprovalTests`
       to these semantics, and test a prompt-capable approver that ignores the metadata,
       non-interactive fail-closed behavior and call-local escalation.
-- [ ] 4.3 **Question suggestions** (#344, display only): show a suggested answer beside a question the
+- [x] 4.3 **Question suggestions** (#344, display only): show a suggested answer beside a question the
       user is answering. Add the test that an answer — suggested, chosen or auto-filled with no user
       present — grants no tool approval and never answers a skipped question while a user is present.
 - [x] 4.4 **`decide` tool** (information only): offered only when a `decision` profile is configured,

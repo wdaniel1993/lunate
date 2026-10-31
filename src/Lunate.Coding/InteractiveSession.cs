@@ -925,6 +925,7 @@ internal sealed partial class InteractiveSession : IDisposable
             RoutingProfiles = routingProfiles,
             ApprovalsThreshold = _settings.Decisions.ApprovalsThreshold,
             DecideTool = _settings.Decisions.Tool,
+            SuggestQuestions = _settings.Decisions.Questions == DecisionQuestionsMode.Suggest,
             Approver = _approver,
             AskUserAsync = AskUserAsync,
             Hooks = _extensions?.Hooks,
