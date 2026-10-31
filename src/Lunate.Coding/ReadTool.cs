@@ -39,8 +39,8 @@ public sealed partial class ReadTool : ITool
                   "type": "string",
                   "description": "Path of the file to read, relative to the workspace or absolute inside it; supported images (PNG, JPEG, GIF or WebP) are returned for a vision model"
                 },
-                "offset": { "type": "integer", "description": "1-based first line (default 1)" },
-                "limit": { "type": "integer", "description": "maximum lines (default 2000, max 2000)" }
+                "offset": { "type": "integer", "description": "1-based first line for workspace files; use the returned 0-based UTF-16 offset for spill pages" },
+                "limit": { "type": "integer", "description": "maximum lines for workspace files (default 2000, max 2000); spill pages use the token budget" }
               },
               "required": ["path"]
             }
@@ -52,6 +52,7 @@ public sealed partial class ReadTool : ITool
 
     public string Description =>
         "Read a text file from the workspace as numbered lines; use offset and limit to page. "
+        + "Spill files return bounded exact-text pages with a continuation offset. "
         + "Supported images (PNG, JPEG, GIF or WebP) are returned for a vision model.";
 
     public JsonElement ParametersSchema => Schema;
@@ -102,6 +103,10 @@ public sealed partial class ReadTool : ITool
                 return Task.FromResult(Error(error));
             }
         }
+
+        bool isKnownSpill =
+            ctx.Session is { } session
+            && ToolOutputSpill.IsKnownFile(session, resolved.AbsolutePath);
 
         if (Directory.Exists(resolved.AbsolutePath))
         {
@@ -160,9 +165,11 @@ public sealed partial class ReadTool : ITool
             );
         }
 
-        if (offset < 1)
+        if (isKnownSpill ? offset < 0 : offset < 1)
         {
-            return Task.FromResult(Error("offset must be >= 1"));
+            return Task.FromResult(
+                Error(isKnownSpill ? "spill offset must be >= 0" : "offset must be >= 1")
+            );
         }
 
         if (limit < 1)
@@ -171,6 +178,32 @@ public sealed partial class ReadTool : ITool
         }
 
         limit = Math.Min(limit, MaxLimit);
+
+        if (isKnownSpill)
+        {
+            int spillOffset = hasOffset ? offset : 0;
+            if (spillOffset > text.Length)
+            {
+                return Task.FromResult(
+                    Error(
+                        string.Create(
+                            CultureInfo.InvariantCulture,
+                            $"offset {spillOffset} is past the end of spill output ({text.Length} characters)"
+                        )
+                    )
+                );
+            }
+
+            ctx.Reads?.Record(
+                resolved.AbsolutePath,
+                text,
+                ctx.CallId ?? string.Empty,
+                resolved.RelativePath
+            );
+            return Task.FromResult(
+                ReadSpillPage(text, spillOffset, ctx.SpillThresholdTokens, ctx.ToolOutputLimit)
+            );
+        }
 
         string[] lines = TextFile.SplitLines(text);
 
@@ -237,78 +270,6 @@ public sealed partial class ReadTool : ITool
     {
         value = 0;
         return element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out value);
-    }
-
-    /// <summary>
-    /// Resolves a path outside the workspace against the run's skill allowance: the canonical
-    /// target must equal an allowed skill directory or lie under one.
-    /// </summary>
-    private bool TryResolveAllowed(string path, Session? session, out ResolvedPath resolved)
-    {
-        resolved = null!;
-        if ((_allowance is null || _allowance.Roots.Count == 0) && session is null)
-        {
-            return false;
-        }
-
-        string canonical;
-        try
-        {
-            canonical = Workspace.Canonicalize(
-                Path.IsPathRooted(path) ? path : Path.Combine(_workspace.WorktreeRoot, path)
-            );
-        }
-        catch (Exception exception)
-            when (exception
-                    is IOException
-                        or UnauthorizedAccessException
-                        or ArgumentException
-                        or NotSupportedException
-            )
-        {
-            return false;
-        }
-
-        if (!(_allowance?.Contains(canonical) ?? false) && !ContainsSpillPath(canonical, session))
-        {
-            return false;
-        }
-
-        resolved = new ResolvedPath(
-            canonical,
-            SkillPaths.Display(canonical, _workspace.WorktreeRoot)
-        );
-        return true;
-    }
-
-    private static bool ContainsSpillPath(string canonicalPath, Session? session)
-    {
-        if (session is null)
-        {
-            return false;
-        }
-
-        try
-        {
-            string root = Workspace.Canonicalize(ToolOutputSpill.DirectoryFor(session));
-            string prefix = root.EndsWith(Path.DirectorySeparatorChar)
-                ? root
-                : root + Path.DirectorySeparatorChar;
-            StringComparison comparison = OperatingSystem.IsLinux()
-                ? StringComparison.Ordinal
-                : StringComparison.OrdinalIgnoreCase;
-            return canonicalPath.StartsWith(prefix, comparison);
-        }
-        catch (Exception exception)
-            when (exception
-                    is IOException
-                        or UnauthorizedAccessException
-                        or ArgumentException
-                        or NotSupportedException
-            )
-        {
-            return false;
-        }
     }
 
     private static ToolResult Result(string output) => new(output, IsError: false);

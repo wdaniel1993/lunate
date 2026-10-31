@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using Lunate.Ai;
+using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
 
@@ -31,6 +33,40 @@ internal static class ToolOutputSpill
                 nameof(session)
             );
         return Path.Combine(sessionDirectory, session.SessionId, "tool-output");
+    }
+
+    /// <summary>
+    /// Recognizes one existing spill written directly by this writer. A directory-prefix match is
+    /// not enough: the resolved candidate must be the exact generated run/sequence file.
+    /// </summary>
+    internal static bool IsKnownFile(Session session, string path)
+    {
+        try
+        {
+            string root = GitIdentity.Canonicalize(DirectoryFor(session));
+            string candidate = GitIdentity.Canonicalize(path);
+            StringComparison comparison = OperatingSystem.IsLinux()
+                ? StringComparison.Ordinal
+                : StringComparison.OrdinalIgnoreCase;
+            return string.Equals(Path.GetDirectoryName(candidate), root, comparison)
+                && IsSpillFileName(Path.GetFileName(candidate))
+                && File.Exists(candidate)
+                && session
+                    .Entries.OfType<SessionMessageEntry>()
+                    .SelectMany(entry => entry.Message.Contents)
+                    .OfType<FunctionResultContent>()
+                    .Any(result => ResultNamesSpill(result.Result, candidate, comparison));
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+                        or NotSupportedException
+            )
+        {
+            return false;
+        }
     }
 
     /// <summary>Writes <paramref name="output"/> under a deterministic run and sequence name.</summary>
@@ -107,5 +143,72 @@ internal static class ToolOutputSpill
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
+    }
+
+    private static bool IsSpillFileName(string fileName)
+    {
+        if (!fileName.EndsWith(".txt", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        string name = fileName[..^4];
+        int separator = name.LastIndexOf('-');
+        return separator > 0
+            && int.TryParse(
+                name.AsSpan(separator + 1),
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out int sequence
+            )
+            && sequence >= 0;
+    }
+
+    private static bool ResultNamesSpill(
+        object? result,
+        string candidate,
+        StringComparison comparison
+    )
+    {
+        string? output = result switch
+        {
+            string text => text,
+            JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
+            _ => null,
+        };
+        const string marker = "full output at ";
+        if (output is null)
+        {
+            return false;
+        }
+
+        int start = output.LastIndexOf(marker, StringComparison.Ordinal);
+        if (start < 0)
+        {
+            return false;
+        }
+
+        start += marker.Length;
+        int end = output.IndexOf(']', start);
+        if (end <= start)
+        {
+            return false;
+        }
+
+        try
+        {
+            string namedPath = GitIdentity.Canonicalize(output[start..end]);
+            return string.Equals(namedPath, candidate, comparison);
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+                        or NotSupportedException
+            )
+        {
+            return false;
+        }
     }
 }

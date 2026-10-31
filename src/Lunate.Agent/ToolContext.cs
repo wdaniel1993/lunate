@@ -71,6 +71,12 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events)
     /// <summary>The session whose spill files this run may read; null without a session.</summary>
     internal Session? Session { get; init; }
 
+    /// <summary>The result-admission token bound available to tools that page a known spill.</summary>
+    internal int SpillThresholdTokens { get; init; } = ToolOutput.DefaultSpillThresholdTokens;
+
+    /// <summary>The result-admission character bound available to tools that page a known spill.</summary>
+    internal int ToolOutputLimit { get; init; } = ToolOutput.DefaultLimit;
+
     /// <summary>The per-harness read ledger; null when the tool runs outside the loop.</summary>
     internal IReadLedger? Reads { get; init; }
 }
