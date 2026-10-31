@@ -62,7 +62,7 @@ public sealed class InteractiveSessionUsageProfileTests
         host.Console.SendEnter();
         await host.WaitUntilAsync(() => chat.Requests.Count > 0);
 
-        ScriptedRequest request = chat.Requests[0];
+        var request = chat.Requests[0];
         Assert.Contains("decide", request.Messages[0].Text, StringComparison.Ordinal);
         Assert.Contains(request.Options!.Tools!, declaration => declaration.Name == "decide");
 
