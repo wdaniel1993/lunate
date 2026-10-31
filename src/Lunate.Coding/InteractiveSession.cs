@@ -553,7 +553,8 @@ internal sealed partial class InteractiveSession : IDisposable
             redaction: _redaction,
             writeVerifiers: _extensions?.WriteVerifiers,
             verificationMode: _settings.Verify,
-            refusalTracker: _writeVerificationRefusals
+            refusalTracker: _writeVerificationRefusals,
+            bashGuardEnabled: _settings.BashGuard
         );
         _tools.Add(new AskUserTool());
         await ComposeMcpConfigAsync(ct);
@@ -581,7 +582,8 @@ internal sealed partial class InteractiveSession : IDisposable
             redaction: _redaction,
             writeVerifiers: _extensions?.WriteVerifiers,
             verificationMode: _settings.Verify,
-            refusalTracker: _writeVerificationRefusals
+            refusalTracker: _writeVerificationRefusals,
+            bashGuardEnabled: _settings.BashGuard
         );
         // The model resolves after the extension host: the configured id may name a virtual or
         // extension-registered model, which only the registry knows.

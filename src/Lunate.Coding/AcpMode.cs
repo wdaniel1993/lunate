@@ -268,7 +268,8 @@ internal static class AcpMode
             redaction: redaction,
             writeVerifiers: host?.WriteVerifiers,
             verificationMode: effective.Verify,
-            refusalTracker: refusalTracker
+            refusalTracker: refusalTracker,
+            bashGuardEnabled: effective.BashGuard
         );
         tools.Add(new AskUserTool());
         foreach (ITool tool in mcpTools)
@@ -330,7 +331,8 @@ internal static class AcpMode
                 redaction: redaction,
                 writeVerifiers: host?.WriteVerifiers,
                 verificationMode: effective.Verify,
-                refusalTracker: refusalTracker
+                refusalTracker: refusalTracker,
+                bashGuardEnabled: effective.BashGuard
             ),
         };
 

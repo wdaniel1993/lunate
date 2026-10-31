@@ -639,7 +639,8 @@ internal static class PrintMode
             redaction: redaction,
             writeVerifiers: extensions?.WriteVerifiers,
             verificationMode: settings.Verify,
-            refusalTracker: refusalTracker
+            refusalTracker: refusalTracker,
+            bashGuardEnabled: settings.BashGuard
         );
         tools.Add(new AskUserTool());
         foreach (ITool tool in mcpTools)
@@ -701,7 +702,8 @@ internal static class PrintMode
                 redaction: redaction,
                 writeVerifiers: extensions?.WriteVerifiers,
                 verificationMode: settings.Verify,
-                refusalTracker: refusalTracker
+                refusalTracker: refusalTracker,
+                bashGuardEnabled: settings.BashGuard
             ),
         };
 

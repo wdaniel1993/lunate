@@ -25,7 +25,8 @@ internal static class HarnessFactory
         WriteVerifierRegistry? writeVerifiers = null,
         WriteVerificationMode verificationMode = WriteVerificationMode.Block,
         WriteVerificationRefusalTracker? refusalTracker = null,
-        TimeSpan? bashChangeScanTimeout = null
+        TimeSpan? bashChangeScanTimeout = null,
+        bool bashGuardEnabled = true
     )
     {
         refusalTracker ??= new WriteVerificationRefusalTracker();
@@ -53,7 +54,17 @@ internal static class HarnessFactory
                 refusalTracker
             )
         );
-        tools.Add(new BashTool(workspace, null, null, log, new BashGuard(), bashChangeScanTimeout));
+        tools.Add(
+            new BashTool(
+                workspace,
+                null,
+                null,
+                log,
+                new BashGuard(),
+                bashChangeScanTimeout,
+                bashGuardEnabled
+            )
+        );
         AddOptionalTools(tools, workspace, extraTools);
         return tools;
     }
@@ -112,7 +123,8 @@ internal static class HarnessFactory
         CredentialRedactor? redaction = null,
         WriteVerifierRegistry? writeVerifiers = null,
         WriteVerificationMode verificationMode = WriteVerificationMode.Block,
-        WriteVerificationRefusalTracker? refusalTracker = null
+        WriteVerificationRefusalTracker? refusalTracker = null,
+        bool bashGuardEnabled = true
     )
     {
         ArgumentNullException.ThrowIfNull(inheritedTools);
@@ -129,7 +141,8 @@ internal static class HarnessFactory
                 redaction: redaction,
                 writeVerifiers: writeVerifiers,
                 verificationMode: verificationMode,
-                refusalTracker: refusalTracker
+                refusalTracker: refusalTracker,
+                bashGuardEnabled: bashGuardEnabled
             );
             if (extensionTools is not null)
             {

@@ -61,6 +61,7 @@ public sealed class BashTool : ITool
     private readonly TimeSpan _timeout;
     private readonly BashChangeTracker _changes;
     private readonly BashGuard _guard;
+    private readonly bool _guardEnabled;
     private readonly IExtensionLog? _log;
     private bool _noticeShown;
 
@@ -82,7 +83,8 @@ public sealed class BashTool : ITool
         TimeSpan? timeout,
         IExtensionLog? log,
         BashGuard guard,
-        TimeSpan? changeScanTimeout = null
+        TimeSpan? changeScanTimeout = null,
+        bool guardEnabled = true
     )
     {
         _workspace = workspace;
@@ -90,6 +92,7 @@ public sealed class BashTool : ITool
         _timeout = timeout ?? DefaultTimeout;
         _changes = new BashChangeTracker(log, changeScanTimeout);
         _guard = guard;
+        _guardEnabled = guardEnabled;
         _log = log;
         Description = _shell is null
             ? $"Run a command in the platform shell (no shell was found on this machine). {Rules}"
@@ -130,11 +133,19 @@ public sealed class BashTool : ITool
 
         ct.ThrowIfCancellationRequested();
 
-        GuardCommand launch = _guard.Wrap(_shell, _workspace.WorktreeRoot);
+        GuardCommand launch = _guardEnabled
+            ? _guard.Wrap(_shell, _workspace.WorktreeRoot)
+            : new GuardCommand(
+                _shell.ExecutablePath,
+                [.. _shell.ArgumentsPrefix],
+                "none",
+                Wrapped: false,
+                Notice: null
+            );
 
         // A refused command never spawns: the refusal states what the guard would have done,
         // in the guard's own words, before the OS error has to say it for it.
-        if (_guard.Refusal(commandElement.GetString()!, launch) is { } refusal)
+        if (_guardEnabled && _guard.Refusal(commandElement.GetString()!, launch) is { } refusal)
         {
             return new ToolResult(refusal, IsError: true);
         }
@@ -183,7 +194,9 @@ public sealed class BashTool : ITool
         await PublishChangesAsync(ctx).ConfigureAwait(false);
 
         NoticeOnce(launch);
-        string? hint = _guard.Hint(commandElement.GetString()!, run.Stderr, launch);
+        string? hint = _guardEnabled
+            ? _guard.Hint(commandElement.GetString()!, run.Stderr, launch)
+            : "bash guard is disabled by settings";
         var stdout = WithCapMarker(run.Stdout, run.StdoutCapped);
         var stderr = WithCapMarker(run.Stderr, run.StderrCapped);
         if (run.TimedOut)
