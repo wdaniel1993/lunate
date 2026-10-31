@@ -7,6 +7,73 @@ namespace Lunate.Coding.Tests;
 public sealed class InteractiveSessionUsageProfileTests
 {
     [Fact]
+    public async Task Interactive_decision_profile_lists_decide_in_the_prompt_and_tool_declarations()
+    {
+        using var temp = new TempDirectory();
+        string modelsPath = temp.File("models.json");
+        File.WriteAllText(
+            modelsPath,
+            """
+            {
+              "schemaVersion": 2,
+              "models": [
+                { "id": "chat-model", "provider": "openai", "contextWindow": 64000,
+                  "supportsTools": true },
+                { "id": "decision-model", "provider": "openai", "contextWindow": 64000,
+                  "supportsTools": false }
+              ]
+            }
+            """
+        );
+        var chat = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(ChatRole.Assistant, [])
+            {
+                FinishReason = ChatFinishReason.Stop,
+            }
+        );
+        var factory = new UsageFactory(chat);
+        using var host = new InteractiveSessionHost(factory: factory, modelsPath: modelsPath);
+        File.WriteAllText(
+            host.Temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "profiles": {
+                "chat-profile": {
+                  "provider": "chat-provider",
+                  "model": "chat-model"
+                },
+                "decision-profile": {
+                  "provider": "chat-provider",
+                  "model": "decision-model"
+                }
+              },
+              "usages": {
+                "chat": "chat-profile",
+                "decision": "decision-profile"
+              }
+            }
+            """
+        );
+        ProviderStore.Save(
+            AuthStore.ProviderStoreFilePath(host.Temp.File("auth.json")),
+            [Provider("chat-provider", "openai")]
+        );
+        Task run = host.RunAsync();
+
+        host.Console.SendText("hello");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => chat.Requests.Count > 0);
+
+        ScriptedRequest request = chat.Requests[0];
+        Assert.Contains("decide", request.Messages[0].Text, StringComparison.Ordinal);
+        Assert.Contains(request.Options!.Tools!, declaration => declaration.Name == "decide");
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task Interactive_chat_uses_the_configured_profile_and_emits_attribution_once()
     {
         using var temp = new TempDirectory();
