@@ -2,11 +2,10 @@
     <PropertyGroup>
         <RootNamespace>Lunate.Extensibility.Abstractions</RootNamespace>
         <!--
-            The contract assembly's version *is* the API version: ExtensionApiGate compares an
-            extension's referenced Lunate.Extensibility.Abstractions version with
-            ExtensionApi.Current, and ExtensionApiTests holds the two equal.
+            Both contract assemblies' versions are the API version: ExtensionApiGate compares an
+            extension's contract assembly references with ExtensionApi.Current.
         -->
-        <Version>1.13.0</Version>
+        <Version>1.14.0</Version>
     </PropertyGroup>
 
     <ItemGroup>
@@ -15,7 +14,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../Lunate.Agent/Lunate.Agent.csproj" />
+        <ProjectReference Include="../Lunate.Contracts/Lunate.Contracts.csproj" />
     </ItemGroup>
 
     <ItemGroup>

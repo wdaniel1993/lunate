@@ -29,7 +29,7 @@ internal sealed class AskUserTool : ITool
             return new ToolResult(error!, IsError: true);
         }
 
-        if (ctx.AskUserAsync is not { } askUser)
+        if (ctx.AgentState is not AgentToolContextState { AskUserAsync: { } askUser })
         {
             return Unanswered("no user present");
         }

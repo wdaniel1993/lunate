@@ -673,12 +673,8 @@ public sealed partial class AgentHarness
                 runId,
                 _reads
             ),
-            Reads = _reads,
-            SpillThresholdTokens = _options.SpillThresholdTokens,
-            ToolOutputLimit = _options.ToolOutputLimit,
             Subagents = _subagentRunner,
-            Session = _options.Session,
-            AskUserAsync = _options.AskUserAsync,
+            AgentState = new AgentToolContextState(_options.AskUserAsync),
             ToolStubs = CallableToolStubs(),
             Models = _options.ModelRegistry is { } registry
                 ? new RunModelAccess(registry, this, channel, runId)

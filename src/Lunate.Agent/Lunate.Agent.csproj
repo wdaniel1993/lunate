@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
         <ProjectReference Include="../Lunate.Ai/Lunate.Ai.csproj" />
+        <ProjectReference Include="../Lunate.Contracts/Lunate.Contracts.csproj" />
     </ItemGroup>
 
     <ItemGroup>
