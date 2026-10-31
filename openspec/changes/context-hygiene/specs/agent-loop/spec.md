@@ -52,6 +52,18 @@ The loop SHALL compact the request before a model call when the estimated reques
 - **WHEN** the next model request is composed
 - **THEN** it compacts exactly once, the next request is under 60% of the window, a `compaction` entry records the summary and replaced ids, `CompactionApplied` is emitted, and replay still matches
 
+#### Scenario: Compaction defaults to the chat profile
+
+- **GIVEN** different chat and fast profiles and no explicit compaction profile
+- **WHEN** compaction runs
+- **THEN** the chat profile performs the summary call
+
+#### Scenario: Fast compaction requires opt-in
+
+- **GIVEN** different chat and fast profiles and compaction explicitly assigned to fast
+- **WHEN** compaction runs
+- **THEN** the fast profile performs the summary call and its usage is attributed to `compaction`
+
 #### Scenario: Tool pairs are never split
 
 - **GIVEN** a tail boundary falling between a tool call and its result

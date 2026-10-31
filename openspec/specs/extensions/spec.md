@@ -23,19 +23,37 @@ Extensions SHALL compile against `Lunate.Extensibility.Abstractions` — the con
 - **THEN** it is a single semver constant that the range matcher validates against
 
 ### Requirement: Extension manifest
-An extension SHALL declare an `extension.json` manifest with `id` (lowercase, `[a-z0-9-]+`), `version`, `apiVersion` (a range), exactly one of `entryAssembly` (an in-process extension) or `runtime` (an out-of-process extension) and optional `tools`, `commands`, `hooks`, `services`, `settingsSchema` and `capabilities`. `runtime` SHALL mirror the MCP server registration shape — `command`, `args`, `workingDirectory`, `env` (values to set), `envPassthrough` (names inherited from the parent), `callTimeout` — and a manifest with both `entryAssembly` and `runtime`, or with neither, SHALL be refused naming the file and the conflict. Unknown top-level fields SHALL be ignored; malformed known fields SHALL fail with an error naming the file and the field; duplicate declarations SHALL be rejected. The API-version range grammar SHALL be exact `x.y.z` or caret `^x.y.z`; other forms SHALL be refused as unsupported. An incompatible range SHALL be refused with a message naming the extension, its range and the current API version.
+
+An extension SHALL declare an `extension.json` manifest with `id` (lowercase, `[a-z0-9-]+`),
+`version`, `apiVersion` (a range), exactly one of `entryAssembly` (an in-process extension) or
+`runtime` (an out-of-process extension) and optional `tools`, `commands`, `hooks`, `services`,
+`writeVerifiers`, `settingsSchema` and `capabilities`. Each `writeVerifiers` entry SHALL declare a
+unique `name` and one or more filename patterns. Patterns SHALL be non-empty filename globs without
+path separators and SHALL match normalized basenames case-insensitively. `runtime` SHALL mirror the
+MCP server registration shape — `command`, `args`, `workingDirectory`, `env` (values to set),
+`envPassthrough` (names inherited from the parent), `callTimeout` — and a manifest with both
+`entryAssembly` and `runtime`, or with neither, SHALL be refused naming the file and the conflict.
+Unknown top-level fields SHALL be ignored; malformed known fields SHALL fail with an error naming
+the file and the field; duplicate declarations SHALL be rejected. The API-version range grammar
+SHALL be exact `x.y.z` or caret `^x.y.z`; other forms SHALL be refused as unsupported. An
+incompatible range SHALL be refused with a message naming the extension, its range and the current
+API version.
 
 #### Scenario: A valid manifest parses
-- **GIVEN** a manifest with all required fields
+
+- **GIVEN** a manifest with all required fields and a `writeVerifiers` entry with `name` and
+  `patterns`
 - **WHEN** it is parsed
-- **THEN** the parsed model carries every declared field and defaults the optional arrays to empty
+- **THEN** the parsed model carries every declared field and defaults optional arrays to empty
 
 #### Scenario: Unknown fields are forward-compatible
+
 - **GIVEN** a manifest with an unknown top-level field
 - **WHEN** it is parsed
 - **THEN** it parses successfully and the unknown field is ignored
 
 #### Scenario: An incompatible range is refused
+
 - **GIVEN** a manifest whose `apiVersion` excludes the current API version
 - **WHEN** it is validated
 - **THEN** the refusal names the extension, its range and the current API version
@@ -44,13 +62,20 @@ An extension SHALL declare an `extension.json` manifest with `id` (lowercase, `[
 
 - **GIVEN** a manifest with `runtime` instead of `entryAssembly`
 - **WHEN** it is parsed
-- **THEN** the parsed model carries the runtime command, args, working directory, env, envPassthrough and call timeout
+- **THEN** the parsed model carries the runtime command, args, working directory, env, envPassthrough
+  and call timeout
 
 #### Scenario: A manifest must declare exactly one runtime
 
 - **GIVEN** a manifest with both `entryAssembly` and `runtime`
 - **WHEN** it is validated
 - **THEN** the refusal names the file and the conflict
+
+#### Scenario: Invalid verifier patterns name the field
+
+- **GIVEN** a manifest with an empty pattern, a path separator, or a duplicate verifier name
+- **WHEN** it is validated
+- **THEN** it is refused with the manifest path and `writeVerifiers` field in the diagnostic
 
 ### Requirement: Extension loading
 
@@ -859,13 +884,19 @@ A run's tool context SHALL expose run-bound model access (`ToolContext.Models`, 
 
 ### Requirement: The `/extensions` view
 
-The CLI SHALL provide an interactive `/extensions` command and a `lunate extensions [--json]` subcommand listing every discovered extension — failed first, then trust-denied, then loaded, each group by id — with its id, version, scope (`global`/`project`) and state (`loaded`, `trust-denied` or `failed`). Loaded extensions SHALL show their load time in milliseconds (a load above 500 ms marked `(slow)`) and their **registered** tool, command, hook and service counts, a field differing from the manifest's declared list carrying `(N declared)`; trust-denied and failed extensions SHALL show the manifest's **declared** counts, and a failed extension's message SHALL be truncated to its first sentence followed by ` — see the log` when truncated. The interactive form SHALL render one segment per extension in the single-line notice discipline (segments joined `;`, prefixed `extensions: `); the subcommand SHALL print one line per extension with load times labelled `(CLI-measured)`, or with `--json` a machine-readable array of the same fields (`loadMs`, `slow` where applicable), and SHALL compose the host in register-only inspect mode — loading and registering trusted extensions but starting no session events, background services or MCP servers, unloading each extension and stopping the host before exit — and SHALL never prompt, so an extension it cannot trust reads `trust-denied`. It SHALL exit non-zero when any extension failed. With no extensions discovered, the interactive form SHALL read `extensions: none configured` and `--json` SHALL print `[]`; with extensions disabled (`--no-extensions`) the interactive form SHALL read `extensions disabled (--no-extensions)`. The view SHALL never print settings values, secrets or environment values, and numbers SHALL be formatted culture-invariantly.
+The CLI SHALL provide an interactive `/extensions` command and a `lunate extensions [--json]` subcommand listing every discovered extension — failed first, then trust-denied, then loaded, each group by id — with its id, version, scope (`global`/`project`/`builtin`) and state (`loaded`, `trust-denied` or `failed`). Loaded extensions SHALL show their load time in milliseconds (a load above 500 ms marked `(slow)`) and their **registered** tool, command, hook and service counts, a field differing from the manifest's declared list carrying `(N declared)`; trust-denied and failed extensions SHALL show the manifest's **declared** counts, and a failed extension's message SHALL be truncated to its first sentence followed by ` — see the log` when truncated. The interactive form SHALL render one segment per extension in the single-line notice discipline (segments joined `;`, prefixed `extensions: `); the subcommand SHALL print one line per extension with load times labelled `(CLI-measured)`, or with `--json` a machine-readable array of the same fields (`loadMs`, `slow` where applicable), and SHALL compose the host in register-only inspect mode — loading and registering trusted extensions but starting no session events, background services or MCP servers, unloading each extension and stopping the host before exit — and SHALL never prompt, so an extension it cannot trust reads `trust-denied`. It SHALL exit non-zero when any extension failed. A built-in extension SHALL appear with scope `builtin`, state `loaded`, its registered counts, and never `pending` or `trust-denied`; the interactive form SHALL offer an unload/reload action for it and `lunate extensions reload <id>` and unloading by id SHALL be refused with a teaching message naming the built-in and the reason (a built-in is process-lifetime code with no ALC to release). With no extensions discovered, the interactive form SHALL read `extensions: none configured` and `--json` SHALL print `[]`; with extensions disabled (`--no-extensions`) the interactive form SHALL read `extensions disabled (--no-extensions)` and the composed built-in segments (scope `builtin`, state `loaded`) SHALL follow the same reading and listing as with extensions enabled. A loaded extension's enabled tool state SHALL be visible: a declared tool whose `toolActivation` rule is false for the run's workspace SHALL be reported as `inactive (<condition>): <reason>` after the tool counts, and a true rule SHALL count as active, with the registered/declared tool counts unchanged by the rule. The view SHALL never print settings values, secrets or environment values, and numbers SHALL be formatted culture-invariantly.
 
 #### Scenario: A session shows each extension's scope, state, load time and contributions
 
 - **GIVEN** a session with one loaded global extension and one project extension whose trust was denied
 - **WHEN** `/extensions` is submitted
 - **THEN** one segment per extension appears ordered failed, trust-denied, loaded — the loaded one showing `(global) loaded in N ms` and its registered counts, the denied one showing `(project) trust-denied` and its declared counts
+
+#### Scenario: A built-in segment cannot be unloaded or reloaded
+
+- **GIVEN** a session with one composed built-in extension
+- **WHEN** `/extensions` is submitted and unload or reload is attempted for its id
+- **THEN** the segment reads `(builtin) loaded` with its registered counts, the attempt is refused with a teaching message naming the built-in, and the built-in stays loaded
 
 #### Scenario: The subcommand is register-only and never prompts
 
@@ -883,7 +914,13 @@ The CLI SHALL provide an interactive `/extensions` command and a `lunate extensi
 
 - **GIVEN** no extensions are discovered (or the run carries `--no-extensions`)
 - **WHEN** `/extensions` is submitted (or `lunate extensions` runs)
-- **THEN** the interactive form reads `extensions: none configured` (`extensions disabled (--no-extensions)` when disabled) and `--json` prints `[]`
+- **THEN** the interactive form reads `extensions: none configured` (`extensions disabled (--no-extensions)` when disabled) and `--json` prints `[]`, and with a built-in composed under `--no-extensions` the built-in segments follow the same reading and listing as with extensions enabled
+
+#### Scenario: An inactive tool is reported with its rule
+
+- **GIVEN** a loaded extension whose manifest declares a tool with a false activation rule and a tool with a true rule
+- **WHEN** `/extensions` is submitted (or `lunate extensions` runs)
+- **THEN** the false-rule tool reads `inactive (<condition>): <reason>` and the registered/declared tool counts are unchanged for both tools
 
 ### Requirement: Skill sources from extensions
 
@@ -1950,3 +1987,40 @@ tool names, so an installed user sees no rename.
 - **THEN** discovery, the trust prompt, `/extensions`, settings and uninstall behave exactly as they do
   for any extension with the same manifest id — the tier is a repository and packaging contract, not a
   privileged runtime scope
+
+### Requirement: Write-verifier extension contract
+
+`Lunate.Extensibility.Abstractions` SHALL expose `IWriteVerifier` and
+`IExtensionContext.RegisterWriteVerifier`. The extension SHALL register each declared verifier name
+once; registering an undeclared verifier SHALL refuse extension activation, and a declared but
+unregistered verifier SHALL be logged and omitted. The host SHALL provide an immutable verification
+request containing the normalized relative path, baseline content and staged content, plus a
+cancellation token. The verifier SHALL have no file-write API and SHALL return exactly one of
+`verified`, `unverified` with a reason, or `refused` with diagnostic `StructuredContent`. It SHALL
+NOT return replacement content. The host SHALL enforce its call deadline and SHALL remain the only
+writer of the staged file.
+
+#### Scenario: A declared verifier registers
+
+- **GIVEN** an extension manifest declaring a verifier named `csharp`
+- **WHEN** its factory registers `csharp`
+- **THEN** the host exposes that verifier for the declared patterns
+
+#### Scenario: An undeclared verifier registration is refused
+
+- **GIVEN** a factory registering a verifier name absent from its manifest
+- **WHEN** the extension is activated
+- **THEN** activation is refused with the extension and undeclared verifier name
+
+#### Scenario: A declared but absent verifier is omitted
+
+- **GIVEN** a manifest declaring a verifier that the factory does not register
+- **WHEN** the extension is activated
+- **THEN** the host logs the missing registration and does not expose it
+
+#### Scenario: The verifier result cannot replace file content
+
+- **GIVEN** a verifier receives the immutable request
+- **WHEN** it returns a result
+- **THEN** the result contains only status, optional reason and structured diagnostics, never
+  replacement content

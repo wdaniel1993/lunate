@@ -1090,7 +1090,15 @@ The TUI SHALL evaluate three width bands at render time: `≥100` full, `60–99
 
 ### Requirement: Working indicator
 
-The live area SHALL carry one activity line while work is in flight: a spinner frame, a label, the elapsed seconds and — while the turn is cancellable — the root run's token deltas and `esc to interrupt`. The label SHALL be `thinking…` while reasoning streams, `<tool name> <summary>` while a tool runs, and `working…` otherwise. The narrow band (below 60 columns) SHALL keep the spinner, the label and the elapsed seconds and drop the token deltas and the interrupt hint. The thinking label SHALL carry the thinking colour where the terminal supports colour — the theme value in truecolor and 256-color modes, the 16-color fallback in 16-color mode — and SHALL be colour-neutral under NO_COLOR (the spinner carries the motion).
+The live area SHALL carry one activity line while work is in flight: a spinner frame, a label, the
+elapsed seconds and — while the turn is cancellable — the root run's token deltas and `esc to
+interrupt`. The label SHALL be `thinking…` while reasoning streams, `<tool name> <summary>` while a
+tool runs, `verifying…` while a write verifier runs, and `working…` otherwise. The verifier activity
+line SHALL show its elapsed time and SHALL fit the active width band. The narrow band (below 60
+columns) SHALL keep the spinner, the label and elapsed seconds and drop the token deltas and the
+interrupt hint. The thinking label SHALL carry the thinking colour where the terminal supports
+colour — the theme value in truecolor and 256-color modes, the 16-color fallback in 16-color mode —
+and SHALL be colour-neutral under NO_COLOR (the spinner carries the motion).
 
 #### Scenario: Thinking work shows the affordances
 
@@ -1108,13 +1116,28 @@ The live area SHALL carry one activity line while work is in flight: a spinner f
 
 - **GIVEN** a terminal 40 columns wide with a running tool
 - **WHEN** the activity line renders
-- **THEN** it fits the width with the spinner, the label and the elapsed seconds, and no token deltas or interrupt hint
+- **THEN** it fits the width with the spinner, the label and the elapsed seconds, and no token deltas
+  or interrupt hint
 
 #### Scenario: Subagent usage stays out of the deltas
 
 - **GIVEN** a root run with a child (subagent) run
 - **WHEN** the child reports its usage
-- **THEN** the activity line keeps the root run's deltas while the footer's cumulative total includes the child's tokens
+- **THEN** the activity line keeps the root run's deltas while the footer's cumulative total
+  includes the child's tokens
+
+#### Scenario: Verification shows its elapsed time
+
+- **GIVEN** a write verifier is running
+- **WHEN** the live area renders its activity line
+- **THEN** it shows `verifying… <elapsed>` with the spinner and elapsed seconds
+
+#### Scenario: Esc cancels a verifying run
+
+- **GIVEN** a write verifier is running during a cancellable turn
+- **WHEN** the user presses Esc
+- **THEN** the turn is cancelled through the normal run-cancellation path and the host does not
+  write the staged content
 
 ### Requirement: Cache usage in `/context`
 
@@ -1933,3 +1956,91 @@ not know.
 - **GIVEN** a path argument naming an existing file
 - **WHEN** `/debug <path>` is submitted
 - **THEN** the command refuses, names the path, and leaves the file unchanged
+
+### Requirement: Chat profile selection
+
+`/model` SHALL select or switch the profile assigned to `chat` and SHALL leave the `fast`, `decision`, `subagents`, and `compaction` usage assignments unchanged. The picker SHALL identify the active chat profile and may list model profiles and catalog models. An explicit `provider/model` selection SHALL use that provider's default settings. A bare model id SHALL be accepted only when exactly one provider/profile candidate matches; otherwise the notice SHALL refuse it and name every candidate. The session model-change record SHALL identify the resulting chat profile and resolved model.
+
+#### Scenario: `/model` switches chat profile only
+
+- **GIVEN** configured profiles for chat, fast, decision, subagents, and compaction
+- **WHEN** `/model` switches to another chat profile
+- **THEN** the chat profile changes and the other usage assignments remain unchanged
+
+#### Scenario: An ad-hoc qualified model uses provider defaults
+
+- **GIVEN** a provider with default settings and a catalog model addressable as `provider-a/model-x`
+- **WHEN** `/model provider-a/model-x` is submitted
+- **THEN** chat uses that model with the provider's default settings
+
+#### Scenario: An ambiguous bare model id names its candidates
+
+- **GIVEN** two provider profiles expose model id `model-x`
+- **WHEN** `/model model-x` is submitted
+- **THEN** no switch occurs and the notice names both qualified candidates
+
+### Requirement: Cost command groups usage by provider
+
+The interactive session SHALL provide `/cost` as a read-only command with no model call. It SHALL report priced usage grouped by usage and provider, include the model ids contributing to each group, and show a total consistent with the priced groups. Unknown-priced lanes SHALL be marked unpriced rather than shown as zero. Technical values SHALL use culture-invariant formatting.
+
+#### Scenario: `/cost` reports usage and provider splits
+
+- **GIVEN** recorded priced usage from chat, fast, subagents, and compaction across two providers
+- **WHEN** `/cost` is submitted
+- **THEN** the output groups amounts by usage and by provider, identifies contributing model ids, and includes no model-call result
+
+#### Scenario: Unknown pricing is explicit
+
+- **GIVEN** a recorded usage with an unknown rate for a positive token lane
+- **WHEN** `/cost` is submitted
+- **THEN** that usage is marked unpriced and is not displayed as `$0`
+
+### Requirement: Question picker interaction
+
+The interactive session SHALL present questions through the existing `SelectList` interaction, one question at a time, keeping the current selection visible. Up and Down SHALL move through options; number keys SHALL select (or toggle in multi-select mode) the corresponding option; Space SHALL toggle a multi-select option; Enter SHALL submit the current question; and Esc SHALL skip the whole question request without returning partial answers. Every question SHALL offer a free-text path, including when options are selected. A recommended option SHALL appear first and carry a visible `recommended` marker. The selection and response state SHALL survive repaint and resize.
+
+#### Scenario: Single-select uses the existing picker keys
+
+- **GIVEN** a single-select question with three options
+- **WHEN** the user moves with arrows or presses the number for the second option and then Enter
+- **THEN** the second option's label is returned for that question
+
+#### Scenario: Multi-select returns multiple labels and free text
+
+- **GIVEN** a multi-select question with a free-text response path
+- **WHEN** the user toggles two options, enters custom text and presses Enter
+- **THEN** both labels and the text are returned together
+
+#### Scenario: Esc skips the complete request
+
+- **GIVEN** a multi-question request with an answer already selected for an earlier question
+- **WHEN** the user presses Esc on a later question
+- **THEN** the request closes with `unanswered: skipped` and no partial answers
+
+#### Scenario: Buffered and early keys answer nothing
+
+- **GIVEN** a question prompt that has just become active
+- **WHEN** a key was buffered before it appeared or arrives within the approval prompt's 300 ms arming window
+- **THEN** it changes no selection or text and submits no answer
+
+#### Scenario: Question layouts fit the Termux width band
+
+- **GIVEN** a question with long option descriptions at 120, 80, 60 and 40 columns
+- **WHEN** the question is rendered
+- **THEN** the layout degrades by width, keeps controls and the selected label legible, and fits the 40-column Termux band without clipping an answer action
+
+### Requirement: Question and answer are a paired transcript and export item
+
+An `ask_user` interaction SHALL appear as a question-and-answer-or-outcome pair in the interactive transcript and both session export forms. An MCP elicitation SHALL appear as a labelled question/answer pair within the associated MCP tool call/result. Rendering SHALL escape user- and server-provided text as inert text.
+
+#### Scenario: The transcript and exports preserve an answered pair
+
+- **GIVEN** a session in which `ask_user` receives a selected label and free text
+- **WHEN** the transcript, JSONL export and HTML export are viewed
+- **THEN** each shows the question beside its answer as one pair in interaction order
+
+#### Scenario: An MCP elicitation is attributed to its server
+
+- **GIVEN** an MCP tool call that contains an elicitation from `catalog-server`
+- **WHEN** the session transcript or export is viewed
+- **THEN** the elicitation question and answer appear together under that tool call and name `catalog-server`
