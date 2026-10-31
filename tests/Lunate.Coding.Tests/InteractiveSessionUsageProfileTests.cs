@@ -26,10 +26,7 @@ public sealed class InteractiveSessionUsageProfileTests
             """
         );
         var chat = new ScriptedChatClient().Enqueue(
-            new ChatResponseUpdate(ChatRole.Assistant, [])
-            {
-                FinishReason = ChatFinishReason.Stop,
-            }
+            new ChatResponseUpdate(ChatRole.Assistant, []) { FinishReason = ChatFinishReason.Stop }
         );
         var factory = new UsageFactory(chat);
         using var host = new InteractiveSessionHost(factory: factory, modelsPath: modelsPath);
