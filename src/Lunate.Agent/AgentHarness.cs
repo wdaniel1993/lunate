@@ -466,7 +466,7 @@ public sealed partial class AgentHarness
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            RepairDanglingCalls(runId, cancelled: true);
+            ShieldDanglingCallRepair(runId, cancelled: true);
             if (runStarted && !terminalEmitted)
             {
                 channel.Emit(new RunFinished(runId, StopReasons.Cancelled));
@@ -475,8 +475,31 @@ public sealed partial class AgentHarness
         catch (Exception exception)
         {
             runActivity?.SetStatus(ActivityStatusCode.Error, exception.Message);
-            RepairDanglingCalls(runId, cancelled: false);
+            // The terminal event goes out before the repair: a fault in the repair itself (the
+            // session write, most likely) must never cost the run its failure notice — the run
+            // still owes its stream a RunError, whatever else threw on the way out (#338).
+            ShieldDanglingCallRepair(runId, cancelled: false);
             channel.Emit(new RunError(runId, $"Run failed: {exception.Message}"));
+        }
+    }
+
+    /// <summary>
+    /// Repairs dangling calls without ever killing the run's exit path: the repair mirrors into
+    /// the session, so a session-file fault there must not swallow the terminal event the run is
+    /// about to emit (the in-memory half of the repair always succeeds). Anything else the mirror
+    /// throws is recorded as a warning trace.
+    /// </summary>
+    private void ShieldDanglingCallRepair(string runId, bool cancelled)
+    {
+        try
+        {
+            RepairDanglingCalls(runId, cancelled);
+        }
+        catch (Exception exception)
+        {
+            Trace.WriteLine(
+                $"lunate: run '{runId}' could not mirror its dangling-call repair to the session: {exception.Message}"
+            );
         }
     }
 
