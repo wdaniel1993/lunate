@@ -595,6 +595,43 @@ if [ -n "$(find "${package_tmp}/home" -name install.json 2>/dev/null)" ]; then
 fi
 cd "$repo_root"
 
+step "contract package roundtrip"
+# The extension contract ships beside the tool (#237), on the same tag and no looser: the four SDK
+# packages are checked by the same metadata script (the preview pair under --prerelease), and the
+# template's NuGet shape is proven against this feed — the packages nuget.org serves after the
+# next tag, exercised on every commit where they exist only in dist/.
+contract_tmp="$(verify_tmp)"
+contract_feed="$(native_path "${contract_tmp}/feed")"
+for contract_project in \
+  src/Lunate.Contracts/Lunate.Contracts.csproj \
+  src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj \
+  src/Lunate.Agent/Lunate.Agent.csproj \
+  src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj
+do
+  dotnet pack "$contract_project" -c "$CONFIGURATION" -o "$contract_feed" --nologo
+done
+# The stable pair is versioned with ExtensionApi, the preview pair 0.2.0-preview.<n> — neither is
+# the repository <Version>, so each is read from the csproj that owns it.
+contract_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj)"
+preview_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Lunate.Agent/Lunate.Agent.csproj)"
+"${SCRIPT_DIR}/check-package-metadata.sh" \
+  "${contract_feed}/Lunate.Contracts.${contract_version}.nupkg" --id Lunate.Contracts
+"${SCRIPT_DIR}/check-package-metadata.sh" \
+  "${contract_feed}/Lunate.Extensibility.Abstractions.${contract_version}.nupkg" --id Lunate.Extensibility.Abstractions
+"${SCRIPT_DIR}/check-package-metadata.sh" \
+  --prerelease "${contract_feed}/Lunate.Agent.${preview_version}.nupkg" --id Lunate.Agent
+"${SCRIPT_DIR}/check-package-metadata.sh" \
+  --prerelease "${contract_feed}/Lunate.Extensibility.Testing.${preview_version}.nupkg" --id Lunate.Extensibility.Testing
+# The template in NuGet mode binds the contract packages: restore pulls them from the folder feed
+# the step just packed, build compiles the extension against them, and the test project builds the
+# extension the consumer way (it carries the switch to its child itself).
+dotnet restore templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj \
+  -p:LunateUseNuGetContracts=true \
+  -p:RestoreAdditionalProjectSources="$contract_feed" --nologo
+dotnet build templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj \
+  -c "$CONFIGURATION" \
+  -p:LunateUseNuGetContracts=true --nologo
+
 step "packaging files"
 for packaging_file in \
   packaging/homebrew/lunate.rb \
