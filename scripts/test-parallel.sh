@@ -30,10 +30,60 @@
 # Test projects as the solution sees them, in a stable order. The built
 # assembly check in verify.sh uses the same list, so a project that was not
 # built cannot silently drop out of the gate.
+#
+# lunate.slnx is the SDK's XML solution format (#179): one `Project Path="..."`
+# attribute per project, no GUID rows. gate-tests.sh pins the extraction: the
+# list must be as long as the solution's .Tests.csproj entries.
 verify_test_projects() {
-  sed -n 's/^Project([^)]*) = "[^"]*", "\([^"]*\.Tests\.csproj\)", .*/\1/p' lunate.slnx |
+  sed -n 's:.*<Project Path="\([^"]*\.Tests\.csproj\)" />.*:\1:p' lunate.slnx |
     tr '\\' '/' |
     LC_ALL=C sort
+}
+
+# The shard slice of the test projects. Positions are the same 0-based indices
+# verify_test_queue uses (the LC_ALL=C order of verify_test_projects), so queue
+# and module filtering agree: position p belongs to shard SHARD_I when
+# p % SHARD_N == SHARD_I - 1. SHARD_I/SHARD_N come from --shard (default 1/1,
+# which owns every project and makes both filters pass-throughs).
+verify_shard_projects() {
+  local project index=0
+  while IFS= read -r project; do
+    if [ $((index % SHARD_N)) -eq $((SHARD_I - 1)) ]; then
+      printf '%s\n' "$project"
+    fi
+    index=$((index + 1))
+  done < <(verify_test_projects)
+}
+
+# The shard's test-module expression for `dotnet test --test-modules`: the
+# built assembly of every project the shard owns, joined with semicolons (the
+# separator the MTP dotnet test accepts for multiple patterns). Relative to the
+# repository root, where verify.sh runs the command. Fails when the shard owns
+# nothing — SHARD_N may exceed the project count — because a shard that would
+# run zero tests must never look green.
+verify_shard_modules() {
+  local project expr
+  while IFS= read -r project; do
+    expr="${expr:+${expr};}${project%/*}/bin/${CONFIGURATION}/net10.0/$(basename "$project" .csproj).dll"
+  done < <(verify_shard_projects)
+  if [ -z "$expr" ]; then
+    echo "shard ${SHARD_I}/${SHARD_N} owns zero test projects — reachable shards only" >&2
+    return 1
+  fi
+  printf '%s\n' "$expr"
+}
+
+# Filters verify_test_queue items ("<index>:<kind>:<project>") to the ones the
+# shard owns, by the queue item's own index — the same index the module filter
+# uses above, so the pooled runner and the solution-wide path never disagree
+# about which assembly belongs to which shard.
+verify_shard_queue() {
+  local item
+  while IFS= read -r item; do
+    if [ $(( ${item%%:*} % SHARD_N )) -eq $((SHARD_I - 1)) ]; then
+      printf '%s\n' "$item"
+    fi
+  done
 }
 
 verify_test_is_serial() {

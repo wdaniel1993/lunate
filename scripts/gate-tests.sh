@@ -305,9 +305,90 @@ fi
 rm -rf "$WAIT_DIR"
 WAIT_DIR=""
 
-echo "gate-tests: the package metadata check must reject a package missing licence, readme or repository"
+echo "gate-tests: check-package-metadata.sh self-test must pass"
 if ! bash "${SCRIPT_DIR}/check-package-metadata.sh" --self-test >/dev/null; then
   echo "gate-tests: FAIL: check-package-metadata.sh accepted or misreported an incomplete package" >&2
+  exit 1
+fi
+
+echo "gate-tests: the shard spec parser must accept i/n and reject junk, zero and out-of-range"
+. "${SCRIPT_DIR}/test-parallel.sh"
+shard_got="$(shard_spec_parse '2/4')"
+shard_i="${shard_got%% *}"
+shard_n="${shard_got#* }"
+if [ "$shard_i" != "2" ] || [ "$shard_n" != "4" ]; then
+  echo "gate-tests: FAIL: shard_spec_parse '2/4' parsed as '$shard_got'" >&2
+  exit 1
+fi
+for shard_bad in '2' '1/0' '0/2' '3/2' '4/2' 'a/2' '1/a' '1//2' '1/2/3' '' '  1/2'; do
+  if shard_spec_parse "$shard_bad" >/dev/null 2>&1; then
+    echo "gate-tests: FAIL: shard_spec_parse accepted '$shard_bad'" >&2
+    exit 1
+  fi
+done
+
+# One shard's slice of the real lunate.slnx: position filter with index/count.
+shard_slice() {
+  SHARD_I="$1" SHARD_N="$2" verify_shard_projects
+}
+
+echo "gate-tests: the project list must one-to-one match the solution's test projects"
+partition_all="$(LC_ALL=C sort < <(verify_test_projects))"
+partition_count="$(printf '%s\n' "$partition_all" | wc -l | tr -d ' ')"
+if [ "$partition_count" -eq 0 ] || [ "$partition_count" -ne "$(grep -o 'Tests\.csproj' lunate.slnx | wc -l | tr -d ' ')" ]; then
+  echo "gate-tests: FAIL: verify_test_projects reads $partition_count projects; lunate.slnx has $(grep -o 'Tests\.csproj' lunate.slnx | wc -l | tr -d ' ') (post-#179 extraction regression?)" >&2
+  exit 1
+fi
+shard_union="$(printf '%s\n' "$(shard_slice 1 2)" "$(shard_slice 2 2)" | LC_ALL=C sort)"
+if [ "$shard_union" != "$partition_all" ]; then
+  echo "gate-tests: FAIL: shards 1/2+2/2 do not partition the test projects" >&2
+  diff <(printf '%s\n' "$shard_union") <(printf '%s\n' "$partition_all") | head -20 >&2
+  exit 1
+fi
+shard_union3="$(printf '%s\n' "$(shard_slice 1 3)" "$(shard_slice 2 3)" "$(shard_slice 3 3)" | LC_ALL=C sort)"
+if [ "$shard_union3" != "$partition_all" ]; then
+  echo "gate-tests: FAIL: shards 1/3..3/3 do not partition the test projects" >&2
+  exit 1
+fi
+# Round-robin keeps the run balanced: neighbouring shard sizes differ by at most one.
+shard_size_1="$(printf '%s\n' "$(shard_slice 1 2)" | grep -c . || true)"
+shard_size_2="$(printf '%s\n' "$(shard_slice 2 2)" | grep -c . || true)"
+if [ "$((shard_size_1 - shard_size_2 > 1 || shard_size_2 - shard_size_1 > 1))" -eq 1 ]; then
+  echo "gate-tests: FAIL: shard sizes are unbalanced: $shard_size_1/$shard_size_2 for $partition_count projects" >&2
+  exit 1
+fi
+
+echo "gate-tests: the shard module expression must be one built-assembly path per project, joined with ';'"
+shard_modules_all="$(CONFIGURATION=Release SHARD_I=1 SHARD_N=1 verify_shard_modules)"
+module_count="$(printf '%s\n' "$shard_modules_all" | tr ';' '\n' | grep -c .)"
+if [ "$module_count" -ne "$partition_count" ]; then
+  echo "gate-tests: FAIL: the 1/1 module expression carries $module_count entries for $partition_count projects" >&2
+  exit 1
+fi
+case "$shard_modules_all" in
+  *"/bin/Release/net10.0/Lunate.Tui.Tests.dll"*) ;;
+  *)
+    echo "gate-tests: FAIL: module expression is not a built-assembly path per project: $shard_modules_all" >&2
+    exit 1
+    ;;
+esac
+shard_modules_repeat="$(CONFIGURATION=Release SHARD_I=1 SHARD_N=1 verify_shard_modules)"
+if [ "$shard_modules_all" != "$shard_modules_repeat" ]; then
+  echo "gate-tests: FAIL: the module expression is not deterministic across calls" >&2
+  exit 1
+fi
+module_union="$(printf '%s\n%s\n' "$(CONFIGURATION=Release SHARD_I=1 SHARD_N=2 verify_shard_modules | tr ';' '\n')" "$(CONFIGURATION=Release SHARD_I=2 SHARD_N=2 verify_shard_modules | tr ';' '\n')" | LC_ALL=C sort)"
+module_union_all="$(printf '%s\n' "$shard_modules_all" | tr ';' '\n' | LC_ALL=C sort)"
+if [ "$module_union" != "$module_union_all" ]; then
+  echo "gate-tests: FAIL: the shard module expressions do not cover the solution set" >&2
+  exit 1
+fi
+
+echo "gate-tests: a shard that would own zero test projects must fail instead of running nothing"
+shard_rc=0
+( CONFIGURATION=Release SHARD_I=25 SHARD_N=25 verify_shard_modules ) >/dev/null 2>&1 || shard_rc=$?
+if [ "$shard_rc" -eq 0 ]; then
+  echo "gate-tests: FAIL: shard 25/25 produced a module expression for zero projects" >&2
   exit 1
 fi
 
