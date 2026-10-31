@@ -89,12 +89,7 @@ public sealed class BashGuardToolTests
         string workspace = Directory.CreateDirectory(temp.File("workspace")).FullName;
         string state = Directory.CreateDirectory(temp.File("state")).FullName;
         string prefix = Directory.CreateDirectory(temp.File("prefix")).FullName;
-        var target = new GuardTarget(
-            state,
-            Path.Combine(state, "auth.json"),
-            prefix,
-            temp.Root
-        );
+        var target = new GuardTarget(state, Path.Combine(state, "auth.json"), prefix, temp.Root);
         int probeCalls = 0;
         GuardProbe probe = GuardProbe.Current with
         {
