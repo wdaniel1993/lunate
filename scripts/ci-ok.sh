@@ -186,6 +186,10 @@ self_test() {
         plan '^    if:.*draft' 1
     _self_workflow "ci-ok must take the perf leg as a needed job" \
         ci-ok '^    needs: \[plan, verify, verify-powershell, verify-docs, perf\]' 1
+    _self_workflow "the verify matrix must run the gate per shard, so no shard can be dropped from the matrix" \
+        verify 'scripts/verify\.sh --shard' 1
+    _self_workflow "the verify leg must run on the full profile only" \
+        verify "^    if: needs\.plan\.outputs\.profile == 'full'" 1
     _self_workflow "the perf leg must run the dedicated startup measurement" \
         perf 'scripts/perf\.sh' 1
     _self_workflow "the perf leg must run on the full profile only" \
