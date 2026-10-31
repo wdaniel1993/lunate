@@ -1,7 +1,7 @@
 # provider-store Specification
 
 ## Purpose
-TBD - created by archiving change provider-store. Update Purpose after archive.
+The user-scoped provider store: provider entries that name an endpoint and a credential reference, model catalogs layered over them, and the profiles and usages a session composes from both — validated at load, never carrying a resolved secret.
 
 ## Requirements
 
