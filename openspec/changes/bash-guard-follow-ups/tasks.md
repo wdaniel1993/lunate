@@ -12,7 +12,7 @@
 
 ## 3. Add the explicit guard opt-out
 
-- [ ] 3.1 Extend `SettingsStoreTests` to pin `bashGuard` defaulting to `true`, accepting `false`, and rejecting a non-boolean value; verify the setting does not add a public .NET API member.
+- [x] 3.1 Extend `SettingsStoreTests` to pin `bashGuard` defaulting to `true`, accepting `false`, and rejecting a non-boolean value; verify the setting does not add a public .NET API member.
 - [ ] 3.2 Wire `bashGuard: false` to skip wrapping and probing, keep default behavior guarded, and make the disabled condition explicit in the bash tool result and the welcome header.
 - [ ] 3.3 Build `Lunate.Coding` and run filtered settings, BashTool, and welcome-header tests for the disabled/default paths; verify the welcome-header snapshot change does not alter `tests/fixtures/sessions/`.
 
