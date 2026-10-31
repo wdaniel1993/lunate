@@ -3,6 +3,26 @@ namespace Lunate.Coding.Tests;
 public sealed class StateRootHardlinkScanTests
 {
     [Fact]
+    public void A_physical_external_hardlink_is_detected_when_supported()
+    {
+        using var temp = new TempDirectory();
+        string state = Directory.CreateDirectory(Path.Combine(temp.Root, "state")).FullName;
+        string outside = Directory.CreateDirectory(Path.Combine(temp.Root, "outside")).FullName;
+        string source = Path.Combine(outside, "external.json");
+        string link = Path.Combine(state, "linked.json");
+        File.WriteAllText(source, "{}");
+        Assert.SkipUnless(
+            HardlinkTestFixture.TryCreate(link, source),
+            "The temporary filesystem does not support hardlinks."
+        );
+
+        HardlinkScanResult result = StateRootHardlinkScan.Scan(state);
+
+        Assert.False(result.Incomplete);
+        Assert.Contains(link, Assert.Single(result.Warnings), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void An_external_hardlink_warns_once_and_names_the_in_root_path()
     {
         using var temp = new TempDirectory();
@@ -67,8 +87,8 @@ public sealed class StateRootHardlinkScanTests
 
         Assert.True(result.Incomplete);
         Assert.Contains(
-            Assert.Single(result.Warnings),
             "incomplete",
+            Assert.Single(result.Warnings),
             StringComparison.OrdinalIgnoreCase
         );
     }
@@ -140,5 +160,36 @@ public sealed class StateRootHardlinkScanTests
 
         public HardlinkFileMetadata? GetFileMetadata(string path) =>
             Metadata.TryGetValue(path, out HardlinkFileMetadata metadata) ? metadata : null;
+    }
+
+    private static class HardlinkTestFixture
+    {
+        internal static bool TryCreate(string linkPath, string sourcePath) =>
+            OperatingSystem.IsWindows()
+                ? CreateHardLinkWindows(linkPath, sourcePath, IntPtr.Zero)
+                : CreateHardLinkUnix(sourcePath, linkPath) == 0;
+
+        [System.Runtime.InteropServices.DllImport(
+            "libc",
+            EntryPoint = "link",
+            SetLastError = true,
+            CharSet = System.Runtime.InteropServices.CharSet.Ansi
+        )]
+        private static extern int CreateHardLinkUnix(string existingPath, string newPath);
+
+        [System.Runtime.InteropServices.DllImport(
+            "kernel32.dll",
+            EntryPoint = "CreateHardLinkW",
+            SetLastError = true,
+            CharSet = System.Runtime.InteropServices.CharSet.Unicode
+        )]
+        [return: System.Runtime.InteropServices.MarshalAs(
+            System.Runtime.InteropServices.UnmanagedType.Bool
+        )]
+        private static extern bool CreateHardLinkWindows(
+            string newPath,
+            string existingPath,
+            IntPtr securityAttributes
+        );
     }
 }
