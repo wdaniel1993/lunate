@@ -9,7 +9,7 @@ namespace Lunate.Agent.Tests;
 public sealed class ContextStaleReadTests
 {
     [Fact]
-    public async Task An_edit_from_an_invalidated_read_is_refused_and_stubbed()
+    public async Task An_out_of_band_change_after_an_edit_refuses_and_stubs_the_old_read()
     {
         using var temp = new TempDirectory();
         string contents = string.Join('\n', Enumerable.Range(1, 2_000).Select(Line)) + "\n";
@@ -19,6 +19,23 @@ public sealed class ContextStaleReadTests
             temp.Root,
             new FixedTimeProvider(new DateTimeOffset(2026, 10, 30, 12, 0, 0, TimeSpan.Zero))
         );
+        var external = new ScriptedTool(
+            "external",
+            "Changes a file without publishing an event.",
+            """{"type":"object"}"""
+        )
+        {
+            OnExecute = (_, _) =>
+            {
+                File.WriteAllText(
+                    temp.File("large.txt"),
+                    "first-edit\n"
+                        + string.Join('\n', Enumerable.Range(2, 1_998).Select(Line))
+                        + "\noutside\n"
+                );
+                return new ToolResult("changed outside the file tools", IsError: false);
+            },
+        };
         var scripted = new ScriptedChatClient()
             .Enqueue(
                 LoopScripts.Call("read-call", "read", LoopScripts.Args(("path", "large.txt"))),
@@ -34,6 +51,10 @@ public sealed class ContextStaleReadTests
                         ("new_text", "first-edit")
                     )
                 ),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(
+                LoopScripts.Call("external-call", "external", LoopScripts.Args()),
                 LoopScripts.ToolCalls()
             )
             .Enqueue(
@@ -53,7 +74,8 @@ public sealed class ContextStaleReadTests
             new ContextAccountingChatClient(scripted),
             Registry(
                 new ReadTool(new Workspace(temp.Root)),
-                new EditTool(new Workspace(temp.Root))
+                new EditTool(new Workspace(temp.Root)),
+                external
             ),
             new AgentHarnessOptions
             {
@@ -78,13 +100,15 @@ public sealed class ContextStaleReadTests
         );
         Assert.Contains("re-read", stale.Output, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(
-            "first-edit\n" + string.Join('\n', Enumerable.Range(2, 1_999).Select(Line)) + "\n",
+            "first-edit\n"
+                + string.Join('\n', Enumerable.Range(2, 1_998).Select(Line))
+                + "\noutside\n",
             File.ReadAllText(temp.File("large.txt"))
         );
 
         FunctionResultContent priorRead = Assert.Single(
             scripted
-                .Requests[2]
+                .Requests[3]
                 .Messages.Where(message => message.Role == ChatRole.Tool)
                 .SelectMany(message => message.Contents)
                 .OfType<FunctionResultContent>(),
