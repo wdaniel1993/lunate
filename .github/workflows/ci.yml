@@ -252,7 +252,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: verify-${{ matrix.rid }}
-          path: artifacts/
+          path: |
+            artifacts/
+            .artifacts/
           if-no-files-found: warn
 
   # The prose leg: markdownlint, the generated-region check, the "docs are not build inputs" guard and

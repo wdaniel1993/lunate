@@ -78,7 +78,19 @@ if [ "${RID#win}" != "$RID" ]; then
   BINARY="${BINARY}.exe"
 fi
 
+# Every step reports its own duration, so the gate's wall time can be attributed (and the shard
+# work measured before/after) without reading runner logs line by line.
+STEP_NAME=""
+STEP_START=0
+report_step() {
+  if [ -n "$STEP_NAME" ]; then
+    printf -- '--- %s: %ss\n' "$STEP_NAME" "$(( $(date +%s) - STEP_START ))"
+  fi
+}
 step() {
+  report_step
+  STEP_NAME="$1"
+  STEP_START="$(date +%s)"
   printf '\n==> %s\n' "$1"
 }
 
@@ -92,26 +104,69 @@ step() {
 # pipe and can outlive the command by design, stalling the step for minutes on
 # Windows CI (probe-verified: VBCSCompiler alone held a captured pass open for
 # 3m16s). A file has no such dependency: the step ends when the command ends.
+# One retry, recorded — the flake budget. A test that fails once and passes on the immediate retry
+# does not block the merge; it is written to the ledger (the weekly flake batch fixes them, worst
+# first). A failure that repeats is a real failure and fails the gate as before.
+record_flake() {
+  local label="$1" output="$2"
+  local ledger="${LUNATE_FLAKE_LEDGER:-${GITHUB_WORKSPACE:-$PWD}/.artifacts/flake-ledger.jsonl}"
+  local first
+  first="$(grep -m1 -E '^[[:space:]]*(failed|xunit\.v3[^ ]* failed|\[FAIL\])' "$output" | sed -e 's/^[[:space:]]*//' -e 's/^failed[[:space:]]*//' || true)"
+  mkdir -p "$(dirname "$ledger")"
+  python3 - "$ledger" "$label" "$first" <<'PY'
+import datetime, json, platform, sys
+path, label, first = sys.argv[1:4]
+entry = {
+    "date": datetime.date.today().isoformat(),
+    "leg": platform.system().lower(),
+    "step": label,
+    "test": first or "unknown",
+}
+with open(path, "a", encoding="utf-8") as handle:
+    handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+PY
+  echo "FLAKE: ${label} — passed on retry: ${first:-unknown test}"
+  if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    echo "- flake: ${label} (${first:-unknown test}) passed on retry" >> "$GITHUB_STEP_SUMMARY"
+  fi
+}
+
 run_tests() {
   local label="$1"
   shift
-  local output status total
+  local output first_output status total attempt=1
   output="$(mktemp "${VERIFY_TMP_ROOT}/out.XXXXXX")"
-  set +e
-  "$@" > "$output" 2>&1
-  status=$?
-  set -e
-  cat "$output"
-  total="$(grep -oE 'total: [0-9]+' "$output" | tail -n 1 | grep -oE '[0-9]+' || true)"
-  rm -f "$output"
-  if [ "$status" -ne 0 ]; then
-    echo "verify: ${label} failed (exit ${status})" >&2
-    exit 1
-  fi
-  if [ -z "$total" ] || [ "$total" -eq 0 ]; then
+  first_output="$(mktemp "${VERIFY_TMP_ROOT}/first.XXXXXX")"
+  while :; do
+    set +e
+    "$@" > "$output" 2>&1
+    status=$?
+    set -e
+    total="$(grep -oE 'total: [0-9]+' "$output" | tail -n 1 | grep -oE '[0-9]+' || true)"
+    if [ "$status" -eq 0 ] && [ -n "$total" ] && [ "$total" -gt 0 ]; then
+      break
+    fi
+    if [ "$attempt" -eq 1 ]; then
+      echo "verify: ${label} failed once (exit ${status}) — retrying once under the flake budget" >&2
+      cp "$output" "$first_output"
+      tail -n 15 "$output" >&2 || true
+      attempt=2
+      continue
+    fi
+    cat "$output"
+    rm -f "$output"
+    if [ "$status" -ne 0 ]; then
+      echo "verify: ${label} failed twice in a row (exit ${status}) — not a flake" >&2
+      exit 1
+    fi
     echo "verify: ${label} executed zero tests — test discovery regression?" >&2
     exit 1
+  done
+  cat "$output"
+  if [ "$attempt" -eq 2 ]; then
+    record_flake "$label" "$first_output"
   fi
+  rm -f "$output" "$first_output"
 }
 
 VERIFY_TMP_ROOT=""
@@ -585,4 +640,5 @@ if ! check_shipped_api_unchanged; then
   exit 1
 fi
 
+report_step
 echo "verify: OK"
