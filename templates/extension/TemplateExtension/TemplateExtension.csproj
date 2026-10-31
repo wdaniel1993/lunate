@@ -6,7 +6,7 @@
     <ItemGroup>
         <!-- snippet:start — included by docs/extensions/README.md through scripts/docs-sync; keep the markers -->
         <!--
-            The host owns the contract, Lunate.Agent and Lunate.Ai: Lunate loads them once and every
+            The host owns the contract surface, Lunate.Contracts and Abstractions: Lunate loads them once and every
             extension binds to those copies so their types keep one identity. Private="false" keeps
             the DLLs out of your output directory and ExcludeAssets="runtime" keeps them out of the
             deps file — both still compile against. A copy in your output would be ignored, with one
@@ -14,17 +14,7 @@
             types your signatures use.
         -->
         <ProjectReference
-            Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
-            Private="false"
-            ExcludeAssets="runtime"
-        />
-        <ProjectReference
-            Include="../../../src/Lunate.Agent/Lunate.Agent.csproj"
-            Private="false"
-            ExcludeAssets="runtime"
-        />
-        <ProjectReference
-            Include="../../../src/Lunate.Ai/Lunate.Ai.csproj"
+            Include="../../../src/Lunate.Contracts/Lunate.Contracts.csproj"
             Private="false"
             ExcludeAssets="runtime"
         />
