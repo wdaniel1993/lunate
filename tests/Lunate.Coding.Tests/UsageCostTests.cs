@@ -155,6 +155,7 @@ public sealed class UsageCostTests
 
         Assert.Equal(6m, report.Total);
         Assert.Equal(["chat", "compaction", "decision"], report.ByUsage.Select(row => row.Name));
+        Assert.Equal("adapter", report.ByUsage[2].DecisionMethod);
         Assert.Equal(2.5m, report.ByUsage[0].Cost);
         Assert.Equal(["fixture-priced"], report.ByUsage[0].ModelIds);
         Assert.Equal(["primary", "router"], report.ByProvider.Select(row => row.Name));

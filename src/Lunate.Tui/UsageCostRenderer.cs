@@ -12,7 +12,11 @@ public sealed record CostGroupView(
     long CacheRead,
     long CacheWrite,
     string? Cost
-);
+)
+{
+    /// <summary>The decision method shown beside decision-usage totals, when attributed.</summary>
+    public string? DecisionMethod { get; init; }
+}
 
 /// <summary>The priced and unpriced cost groups shown by the read-only cost command.</summary>
 public sealed record CostReportView(
@@ -54,6 +58,11 @@ public static class UsageCostRenderer
                 providerGroups && group.ProviderKind is { Length: > 0 } kind
                     ? $"{group.Name} ({kind})"
                     : group.Name;
+            if (!providerGroups && group.DecisionMethod is { Length: > 0 } method)
+            {
+                name += $" ({method})";
+            }
+
             lines.Add(
                 FormattableString.Invariant(
                     $"  {name}: {group.Input.ToString("N0", CultureInfo.InvariantCulture)} in / {group.Output.ToString("N0", CultureInfo.InvariantCulture)} out / {group.CacheRead.ToString("N0", CultureInfo.InvariantCulture)} cache read / {group.CacheWrite.ToString("N0", CultureInfo.InvariantCulture)} cache write = {group.Cost ?? "unpriced"}; models: {string.Join(", ", group.ModelIds)}"
