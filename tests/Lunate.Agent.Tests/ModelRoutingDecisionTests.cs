@@ -14,7 +14,11 @@ public sealed class ModelRoutingDecisionTests
 
         Assert.Empty(run.Configured.Requests);
         Assert.Single(run.Fast.Requests);
-        Assert.Contains("fast response", string.Concat(run.Events.OfType<TextMessageContent>().Select(item => item.Text)), StringComparison.Ordinal);
+        Assert.Contains(
+            "fast response",
+            string.Concat(run.Events.OfType<TextMessageContent>().Select(item => item.Text)),
+            StringComparison.Ordinal
+        );
         DecisionEvaluated decision = Assert.Single(run.Events.OfType<DecisionEvaluated>());
         Assert.Equal("routing", decision.QuestionId);
         Assert.Equal("fast", decision.Answer);
@@ -30,7 +34,11 @@ public sealed class ModelRoutingDecisionTests
 
         Assert.Single(run.Configured.Requests);
         Assert.Empty(run.Fast.Requests);
-        Assert.Contains("configured response", string.Concat(run.Events.OfType<TextMessageContent>().Select(item => item.Text)), StringComparison.Ordinal);
+        Assert.Contains(
+            "configured response",
+            string.Concat(run.Events.OfType<TextMessageContent>().Select(item => item.Text)),
+            StringComparison.Ordinal
+        );
         Assert.Equal("fast", Assert.Single(run.Events.OfType<DecisionEvaluated>()).Answer);
     }
 
@@ -42,7 +50,11 @@ public sealed class ModelRoutingDecisionTests
         Assert.Equal(2, run.Decision.Requests.Count);
         Assert.Single(run.Configured.Requests);
         Assert.Empty(run.Fast.Requests);
-        Assert.Contains("configured response", string.Concat(run.Events.OfType<TextMessageContent>().Select(item => item.Text)), StringComparison.Ordinal);
+        Assert.Contains(
+            "configured response",
+            string.Concat(run.Events.OfType<TextMessageContent>().Select(item => item.Text)),
+            StringComparison.Ordinal
+        );
         Assert.Single(run.Events.OfType<DecisionFailed>());
     }
 
