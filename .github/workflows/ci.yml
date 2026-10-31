@@ -19,6 +19,13 @@ on:
   # `ci-ok` never reports for a merge group and the queue stalls.
   merge_group:
   workflow_dispatch:
+    inputs:
+      verify_shard_count:
+        description: "Verify shards per OS (1 for the baseline, 2 for the sharded run)."
+        required: true
+        type: choice
+        options: ["1", "2"]
+        default: "2"
 
 # Supersede in-flight runs for the same ref instead of queueing duplicates.
 concurrency:
@@ -115,7 +122,9 @@ jobs:
         # checks, public API); a shard > 1 runs only the build it needs plus
         # its test slice. The ruleset requires ci-ok, and ci-ok requires the
         # verify job, which fails on any failed shard.
-        shard: [1, 2]
+        # Manual dispatch can compare --shard 1/1 with the normal two-shard run
+        # on the same commit. Pull requests always use the fixed [1, 2] matrix.
+        shard: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_shard_count == '1' && fromJSON('[1]') || fromJSON('[1, 2]') }}
         include:
           # budget_ms: calibrated in spike S-3 (docs/spikes/S-3/report.md, ADR 0005
           # accepted 2026-10-04) — runner startup median + ~50% headroom, rounded up to 50 ms.
@@ -127,7 +136,7 @@ jobs:
             rid: linux-x64
             budget_ms: 250
             memory_gate_mb: 150
-            shard_count: 2
+            shard_count: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_shard_count || 2 }}
           - os: macos-latest
             rid: osx-arm64
             budget_ms: 300
@@ -136,12 +145,12 @@ jobs:
             # on a leg that runs nothing else.
             budget_enforce: 0
             memory_gate_mb: 150
-            shard_count: 2
+            shard_count: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_shard_count || 2 }}
           - os: windows-latest
             rid: win-x64
             budget_ms: 350
             memory_gate_mb: 150
-            shard_count: 2
+            shard_count: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_shard_count || 2 }}
     env:
       RID: ${{ matrix.rid }}
       # English-first CI logs: pin the dotnet CLI / test-runner UI text. The
