@@ -1,6 +1,7 @@
 using Lunate.Agent;
 using Lunate.Extensibility.Testing;
 using Microsoft.Extensions.AI;
+using System.Text.Json;
 
 namespace LspDiagnosticsExtension.Tests;
 
@@ -77,7 +78,8 @@ public sealed class LspWriteVerifierTests
 
         ToolCallResult result = TestSupport.SingleToolResult(run);
         Assert.Contains(
-            "unverified: the language server did not answer",
+            "unverified: the language server could not verify 'src/slow.ts': "
+                + "the language server did not answer within 300 ms",
             result.Output,
             StringComparison.Ordinal
         );
