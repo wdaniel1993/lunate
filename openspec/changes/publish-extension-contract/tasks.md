@@ -48,5 +48,5 @@
 - [x] Full gate runs in CI; local narrow gate green: solution Release build, every touched test
       project (Extensibility 735, Coding 2321, kit consumers, template), csharpier, docs lint,
       docs-sync.
-- [ ] PR body current; acceptance checklist at the bottom of the PR (packages on the same tag via
+- [x] PR body current; acceptance checklist at the bottom of the PR (packages on the same tag via
       OIDC, template on NuGet, preview metadata, metadata gate green).
