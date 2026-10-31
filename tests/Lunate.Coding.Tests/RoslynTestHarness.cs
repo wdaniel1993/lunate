@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility.Abstractions;
@@ -15,7 +16,8 @@ internal static class RoslynTestHarness
         SkillReadAllowance? skillReadAllowance = null,
         IExtensionLog? log = null,
         IReadOnlyList<string>? extraTools = null,
-        CredentialRedactor? redaction = null
+        CredentialRedactor? redaction = null,
+        TimeSpan? bashChangeScanTimeout = null
     )
     {
         ToolRegistry tools = HarnessFactory.CreateTools(
@@ -24,7 +26,8 @@ internal static class RoslynTestHarness
             skillReadAllowance,
             log,
             extraTools,
-            redaction
+            redaction,
+            bashChangeScanTimeout: bashChangeScanTimeout
         );
         foreach (ITool tool in CSharpTools(services, workspace.WorktreeRoot))
         {
@@ -72,5 +75,20 @@ internal static class RoslynTestHarness
             new CsOutlineTool(backend),
             new CsRenameTool(backend),
         ];
+    }
+}
+
+internal sealed class RecordingFileChangeHandler(ConcurrentQueue<FileChangedPayload> changes)
+    : IFileChangedHandler
+{
+    public int Priority => -1;
+
+    public ValueTask OnFileChangedAsync(
+        FileChangedPayload payload,
+        CancellationToken cancellationToken
+    )
+    {
+        changes.Enqueue(payload);
+        return ValueTask.CompletedTask;
     }
 }

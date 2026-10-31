@@ -11,7 +11,9 @@ namespace Lunate.Coding;
 /// every path the last scan saw) is diffed against each new scan — <c>git status</c> answers
 /// "what differs from HEAD", so publishing it raw would re-flag already-dirty files after every
 /// call and would miss clean-to-clean changes. Failures (no git, no repository, timeout, parse
-/// trouble) yield no events; the content-stamp scan stays the backstop.
+/// trouble) yield no events and no snapshot advance — the content-stamp scan stays the backstop —
+/// and every failure names why it produced nothing in the extension log (#395), so a scan trouble
+/// cannot hide behind a test that polls for a publish that never comes.
 /// </summary>
 internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? scanTimeout = null)
 {
@@ -40,8 +42,8 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
     /// <summary>
     /// Scans the run's workspace root and returns the changes since this run's previous scan; the
     /// first scan of a run only baselines (nothing is published for pre-existing state). Scan
-    /// trouble returns an empty list — the content-stamp scan stays the backstop; only a
-    /// cancelled token propagates.
+    /// trouble returns an empty list and says why in the log — the content-stamp scan stays the
+    /// backstop; only a cancelled token propagates.
     /// </summary>
     internal async Task<IReadOnlyList<Change>> ObserveAsync(
         string? runId,
@@ -205,7 +207,12 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
 
         if (status.ExitCode != 0)
         {
-            // Not a repository (or a git failure): silent — the stamp scan covers it.
+            // A git failure never publishes; it does say why (#395): a scan that produces nothing
+            // must be distinguishable from "no change", in the log the extension owner reads.
+            log?.Warn(
+                $"bash change scan: git status failed (exit {status.ExitCode.Value}; "
+                    + $"{FirstLine(status.Stderr)}); the content-stamp scan stays the backstop."
+            );
             return null;
         }
 
@@ -344,6 +351,10 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
             .ConfigureAwait(false);
         if (diff is null || diff.TimedOut || diff.ExitCode != 0)
         {
+            log?.Warn(
+                "bash change scan: the head-to-head history diff failed; "
+                    + "the content-stamp scan stays the backstop."
+            );
             return [];
         }
 
@@ -418,9 +429,22 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
                         or IOException
             )
         {
-            // No git on the machine (or it cannot start): silent — the stamp scan is the backstop.
+            // Git cannot start (or is missing): still say why (#395) — a starved runner whose
+            // spawn fails must not look like a run that changed nothing.
+            log?.Warn(
+                $"bash change scan: git could not start ({exception.GetType().Name}: "
+                    + $"{exception.Message}); the content-stamp scan stays the backstop."
+            );
             return null;
         }
+    }
+
+    /// <summary>The first line of a git error response, capped so a log entry stays one.</summary>
+    private static string FirstLine(string text)
+    {
+        int end = text.IndexOf('\n');
+        string line = (end < 0 ? text : text[..end]).Trim();
+        return line.Length <= 200 ? line : line[..200];
     }
 
     private sealed record Scan(

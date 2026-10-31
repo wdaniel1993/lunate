@@ -176,8 +176,48 @@ internal static class WaitBudgets
     /// A solution-scope diagnostics call over a real fixture workspace: the backend loads, the
     /// compilation is built and the analyzers run, from a spawned MSBuild on a cold runner. Minutes,
     /// not seconds — the call is the test's subject, and its own cost is what the call pays.
+    /// <para>
+    /// Two minutes expired at 2 m 01 s on the ubuntu 2/2 shard of #392, three runs in a row, while
+    /// the same tests passed on the 1/2 shard and on both macOS shards: each shard still builds the
+    /// whole solution and hosts its own half of the process-spawning suites on the same four cores,
+    /// so the compile a bash project change triggers queues behind more work than it did unsharded.
+    /// Five is the widened ceiling; a fast runner exits at its first poll. After the widening, the
+    /// same tests failed fast instead — the scan itself produced nothing, which is #395's defect.
+    /// </para>
     /// </summary>
-    public static readonly TimeSpan Diagnostics = TimeSpan.FromMinutes(2);
+    public static readonly TimeSpan Diagnostics = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// The interval for polling a file-change effect that can arrive after a process call completes.
+    /// The signal is the diagnostics result, so polling stays short while the enclosing
+    /// <see cref="Diagnostics"/> budget bounds the wait.
+    /// </summary>
+    public static readonly TimeSpan DiagnosticsPoll = TimeSpan.FromMilliseconds(50);
+
+    /// <summary>
+    /// The bash project-change scan's git invocations: the scan window a test arms the
+    /// <c>BashChangeTracker</c> or the tool with (each git call of a scan runs under it). The product
+    /// default stays two seconds — a bash call's epilogue should not lengthen for a rare miss the
+    /// content-stamp backstop catches — but a test asserting the bash report end to end must not
+    /// lose a real publish to a cold git start.
+    /// <para>
+    /// One hundred twenty is double the sixty the tests used, and the measurement says that sixty
+    /// expired: on #392's ubuntu 2/2 shard three runs in a row never published the bash report at
+    /// all while the same tests passed on the 1/2 shard, both macOS shards and locally — a sharded
+    /// leg starves the scan, and the widened <see cref="Diagnostics"/> failed in under two seconds
+    /// instead of on a clock once the miss was asserted (#395). Sixty is also
+    /// <see cref="CommandRun"/>'s value; the family takes a doubling step at each reach.
+    /// </para>
+    /// </summary>
+    public static readonly TimeSpan BashScan = TimeSpan.FromSeconds(120);
+
+    /// <summary>
+    /// The collapsed scan window a test hands the bash tracker when the scan producing nothing is
+    /// the condition under test: every git call of that scan times out in milliseconds instead of
+    /// waiting a real scan out (the mechanism #392's repeat pass proved reproduces the CI failure
+    /// shape byte-for-byte).
+    /// </summary>
+    public static readonly TimeSpan CollapsedScan = TimeSpan.FromMilliseconds(1);
 
     /// <summary>
     /// The settle window of the reference-workspace memory probe: after the last diagnostics call,

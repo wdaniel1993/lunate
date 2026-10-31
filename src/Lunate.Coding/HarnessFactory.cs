@@ -24,7 +24,8 @@ internal static class HarnessFactory
         CredentialRedactor? redaction = null,
         WriteVerifierRegistry? writeVerifiers = null,
         WriteVerificationMode verificationMode = WriteVerificationMode.Block,
-        WriteVerificationRefusalTracker? refusalTracker = null
+        WriteVerificationRefusalTracker? refusalTracker = null,
+        TimeSpan? bashChangeScanTimeout = null
     )
     {
         refusalTracker ??= new WriteVerificationRefusalTracker();
@@ -52,7 +53,7 @@ internal static class HarnessFactory
                 refusalTracker
             )
         );
-        tools.Add(new BashTool(workspace, log: log));
+        tools.Add(new BashTool(workspace, null, null, log, new BashGuard(), bashChangeScanTimeout));
         AddOptionalTools(tools, workspace, extraTools);
         return tools;
     }
