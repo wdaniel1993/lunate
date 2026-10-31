@@ -277,7 +277,9 @@ internal sealed partial class InteractiveSession
                 or "subagents"
                 or "tui.fullscreen";
 
-    private static string Row(string key, string value) => key.PadRight(24) + value;
+    /// <summary>One <c>/settings</c> line: the key padded to the table width and its value.</summary>
+    private static string Row(string key, string value) =>
+        key.Length >= 24 ? key + " " + value : key.PadRight(24) + value;
 
     private static string ApprovalLiteral(ApprovalPolicy policy) =>
         policy == ApprovalPolicy.AutoEdit ? "auto-edit" : "ask";

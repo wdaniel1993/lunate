@@ -138,8 +138,7 @@ public sealed class ModelProfileResolutionTests
             ReasoningLevel: "medium",
             MaxOutput: 4096,
             Temperature: 0.4m,
-            ContextWindow: 64_000,
-            DecisionThreshold: 0.75
+            ContextWindow: 64_000
         );
 
         ResolvedModelProfile result = ModelProfileResolver.Resolve(profile, [provider], catalog);

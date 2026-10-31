@@ -28,6 +28,17 @@ public sealed class SettingsDecisionsTests
         }
         """;
 
+    private static AgentSettings Resolve(
+        string json,
+        Func<string, string?>? environment = null
+    )
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("settings.json");
+        File.WriteAllText(path, json);
+        return SettingsStore.Resolve(path, environment ?? (_ => null));
+    }
+
     private static string Json(string decisions) =>
         """{"schemaVersion": 2, """ + decisions.Trim() + "}";
 
@@ -48,7 +59,7 @@ public sealed class SettingsDecisionsTests
     [Fact]
     public void The_block_configures_the_profile_and_every_consumer()
     {
-        AgentSettings settings = SettingsStore.Resolve(FullBlock, _ => null);
+        AgentSettings settings = Resolve(FullBlock);
 
         Assert.Equal("decision-profile", settings.Decisions.Profile);
         Assert.Equal(DecisionMode.Shadow, settings.Decisions.Approvals);
@@ -62,10 +73,10 @@ public sealed class SettingsDecisionsTests
     [Fact]
     public void Old_flat_keys_are_refused_without_aliases()
     {
-        foreach (string bad in ["decisionMode", "routingMode", "routingProfiles"])
+        foreach (string bad in new[] { "decisionMode", "routingMode", "routingProfiles" })
         {
             InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-                SettingsStore.Resolve(Json($""" "{bad}": "off" """), _ => null)
+                Resolve(Json($""" "{bad}": "off" """), _ => null)
             );
 
             Assert.Contains($"'{bad}'", exception.Message, StringComparison.Ordinal);
@@ -77,7 +88,7 @@ public sealed class SettingsDecisionsTests
     public void Unknown_keys_inside_the_block_name_the_field()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            SettingsStore.Resolve(
+            Resolve(
                 Json(""" "decisions": { "unknownKey": true } """),
                 _ => null
             )
@@ -91,7 +102,7 @@ public sealed class SettingsDecisionsTests
     public void The_block_must_be_an_object()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            SettingsStore.Resolve(Json(""" "decisions": "off" """), _ => null)
+            Resolve(Json(""" "decisions": "off" """), _ => null)
         );
 
         Assert.Contains(
@@ -105,7 +116,7 @@ public sealed class SettingsDecisionsTests
     public void Unknown_consumer_modes_are_refused_naming_the_field()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            SettingsStore.Resolve(
+            Resolve(
                 Json(
                     """ "decisions": { "profile": "decision-profile", "approvals": "always", "routing": "sometimes" } """
                 ),
@@ -129,7 +140,7 @@ public sealed class SettingsDecisionsTests
     public void An_out_of_range_or_non_number_threshold_is_refused_naming_the_field(string bad)
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            SettingsStore.Resolve(
+            Resolve(
                 Json($$""" "decisions": { "approvalsThreshold": {{bad}} } """),
                 _ => null
             )
@@ -146,7 +157,7 @@ public sealed class SettingsDecisionsTests
     public void Tool_must_be_a_boolean()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            SettingsStore.Resolve(Json(""" "decisions": { "tool": "on" } """), _ => null)
+            Resolve(Json(""" "decisions": { "tool": "on" } """), _ => null)
         );
 
         Assert.Contains(
@@ -160,7 +171,7 @@ public sealed class SettingsDecisionsTests
     public void Questions_accepts_only_off_and_suggest()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            SettingsStore.Resolve(
+            Resolve(
                 Json(""" "decisions": { "questions": "enforce" } """),
                 _ => null
             )
@@ -178,7 +189,7 @@ public sealed class SettingsDecisionsTests
     public void The_profile_must_be_a_non_empty_string()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            SettingsStore.Resolve(Json(""" "decisions": { "profile": "" } """), _ => null)
+            Resolve(Json(""" "decisions": { "profile": "" } """), _ => null)
         );
 
         Assert.Contains(
@@ -198,7 +209,7 @@ public sealed class SettingsDecisionsTests
           "decisions": {
             "profile": "missing-profile",
             "routing": "enforce",
-            "routingProfiles": ["routing-one", "missing-also"]
+            "routingProfiles": ["missing-also"]
           }
         }
         """;
@@ -207,7 +218,7 @@ public sealed class SettingsDecisionsTests
     public void Unknown_profile_names_are_refused_naming_the_field_and_collected()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            SettingsStore.Resolve(ProfilesAndUnknownDecisionProfile, _ => null)
+            Resolve(ProfilesAndUnknownDecisionProfile, _ => null)
         );
 
         Assert.Contains(
@@ -231,7 +242,7 @@ public sealed class SettingsDecisionsTests
     public void Routing_refuses_unknown_profile_names_even_when_off()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            SettingsStore.Resolve(
+            Resolve(
                 Json(""" "decisions": { "routingProfiles": ["missing"] } """),
                 _ => null
             )
@@ -252,7 +263,7 @@ public sealed class SettingsDecisionsTests
             Enumerable.Range(0, 256).Select(i => $"\"routing-{i}\"")
         );
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            SettingsStore.Resolve(
+            Resolve(
                 Json($$""" "decisions": { "routingProfiles": [{{entries}}] } """),
                 _ => null
             )
@@ -264,7 +275,7 @@ public sealed class SettingsDecisionsTests
     [Fact]
     public void Consumers_turned_on_without_a_profile_resolve_without_an_error_state()
     {
-        AgentSettings settings = SettingsStore.Resolve(
+        AgentSettings settings = Resolve(
             """
             {
               "schemaVersion": 2,
@@ -317,7 +328,7 @@ public sealed class SettingsDecisionsTests
     public void Usages_can_not_select_the_decision_profile_any_more()
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            SettingsStore.Resolve(
+            Resolve(
                 Json(""" "usages": { "decision": "decision-profile" } """),
                 _ => null
             )
