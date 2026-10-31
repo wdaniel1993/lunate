@@ -474,6 +474,30 @@ public sealed class InteractiveSessionCommandTests
         await run;
     }
 
+    [Fact]
+    public async Task Context_reports_context_savings_by_mechanism()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Console.Size = new Lunate.Tui.ConsoleSize(400, 24);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/context");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "subagents: concurrency 4");
+
+        Assert.Contains(
+            "saved tokens: spills 0, masking 0, read stubs 0",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
+        Assert.Empty(host.Client.Requests);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
     [Theory]
     [InlineData(1200L, 300L, "cache: read 1.2k, write 300")]
     [InlineData(1200L, null, "cache: read 1.2k")]
