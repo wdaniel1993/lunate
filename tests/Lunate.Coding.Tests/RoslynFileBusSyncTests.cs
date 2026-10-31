@@ -1,6 +1,10 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Extensibility;
+using Lunate.Extensibility.Abstractions;
 using Lunate.Roslyn;
 
 namespace Lunate.Coding.Tests;
@@ -326,13 +330,24 @@ public sealed class RoslynFileBusSyncTests
         var backend = new RoslynBackend(fixture.Root);
         using var services = new WorkspaceServices(1, root => backend);
         var workspace = new Workspace(fixture.Root);
+        ExtensionSeams seams = TestExtensionSeams.Empty(temp);
+        var log = (RecordingExtensionLog)seams.Log!;
         await using ExtensionSession host = await ExtensionSession.StartAsync(
             workspace.Identity,
-            TestExtensionSeams.Empty(temp),
+            seams,
             Ct
         );
         services.Connect(host.FileChanges);
-        ToolRegistry tools = RoslynTestHarness.CreateTools(workspace, services: services);
+        var changes = new ConcurrentQueue<FileChangedPayload>();
+        using IDisposable observer = host.FileChanges.Subscribe(
+            new RecordingFileChangeHandler(changes)
+        );
+        ToolRegistry tools = RoslynTestHarness.CreateTools(
+            workspace,
+            services: services,
+            log: log,
+            bashChangeScanTimeout: WaitBudgets.BashScan
+        );
         var context = new ToolContext(fixture.Root, new NullAgentEvents())
         {
             FileChanges = host.FileChanges,
@@ -371,7 +386,25 @@ public sealed class RoslynFileBusSyncTests
             );
         Assert.False(edited.IsError, edited.Output);
         await host.FileChanges.FlushAsync(Ct);
-        ToolResult refreshed = await RunDiagnosticsAsync(tools, fixture.Root);
+        Assert.True(
+            changes.Count(change => change.RelativePath == "src/ConsoleApp/Calculator.cs") == 1,
+            $"Bash did not publish exactly one edit. Log: {string.Join(Environment.NewLine, log.Messages)}"
+        );
+        Assert.False(
+            log.Contains("bash change scan timed out"),
+            $"Bash did not publish the edited file. Log: {string.Join(Environment.NewLine, log.Messages)}"
+        );
+        ToolResult refreshed = await RunDiagnosticsUntilAsync(
+            () => RunDiagnosticsAsync(tools, fixture.Root),
+            result =>
+                !result.IsError
+                && result.Output.Contains("CS0103", StringComparison.Ordinal)
+                && result.Output.Contains(
+                    "1 file(s) changed since the last check",
+                    StringComparison.Ordinal
+                ),
+            "the edited file's diagnostic and changed-file notice"
+        );
         Assert.False(refreshed.IsError, refreshed.Output);
         Assert.Contains("CS0103", refreshed.Output, StringComparison.Ordinal);
         Assert.Contains(
@@ -405,8 +438,26 @@ public sealed class RoslynFileBusSyncTests
         Assert.False(editedAgain.IsError, editedAgain.Output);
         File.SetLastWriteTimeUtc(calculator, stamp);
         await host.FileChanges.FlushAsync(Ct);
+        Assert.True(
+            changes.Count(change => change.RelativePath == "src/ConsoleApp/Calculator.cs") == 2,
+            $"Bash did not publish both edits. Log: {string.Join(Environment.NewLine, log.Messages)}"
+        );
+        Assert.False(
+            log.Contains("bash change scan timed out"),
+            $"Bash did not publish the second edit. Log: {string.Join(Environment.NewLine, log.Messages)}"
+        );
 
-        ToolResult second = await RunDiagnosticsAsync(tools, fixture.Root);
+        ToolResult second = await RunDiagnosticsUntilAsync(
+            () => RunDiagnosticsAsync(tools, fixture.Root),
+            result =>
+                !result.IsError
+                && result.Output.Contains("CS0103", StringComparison.Ordinal)
+                && result.Output.Contains(
+                    "1 file(s) changed since the last check",
+                    StringComparison.Ordinal
+                ),
+            "the second edited file's diagnostic and changed-file notice"
+        );
 
         Assert.False(second.IsError, second.Output);
         Assert.Contains("CS0103", second.Output, StringComparison.Ordinal);
@@ -430,13 +481,24 @@ public sealed class RoslynFileBusSyncTests
         var backend = new RoslynBackend(fixture.Root);
         using var services = new WorkspaceServices(1, root => backend);
         var workspace = new Workspace(fixture.Root);
+        ExtensionSeams seams = TestExtensionSeams.Empty(temp);
+        var log = (RecordingExtensionLog)seams.Log!;
         await using ExtensionSession host = await ExtensionSession.StartAsync(
             workspace.Identity,
-            TestExtensionSeams.Empty(temp),
+            seams,
             Ct
         );
         services.Connect(host.FileChanges);
-        ToolRegistry tools = RoslynTestHarness.CreateTools(workspace, services: services);
+        var changes = new ConcurrentQueue<FileChangedPayload>();
+        using IDisposable observer = host.FileChanges.Subscribe(
+            new RecordingFileChangeHandler(changes)
+        );
+        ToolRegistry tools = RoslynTestHarness.CreateTools(
+            workspace,
+            services: services,
+            log: log,
+            bashChangeScanTimeout: WaitBudgets.BashScan
+        );
         var context = new ToolContext(fixture.Root, new NullAgentEvents())
         {
             FileChanges = host.FileChanges,
@@ -466,16 +528,82 @@ public sealed class RoslynFileBusSyncTests
             );
         Assert.False(made.IsError, made.Output);
         await host.FileChanges.DrainAsync(Ct);
+        Assert.Contains(
+            changes,
+            change =>
+                change.RelativePath == "src/ConsoleApp/ConsoleApp.csproj"
+                && change.WorkspaceId == workspace.WorktreeRoot
+        );
+        Assert.False(
+            log.Contains("bash change scan timed out"),
+            $"Bash change scan timed out. Log: {string.Join(Environment.NewLine, log.Messages)}; "
+                + $"events: {string.Join(", ", changes.Select(change => $"{change.RelativePath}@{change.WorkspaceId}"))}"
+        );
 
         // The reload re-baselines every document, so the changed scope reports nothing; the
         // solution scope shows the reloaded project's diagnostics — the new file included.
-        ToolResult second = await tools
-            .Find("cs_diagnostics")!
-            .ExecuteAsync(Args("""{"scope":"solution"}"""), context, Ct);
+        ToolResult second = await RunDiagnosticsUntilAsync(
+            () =>
+                tools
+                    .Find("cs_diagnostics")!
+                    .ExecuteAsync(Args("""{"scope":"solution"}"""), context, Ct),
+            result => !result.IsError && result.Output.Contains("CS0103", StringComparison.Ordinal),
+            "the new file's solution diagnostic"
+        );
 
         Assert.False(second.IsError, second.Output);
         Assert.Equal(2, backend.LoadCount);
         Assert.Contains("CS0103", second.Output, StringComparison.Ordinal);
+    }
+
+    private static async Task<ToolResult> RunDiagnosticsUntilAsync(
+        Func<Task<ToolResult>> runDiagnostics,
+        Func<ToolResult, bool> expected,
+        string expectation
+    )
+    {
+        var elapsed = Stopwatch.StartNew();
+        ToolResult? last = null;
+        try
+        {
+            do
+            {
+                TimeSpan remaining = WaitBudgets.Diagnostics - elapsed.Elapsed;
+                if (remaining <= TimeSpan.Zero)
+                {
+                    break;
+                }
+
+                last = await runDiagnostics().WaitAsync(remaining, Ct);
+                if (expected(last))
+                {
+                    return last;
+                }
+
+                remaining = WaitBudgets.Diagnostics - elapsed.Elapsed;
+                if (remaining <= TimeSpan.Zero)
+                {
+                    break;
+                }
+
+                await Task.Delay(
+                    remaining < WaitBudgets.DiagnosticsPoll
+                        ? remaining
+                        : WaitBudgets.DiagnosticsPoll,
+                    Ct
+                );
+            } while (true);
+        }
+        catch (OperationCanceledException) when (!Ct.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"Diagnostics did not reach {expectation} within {WaitBudgets.Diagnostics.ToString("c", CultureInfo.InvariantCulture)}. Last output: {last?.Output ?? "(none)"}"
+            );
+        }
+
+        throw new TimeoutException(
+            $"Diagnostics did not reach {expectation} within {WaitBudgets.Diagnostics.ToString("c", CultureInfo.InvariantCulture)}. Last output: {last?.Output ?? "(none)"}"
+        );
     }
 
     private static Task<ToolResult> RunDiagnosticsAsync(ToolRegistry tools, string root) =>

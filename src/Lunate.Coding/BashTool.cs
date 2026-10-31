@@ -70,7 +70,7 @@ public sealed class BashTool : ITool
         TimeSpan? timeout = null,
         IExtensionLog? log = null
     )
-        : this(workspace, resolver, timeout, log, new BashGuard()) { }
+        : this(workspace, resolver, timeout, log, new BashGuard(), null) { }
 
     /// <summary>
     /// The seam for the guard: tests substitute a guard whose targets point at a fixture's
@@ -81,13 +81,14 @@ public sealed class BashTool : ITool
         ShellResolver? resolver,
         TimeSpan? timeout,
         IExtensionLog? log,
-        BashGuard guard
+        BashGuard guard,
+        TimeSpan? changeScanTimeout = null
     )
     {
         _workspace = workspace;
         _shell = (resolver ?? new ShellResolver()).Resolve();
         _timeout = timeout ?? DefaultTimeout;
-        _changes = new BashChangeTracker(log);
+        _changes = new BashChangeTracker(log, changeScanTimeout);
         _guard = guard;
         _log = log;
         Description = _shell is null
@@ -255,9 +256,14 @@ public sealed class BashTool : ITool
                 );
             }
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            // The change report must never affect the tool's result.
+            // The change report must never affect the tool's result — and it must never be
+            // silent, or a scan that produced nothing is indistinguishable from "no change"
+            // (#395): the extension log is where a missed publish explains itself.
+            _log?.Warn(
+                $"bash change report failed: {exception.GetType().Name}: {exception.Message}"
+            );
         }
     }
 
