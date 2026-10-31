@@ -20,6 +20,11 @@ public static partial class SettingsStore
         {
             problems.Add("'routingMode' requires at least two 'routingProfiles'");
         }
+
+        if (settings.RoutingProfiles.Count > 255)
+        {
+            problems.Add("'routingProfiles' cannot contain more than 255 profiles");
+        }
     }
 
     private static DecisionMode ReadRoutingMode(JsonElement value, List<string> problems)

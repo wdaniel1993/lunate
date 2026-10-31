@@ -215,6 +215,14 @@ public sealed partial class AgentHarness
             );
         }
 
+        if (options.RoutingProfiles is { Count: > 255 })
+        {
+            throw new ArgumentException(
+                "Model routing cannot offer more than 255 profiles.",
+                nameof(AgentHarnessOptions.RoutingProfiles)
+            );
+        }
+
         if (options.MaxSteps < 1)
         {
             throw new ArgumentOutOfRangeException(

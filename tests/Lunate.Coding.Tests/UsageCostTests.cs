@@ -188,7 +188,8 @@ public sealed class UsageCostTests
             ["decision (native)", "decision (adapter)"],
             report.ByUsage.Select(line => line.Name)
         );
-        Assert.Equal(["1", "2"], report.ByUsage.Select(line => line.Cost?.ToString("0", CultureInfo.InvariantCulture)));
+        Assert.Equal(0.001m, report.ByUsage[0].Cost);
+        Assert.Equal(0.002m, report.ByUsage[1].Cost);
     }
 
     [Fact]
