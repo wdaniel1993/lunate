@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Lunate.Tui.Tests;
 
 public sealed class SelectListQuestionTests
@@ -21,6 +23,54 @@ public sealed class SelectListQuestionTests
         Assert.Equal("Plan B", question.Options[1].Label);
         Assert.Equal(QuestionPromptStatus.Pending, question.Status);
         Assert.Null(question.Answer);
+    }
+
+    [Fact]
+    public void Decision_suggestion_is_distinct_from_recommended_under_any_culture()
+    {
+        CultureInfo originalCulture = CultureInfo.CurrentCulture;
+        CultureInfo originalUiCulture = CultureInfo.CurrentUICulture;
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-AT");
+        try
+        {
+            SelectListQuestionModel question = SelectListQuestionModel.Create(
+                "Choose a plan",
+                "Which approach should we use?",
+                [
+                    new("Plan B", "A fallback."),
+                    new("Plan A", "The preferred plan.", DecisionSuggestedProbability: 0.82d),
+                    new("Plan C", "A different approach."),
+                ],
+                multiSelect: false,
+                recommendedLabel: "Plan B"
+            );
+
+            IReadOnlyList<string> lines = SelectListRenderer.QuestionLines(question);
+
+            Assert.Contains(
+                lines,
+                line =>
+                    line.Contains(
+                        "Plan A (suggested · decision model 0.82)",
+                        StringComparison.Ordinal
+                    )
+            );
+            Assert.Contains(
+                lines,
+                line => line.Contains("Plan B (recommended)", StringComparison.Ordinal)
+            );
+            Assert.DoesNotContain(
+                lines,
+                line =>
+                    line.Contains("Plan B (suggested · decision model", StringComparison.Ordinal)
+            );
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
     }
 
     [Fact]
