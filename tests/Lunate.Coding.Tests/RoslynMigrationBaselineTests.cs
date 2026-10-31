@@ -58,9 +58,10 @@ public sealed class RoslynMigrationBaselineTests
             "roslyn-built-in-migration",
             "results.json"
         );
-        BaselineResult[] expected = JsonSerializer.Deserialize<BaselineResult[]>(
-            File.ReadAllText(baselinePath)
-        )!;
+        BaselineResult[] expected = JsonSerializer
+            .Deserialize<BaselineResult[]>(File.ReadAllText(baselinePath))!
+            .Select(result => result with { Output = NormalizeNewlines(result.Output) })
+            .ToArray();
         Assert.Equal(expected, actual);
     }
 
@@ -77,8 +78,17 @@ public sealed class RoslynMigrationBaselineTests
             .Find(name)!
             .ExecuteAsync(document.RootElement.Clone(), context, Ct)
             .WaitAsync(WaitBudgets.Diagnostics, Ct);
-        results.Add(new BaselineResult(name, arguments, result.Output, result.IsError));
+        // The tools compose their text with AppendLine, so it carries Environment.NewLine: CRLF on
+        // Windows. The frozen baseline is one file with LF, and the comparison must not depend on the
+        // platform that produced the run — normalise both sides (the line-ending rule, applied here
+        // because this is a golden).
+        results.Add(
+            new BaselineResult(name, arguments, NormalizeNewlines(result.Output), result.IsError)
+        );
     }
+
+    private static string NormalizeNewlines(string text) =>
+        text.Replace("\r\n", "\n", StringComparison.Ordinal);
 
     private sealed record BaselineResult(
         string Name,
