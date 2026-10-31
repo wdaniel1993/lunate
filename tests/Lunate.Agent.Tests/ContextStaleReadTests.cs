@@ -175,6 +175,63 @@ public sealed class ContextStaleReadTests
     }
 
     [Fact]
+    public async Task Consecutive_edits_after_a_read_use_the_latest_agent_write()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("small.txt"), "first\nsecond\nthird\n");
+        var scripted = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("read", "read", LoopScripts.Args(("path", "small.txt"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(
+                LoopScripts.Call(
+                    "edit-1",
+                    "edit",
+                    LoopScripts.Args(
+                        ("path", "small.txt"),
+                        ("old_text", "first"),
+                        ("new_text", "FIRST")
+                    )
+                ),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(
+                LoopScripts.Call(
+                    "edit-2",
+                    "edit",
+                    LoopScripts.Args(
+                        ("path", "small.txt"),
+                        ("old_text", "second"),
+                        ("new_text", "SECOND")
+                    )
+                ),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var workspace = new Workspace(temp.Root);
+        var harness = new AgentHarness(
+            scripted,
+            Registry(new ReadTool(workspace), new EditTool(workspace)),
+            new AgentHarnessOptions { WorkingDirectory = temp.Root }
+        );
+
+        List<AgentEvent> events = await Run(harness);
+
+        ToolCallResult firstEdit = Assert.Single(
+            events.OfType<ToolCallResult>(),
+            result => result.CallId == "edit-1"
+        );
+        ToolCallResult secondEdit = Assert.Single(
+            events.OfType<ToolCallResult>(),
+            result => result.CallId == "edit-2"
+        );
+        Assert.False(firstEdit.IsError);
+        Assert.False(secondEdit.IsError);
+        Assert.Equal("FIRST\nSECOND\nthird\n", File.ReadAllText(temp.File("small.txt")));
+    }
+
+    [Fact]
     public async Task An_out_of_band_change_refuses_an_edit_from_the_old_read()
     {
         using var temp = new TempDirectory();
