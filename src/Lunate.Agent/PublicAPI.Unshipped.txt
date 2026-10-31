@@ -1640,3 +1640,11 @@ virtual Lunate.Agent.SessionEntry.Equals(Lunate.Agent.SessionEntry? other) -> bo
 virtual Lunate.Agent.SessionEntry.PrintMembers(System.Text.StringBuilder! builder) -> bool
 ~override Lunate.Agent.SubagentUsage.Equals(object obj) -> bool
 ~override Lunate.Agent.SubagentUsage.ToString() -> string
+Lunate.Agent.DecisionEvaluated.Answer.get -> string! (forwarded, contained in Lunate.Contracts)
+Lunate.Agent.DecisionEvaluated.Answer.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Agent.DecisionEvaluated.QuestionId.get -> string! (forwarded, contained in Lunate.Contracts)
+Lunate.Agent.DecisionEvaluated.QuestionId.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Agent.DecisionFailed.QuestionId.get -> string! (forwarded, contained in Lunate.Contracts)
+Lunate.Agent.DecisionFailed.QuestionId.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Agent.DecisionUnavailable.QuestionId.get -> string! (forwarded, contained in Lunate.Contracts)
+Lunate.Agent.DecisionUnavailable.QuestionId.init -> void (forwarded, contained in Lunate.Contracts)

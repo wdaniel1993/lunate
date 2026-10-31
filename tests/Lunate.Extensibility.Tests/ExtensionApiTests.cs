@@ -1,4 +1,5 @@
 using Lunate.Extensibility.Abstractions;
+using Lunate.Contracts;
 
 namespace Lunate.Extensibility.Tests;
 
@@ -6,12 +7,12 @@ public sealed class ExtensionApiTests
 {
     [Fact]
     public void Current_is_the_released_contract_version() =>
-        Assert.Equal("1.14.0", ExtensionApi.Current);
+        Assert.Equal("1.15.0", ExtensionApi.Current);
 
     /// <summary>
     /// The gate compares an extension's referenced <c>Lunate.Extensibility.Abstractions</c> version
-    /// with <see cref="ExtensionApi.Current"/>, so the contract assembly's own version has to be that
-    /// number: two scales would make the refusal name a version no Lunate ships.
+    /// with <see cref="ExtensionApi.Current"/>; the bottom contract assembly is versioned in
+    /// lockstep, so both references name the same shipped API.
     /// </summary>
     [Fact]
     public void The_contract_assembly_version_is_the_api_version() =>
@@ -20,9 +21,16 @@ public sealed class ExtensionApiTests
             typeof(ExtensionApi).Assembly.GetName().Version!.ToString(3)
         );
 
+    [Fact]
+    public void The_bottom_contract_assembly_version_is_the_api_version() =>
+        Assert.Equal(
+            ExtensionApi.Current,
+            typeof(DecisionRequest).Assembly.GetName().Version!.ToString(3)
+        );
+
     [Theory]
-    [InlineData("1.14.0")]
-    [InlineData("^1.14.0")]
+    [InlineData("1.15.0")]
+    [InlineData("^1.15.0")]
     [InlineData("^1.13.0")]
     [InlineData("^1.11.0")]
     [InlineData("^1.10.0")]
@@ -57,6 +65,7 @@ public sealed class ExtensionApiTests
     [InlineData("1.11.0")]
     [InlineData("1.12.0")]
     [InlineData("1.13.0")]
+    [InlineData("1.14.0")]
     [InlineData("2.0.0")]
     [InlineData("^0.9.9")]
     [InlineData("^2.0.0")]

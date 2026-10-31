@@ -1,13 +1,12 @@
 using System.Text.Json;
 using Lunate.Ai;
+using Lunate.Contracts;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
 
 public sealed partial class AgentHarness
 {
-    private const double DecisionProbabilityTolerance = 0.000001d;
-
     private async Task<ApprovalDecisionResult> EvaluateApprovalDecisionAsync(
         string runId,
         ApprovalRequest request,
@@ -18,164 +17,101 @@ public sealed partial class AgentHarness
         UsageModelClient? model = ResolveUsageModel("decision");
         if (model is null)
         {
-            channel.Emit(new DecisionUnavailable(runId));
+            channel.Emit(new DecisionUnavailable(runId) { QuestionId = "approval" });
             return new ApprovalDecisionResult(null, null);
         }
 
-        RequireCapability(
-            model.Model,
-            model.Model.Capabilities?.Features,
-            "structured-output",
-            "feature"
-        );
-        double threshold = model.DecisionThreshold ?? 0.5d;
-        string modelId = model.Model.Id;
-        string method = model.Model.ApiType == "native" ? "native" : "adapter";
-        string? failure = null;
-
-        for (int attempt = 0; attempt < 2; attempt++)
+        bool native = model.Model.ApiType == "native"
+            && model.Client.GetService(typeof(INativeDecisionClient)) is INativeDecisionClient;
+        if (!native)
         {
-            ChatResponse response;
-            try
-            {
-                response = await model.Client.GetResponseAsync(
-                    DecisionPrompt(request),
-                    new ChatOptions { ResponseFormat = ChatResponseFormat.Json },
-                    ct
-                );
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception)
-            {
-                failure = "provider request failed";
-                break;
-            }
-
-            string resolvedModelId = response.ModelId ?? modelId;
-            bool valid = TryReadDecision(
-                response.Text,
-                out DecisionContract? contract,
-                out failure
+            RequireCapability(
+                model.Model,
+                model.Model.Capabilities?.Features,
+                "structured-output",
+                "feature"
             );
-            if (response.Usage is { } usage)
-            {
-                AccumulateUsage(
-                    runId,
-                    channel,
-                    usage,
-                    resolvedModelId,
-                    UsageAttribution(
-                        "decision",
-                        model,
-                        valid ? method : null,
-                        valid ? contract!.Probability : null
-                    )
-                );
-            }
-
-            if (valid)
-            {
-                var evaluated = new DecisionEvaluated(
-                    runId,
-                    resolvedModelId,
-                    method,
-                    contract!.Option,
-                    contract.Probability
-                );
-                channel.Emit(evaluated);
-                bool approve = contract.Option == "approve" && contract.Probability >= threshold;
-                return new ApprovalDecisionResult(evaluated, null, approve);
-            }
         }
 
-        string reason = failure ?? "response did not match the decision contract";
-        channel.Emit(new DecisionFailed(runId, modelId, reason));
-        return new ApprovalDecisionResult(
-            null,
-            $"Decision for model '{modelId}' failed after retry: {reason}."
+        string modelId = model.Model.Id;
+        string method = native ? "native" : "adapter";
+        var state = JsonSerializer.SerializeToElement(
+            new
+            {
+                tool = request.Tool.Name,
+                risk = request.Tool.Risk.ToString(),
+                description = request.Tool.Description,
+                workspace = request.WorkspaceRoot,
+                arguments = request.Args,
+            }
         );
-    }
-
-    private static List<ChatMessage> DecisionPrompt(ApprovalRequest request) =>
-        [
-            new(
-                ChatRole.System,
-                "Assess this proposed tool call against the user's approval rules. Return JSON with exactly an option ('approve' or 'deny') and probabilities containing one finite probability from 0 to 1 for each option; probabilities must sum to 1. This is a recommendation only and cannot grant permission."
-            ),
-            new(
-                ChatRole.User,
-                $"Tool: {request.Tool.Name}\nRisk: {request.Tool.Risk}\nDescription: {request.Tool.Description}\nWorkspace: {request.WorkspaceRoot ?? "unknown"}\nArguments: {request.Args.GetRawText()}"
-            ),
-        ];
-
-    private static bool TryReadDecision(
-        string? text,
-        out DecisionContract? contract,
-        out string? error
-    )
-    {
-        contract = null;
-        error = "response must contain one defined option and its probabilities";
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return false;
-        }
+        var decisionRequest = new DecisionRequest(
+            state,
+            [
+                new DecisionQuestion(
+                    "approval",
+                    "Should this tool call be approved?",
+                    DecisionQuestionKind.Choice,
+                    ["approve", "deny"]
+                ),
+            ]
+        );
 
         try
         {
-            using JsonDocument document = JsonDocument.Parse(text);
-            JsonElement root = document.RootElement;
-            if (
-                root.ValueKind != JsonValueKind.Object
-                || !root.TryGetProperty("option", out JsonElement optionElement)
-                || optionElement.ValueKind != JsonValueKind.String
-                || optionElement.GetString() is not ("approve" or "deny")
-                || !root.TryGetProperty("probabilities", out JsonElement probabilities)
-                || probabilities.ValueKind != JsonValueKind.Object
+            DecisionResponse response = await DecisionEngine.EvaluateAsync(
+                decisionRequest,
+                model.Client,
+                modelId,
+                method,
+                ct,
+                (usage, resolvedModelId, decisionMethod, probability) =>
+                    AccumulateUsage(
+                        runId,
+                        channel,
+                        usage,
+                        resolvedModelId,
+                        UsageAttribution("decision", model, decisionMethod, probability)
+                    )
+            );
+            DecisionAnswer answer = response.Results["approval"];
+            var evaluated = new DecisionEvaluated(
+                runId,
+                answer.ModelId,
+                answer.Method,
+                answer.Answer,
+                answer.Probability
             )
             {
-                return false;
-            }
-
-            var values = new Dictionary<string, double>(StringComparer.Ordinal);
-            foreach (JsonProperty property in probabilities.EnumerateObject())
-            {
-                if (
-                    property.Name is not ("approve" or "deny")
-                    || !property.Value.TryGetDouble(out double value)
-                    || !double.IsFinite(value)
-                    || value is < 0d or > 1d
-                    || !values.TryAdd(property.Name, value)
-                )
-                {
-                    return false;
-                }
-            }
-
-            if (
-                values.Count != 2
-                || Math.Abs(values["approve"] + values["deny"] - 1d) > DecisionProbabilityTolerance
-            )
-            {
-                return false;
-            }
-
-            string option = optionElement.GetString()!;
-            contract = new DecisionContract(option, values[option]);
-            error = null;
-            return true;
+                QuestionId = "approval",
+                Answer = answer.Answer,
+            };
+            channel.Emit(evaluated);
+            double threshold = model.DecisionThreshold ?? 0.5d;
+            bool approve = answer.Answer == "approve" && answer.Probability >= threshold;
+            return new ApprovalDecisionResult(evaluated, null, approve);
         }
-        catch (JsonException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            error = "response is not valid JSON";
-            return false;
+            throw;
+        }
+        catch (InvalidDataException exception)
+        {
+            const string questionId = "approval";
+            string reason = exception.Message;
+            channel.Emit(new DecisionFailed(runId, modelId, reason) { QuestionId = questionId });
+            return new ApprovalDecisionResult(null, reason);
+        }
+        catch (Exception)
+        {
+            const string reason = "provider request failed";
+            channel.Emit(new DecisionFailed(runId, modelId, reason) { QuestionId = "approval" });
+            return new ApprovalDecisionResult(
+                null,
+                $"Decision for model '{modelId}' failed after retry: {reason}."
+            );
         }
     }
-
-    private sealed record DecisionContract(string Option, double Probability);
 
     private sealed record ApprovalDecisionResult(
         DecisionEvaluated? Evaluation,

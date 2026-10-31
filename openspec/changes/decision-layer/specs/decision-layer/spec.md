@@ -3,7 +3,8 @@
 ### Requirement: Decision primitive contract
 
 The decision layer SHALL expose one primitive with four phases — propose, validate, decide, record —
-owned by the agent harness and modelled on the Jev-compatible decision API. A request SHALL carry a
+owned by the agent harness and modelled on the Jev-compatible decision API. Its request, question,
+answer and result DTOs SHALL live in `Lunate.Contracts`; a request SHALL carry a
 **state** (free text, or a JSON value) and **one or more named questions** evaluated independently
 against that state. Results SHALL be keyed by question id, and question ids SHALL be unique within a
 request. A result SHALL carry the chosen answer, that answer's probability, the full distribution
@@ -97,10 +98,11 @@ response itself.
 
 ### Requirement: Extension-facing service
 
-The primitive SHALL be available to extensions as a service: `IDecisionService` and its request,
-question, result and answer types SHALL live in `Lunate.Extensibility.Abstractions`, the
-implementation SHALL live in `Lunate.Agent`, and the agent SHALL register the service so an extension
-can resolve it. Front ends SHALL keep observing decisions through the agent event channel
+The primitive SHALL be available to extensions as a service: `IDecisionService` SHALL live in
+`Lunate.Extensibility.Abstractions`, the evaluator SHALL live in `Lunate.Agent`, and
+`Lunate.Extensibility` SHALL bridge and register the service so an extension can resolve it. The
+Abstractions assembly SHALL reference `Lunate.Contracts` and SHALL NOT reference `Lunate.Agent`.
+Front ends SHALL keep observing decisions through the agent event channel
 (`DecisionEvaluated`, `DecisionUnavailable`, `DecisionFailed`). The public shape SHALL land before
 #237 publishes `Lunate.Extensibility.Abstractions` as stable.
 
@@ -111,12 +113,12 @@ can resolve it. Front ends SHALL keep observing decisions through the agent even
 - **THEN** it receives the validated per-question result, and the decision appears in the run's event
   stream like any other
 
-#### Scenario: Abstractions carries no implementation
+#### Scenario: The extension service preserves the assembly boundary
 
-- **GIVEN** the contract types in `Lunate.Extensibility.Abstractions`
+- **GIVEN** the decision service in `Lunate.Extensibility.Abstractions` and decision DTOs in `Lunate.Contracts`
 - **WHEN** the layering test runs
-- **THEN** the assembly references no Lunate project and no contract type names a provider, a tool or
-  the loop
+- **THEN** Abstractions references Contracts but not Agent, and no decision contract type names a
+  provider, a tool or the loop
 
 ### Requirement: Decision availability and provenance
 

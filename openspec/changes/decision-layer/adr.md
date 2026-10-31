@@ -42,5 +42,6 @@ The ADR-0027 duplicate is resolved: the amended record
 ## New Durable ADRs Created
 
 - `adr/0028-decision-layer-primitive.md` — the decision layer is a general primitive: contract shape
-  (state plus named questions, three kinds), public `IDecisionService` surface in Abstractions, four
-  opt-in consumers, escalate-not-veto approval semantics, and the unchanged safety invariants.
+  (state plus named questions, three kinds) in Contracts, public `IDecisionService` surface in
+  Abstractions with the Extensibility bridge, four opt-in consumers, escalate-not-veto approval
+  semantics, and the unchanged safety invariants.

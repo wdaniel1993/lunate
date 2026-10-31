@@ -71,6 +71,11 @@ public sealed class ExtensionTestHost : IAsyncDisposable
             options.HookRunnerOptions is { } hookOptions ? new HookRunner(hookOptions, Log) : null
         );
         _fileChanges = new FileChangeBus(WorkingDirectory, Log);
+        if (options.DecisionService is { } decisionService)
+        {
+            Runner.Services.RegisterCore("core/decision", decisionService);
+        }
+
         Runner.Services.RegisterCore("core/file-bus", _fileChanges);
         Runner.Services.RegisterCore(
             "core/mutation-queue",
