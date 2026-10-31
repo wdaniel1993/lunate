@@ -53,6 +53,25 @@ Pick one:
 - **Stack now**: allow this branch to merge `origin/wt/issue-336` first and build on top; the
   merge order then becomes part of this PR's review.
 
+## Re-check (2026-10-31 resumption run)
+
+The blockage still holds at today's base; nothing has changed the decision yet.
+
+- `origin/main` is still `574557cc`; `git grep -l IWriteVerifier origin/main -- src extensions`
+  → no matches. `RegisterWriteVerifier` remains absent from `IExtensionContext`.
+- The lsp-diagnostics extension itself is eager and ready: its manifest already declares
+  `services: ["ext/lsp-diagnostics/server"]` and it registers `LspServerService` under
+  `ext/lsp-diagnostics/server` — exactly the "already-running server" the verifier would
+  answer from, once the seam exists to register against.
+- PR #342 status changed since the first record: GitHub reports its merge state as **CLEAN**
+  (the branch was last merged with `origin/main`), it has 0 approved reviews, and the queue
+  has returned it to draft twice more (02:59Z window) for failing gates: `verify
+  (windows/ubuntu/macos)`, `verify-powershell`, `ci-ok` — a real, not-yet-green seam.
+- This worktree now has SDK 10.0.402 installed (`dotnet --list-sdks`), so the earlier
+  "local builds cannot run here" environment note is retired; whoever picks the card up
+  after #342 merges can run the gate locally.
+- No maintainer response has arrived on issue #340 or PR #342 authorizing "stack now".
+
 ## Status
 
 No code has been changed on this branch: the empty commit carrying this file exists only so

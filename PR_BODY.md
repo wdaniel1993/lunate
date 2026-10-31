@@ -18,13 +18,28 @@ base (origin/main @ 574557cc):
 - `ExtensionApi.Current` is `1.12.0`; the OpenSpec change `verified-edits-implementation`
   (all tasks unchecked, never applied) bumps it to `1.13.0` as part of the seam work.
 - The entire seam implementation — contract, host pipeline, Roslyn C# verifier, settings —
-  is open PR #342 (branch `wt/issue-336`, issue #336): OPEN, base `main`, merge state
-  BLOCKED (awaiting review), 13 review comments, zero approved reviews.
+  is open PR #342 (branch `wt/issue-336`, issue #336). (Merge state at the time of this
+  line's writing was BLOCKED; see the re-check below for the current status.)
 
 So the symptom is not "lsp-diagnostics does not verify TypeScript writes yet"; on main
 *nothing* is verified, because the host has no verifier seam at all. The card's own line
 "if the seam needs a change, that is a seam bug and gets its own issue" understates it —
 the seam does not merely need a change, it does not exist on main.
+
+## Re-check (2026-10-31 resumption run)
+
+- `origin/main` is still `574557cc`: no `IWriteVerifier` / `RegisterWriteVerifier` anywhere in
+  `src` or `extensions`, `ExtensionApi.Current` still `1.12.0`. The blockage stands.
+- PR #342's GitHub merge state moved from BLOCKED to **CLEAN**, but it has 0 approved reviews
+  and was returned to draft again by the queue for failing gates (`verify` on all three OSes,
+  `verify-powershell`, `ci-ok`). A red, unreviewed seam does not weaken the case for stopping.
+- The environment note below is retired: SDK 10.0.402 is installed here now, so whoever picks
+  the card up can run the local gate.
+- lsp-diagnostics is confirmed ready to consume the seam: its manifest declares
+  `services: ["ext/lsp-diagnostics/server"]` and `LspDiagnosticsExtensionFactory` registers the
+  lazily started `LspServerService` under `ext/lsp-diagnostics/server` — the verifier would
+  answer from that running server, degrading to *unverified with reason* on slow/absent/crashed
+  servers, exactly as the original plan describes.
 
 ## Why I stopped instead of working around it
 
@@ -46,9 +61,6 @@ Both workarounds would break a binding rule, so I did not invent either:
 - **Stack now**: allow this branch to merge `origin/wt/issue-336` first and build on top;
   the merge order then becomes part of this PR's review.
 
-The same finding is on issue #340. No build or tests were run because no code changed;
-one environment note for whoever picks the card up: this worktree has only the 10.0.103
-SDK installed while `global.json` pins 10.0.402 with `rollForward: disable`, so local
-builds cannot run here — CI still owns the gate.
+The same finding is on issue #340. No build or tests were run because no code changed.
 
 Details: `BLOCKED-340.md` on this branch.
