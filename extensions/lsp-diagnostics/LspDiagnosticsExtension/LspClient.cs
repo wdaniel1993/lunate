@@ -53,6 +53,8 @@ internal sealed partial class LspClient : IAsyncDisposable
 
     /// <summary>
     /// Opens or updates the document and waits for diagnostics carrying the version just sent.
+    /// The LSP <c>languageId</c> is derived from the document's extension, so one server serves
+    /// both the verifier and the tool-result hook.
     /// </summary>
     public async Task<IReadOnlyList<Diagnostic>> GetDiagnosticsAsync(
         string absolutePath,
@@ -73,7 +75,7 @@ internal sealed partial class LspClient : IAsyncDisposable
                     ["textDocument"] = new JsonObject
                     {
                         ["uri"] = uri,
-                        ["languageId"] = "csharp",
+                        ["languageId"] = LanguageId(absolutePath),
                         ["version"] = version,
                         ["text"] = text,
                     },
@@ -96,6 +98,16 @@ internal sealed partial class LspClient : IAsyncDisposable
 
         return await WaitForDiagnosticsAsync(uri, version, ct);
     }
+
+    /// <summary>LSP language identifiers for the extensions the supported servers accept.</summary>
+    private static string LanguageId(string absolutePath) =>
+        Path.GetExtension(absolutePath) switch
+        {
+            ".ts" => "typescript",
+            ".tsx" => "typescriptreact",
+            ".cs" => "csharp",
+            _ => "plaintext",
+        };
 
     /// <summary>Best-effort orderly shutdown: a shutdown request bounded by the caller, then exit.</summary>
     public async Task ShutdownAsync(CancellationToken ct)
