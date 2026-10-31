@@ -89,7 +89,9 @@ public sealed class McpToolAdapter : ITool
         };
 
         using McpElicitationOutcome.InteractionLease? interaction =
-            elicitationOutcome?.UseInteraction(ctx.AskUserAsync);
+            elicitationOutcome?.UseInteraction(
+                (ctx.AgentState as AgentToolContextState)?.AskUserAsync
+            );
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(callTimeout);
 

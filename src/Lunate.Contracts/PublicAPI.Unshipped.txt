@@ -779,3 +779,6 @@ virtual Lunate.Agent.AgentEvent.EqualityContract.get -> System.Type!
 virtual Lunate.Agent.AgentEvent.Equals(Lunate.Agent.AgentEvent? other) -> bool
 virtual Lunate.Agent.AgentEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
 virtual Lunate.Agent.ExtensionEvent.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+Lunate.Agent.GitIdentity
+static Lunate.Agent.GitIdentity.Canonicalize(string! path) -> string!
+static Lunate.Agent.GitIdentity.Detect(string! worktreeRoot) -> (string? RepoRoot, string? GitCommonDir)

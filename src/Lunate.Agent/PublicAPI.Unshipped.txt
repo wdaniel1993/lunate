@@ -389,7 +389,7 @@ Lunate.Agent.FileChangeEvent.WorkspaceId.init -> void (forwarded, contained in L
 Lunate.Agent.FileChangeKind (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.FileChangeKind.Created = 0 -> Lunate.Agent.FileChangeKind (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.FileChangeKind.Modified = 1 -> Lunate.Agent.FileChangeKind (forwarded, contained in Lunate.Contracts)
-Lunate.Agent.GitIdentity
+Lunate.Agent.GitIdentity (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.IAgentEvents (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.IAgentEvents.Emit(Lunate.Agent.AgentEvent! agentEvent) -> void (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.IAgentHookPoints
@@ -1457,8 +1457,8 @@ static Lunate.Agent.ExtensionEvent.operator !=(Lunate.Agent.ExtensionEvent? left
 static Lunate.Agent.ExtensionEvent.operator ==(Lunate.Agent.ExtensionEvent? left, Lunate.Agent.ExtensionEvent? right) -> bool (forwarded, contained in Lunate.Contracts)
 static Lunate.Agent.FileChangeEvent.operator !=(Lunate.Agent.FileChangeEvent? left, Lunate.Agent.FileChangeEvent? right) -> bool (forwarded, contained in Lunate.Contracts)
 static Lunate.Agent.FileChangeEvent.operator ==(Lunate.Agent.FileChangeEvent? left, Lunate.Agent.FileChangeEvent? right) -> bool (forwarded, contained in Lunate.Contracts)
-static Lunate.Agent.GitIdentity.Canonicalize(string! path) -> string!
-static Lunate.Agent.GitIdentity.Detect(string! worktreeRoot) -> (string? RepoRoot, string? GitCommonDir)
+static Lunate.Agent.GitIdentity.Canonicalize(string! path) -> string! (forwarded, contained in Lunate.Contracts)
+static Lunate.Agent.GitIdentity.Detect(string! worktreeRoot) -> (string? RepoRoot, string? GitCommonDir) (forwarded, contained in Lunate.Contracts)
 static Lunate.Agent.ImageAttachment.operator !=(Lunate.Agent.ImageAttachment? left, Lunate.Agent.ImageAttachment? right) -> bool (forwarded, contained in Lunate.Contracts)
 static Lunate.Agent.ImageAttachment.operator ==(Lunate.Agent.ImageAttachment? left, Lunate.Agent.ImageAttachment? right) -> bool (forwarded, contained in Lunate.Contracts)
 static Lunate.Agent.ModelRouteObserver.Report(string! requestedModelId, string! resolvedModelId) -> void
