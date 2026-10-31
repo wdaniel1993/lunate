@@ -35,7 +35,7 @@
 
 ## 4. The four consumers
 
-- [ ] 4.1 **Model routing** (acting): decide among the routing options through the shared validator,
+- [x] 4.1 **Model routing** (acting): decide among the routing options through the shared validator,
       with a shadow setting that records the choice it would have made.
 - [x] 4.2 **Approval gate** (acting, escalate-only): redefine `DecisionMode.Enforce` so a `deny`
       recommendation turns an allowed call into a user ask showing the decision and probability. Add

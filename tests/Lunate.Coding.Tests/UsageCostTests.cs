@@ -164,6 +164,48 @@ public sealed class UsageCostTests
     }
 
     [Fact]
+    public void Summarize_attributed_decision_cost_keeps_method_visible()
+    {
+        using var temp = new TempDirectory();
+        ModelCatalog catalog = Catalog(temp, OtherPricedModel);
+        Session session = Session.Create(temp.File("session.jsonl"), "/work");
+        session.AppendModelUsage(
+            "fixture-other",
+            new SessionUsage(1_000, 0),
+            new ModelUsageAttribution(
+                "decision",
+                "decision-profile",
+                "router",
+                "openrouter",
+                "native",
+                0.8d
+            )
+        );
+        session.AppendModelUsage(
+            "fixture-other",
+            new SessionUsage(2_000, 0),
+            new ModelUsageAttribution(
+                "decision",
+                "decision-profile",
+                "router",
+                "openrouter",
+                "adapter",
+                0.7d
+            )
+        );
+
+        UsageCostReport report = Assert.IsType<UsageCostReport>(
+            UsageCost.SummarizeAttributedSession(catalog, session)
+        );
+
+        Assert.Equal(["decision", "decision"], report.ByUsage.Select(line => line.Name));
+        Assert.Equal("native", report.ByUsage[0].DecisionMethod);
+        Assert.Equal("adapter", report.ByUsage[1].DecisionMethod);
+        Assert.Equal(0.001m, report.ByUsage[0].Cost);
+        Assert.Equal(0.002m, report.ByUsage[1].Cost);
+    }
+
+    [Fact]
     public void Summarize_attributed_session_marks_unknown_positive_lanes_unpriced()
     {
         using var temp = new TempDirectory();

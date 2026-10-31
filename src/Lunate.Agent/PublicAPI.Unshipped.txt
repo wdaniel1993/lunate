@@ -116,6 +116,10 @@ Lunate.Agent.AgentHarnessOptions.ProjectionBatchTurns.get -> int
 Lunate.Agent.AgentHarnessOptions.ProjectionBatchTurns.init -> void
 Lunate.Agent.AgentHarnessOptions.PromptSections.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentPromptSection!>?
 Lunate.Agent.AgentHarnessOptions.PromptSections.init -> void
+Lunate.Agent.AgentHarnessOptions.RoutingMode.get -> Lunate.Agent.DecisionMode
+Lunate.Agent.AgentHarnessOptions.RoutingMode.init -> void
+Lunate.Agent.AgentHarnessOptions.RoutingProfiles.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Agent.UsageModelClient!>?
+Lunate.Agent.AgentHarnessOptions.RoutingProfiles.init -> void
 Lunate.Agent.AgentHarnessOptions.RetryBaseDelay.get -> System.TimeSpan
 Lunate.Agent.AgentHarnessOptions.RetryBaseDelay.init -> void
 Lunate.Agent.AgentHarnessOptions.Session.get -> Lunate.Agent.Session?
