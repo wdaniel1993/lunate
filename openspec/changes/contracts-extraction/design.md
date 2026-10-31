@@ -49,9 +49,12 @@ flowchart BT
 `Lunate.Contracts` owns `ITool`, `ToolContext`, `ToolResult` and `ToolResultView`, tool declarations
 and annotations, the complete sealed `AgentEvent` hierarchy, and the public contract types appearing
 in those signatures. Moving `ToolContext` as a whole requires its public signature closure (including
-event, file-change/mutation, subagent, model-access, model-descriptor, image and tool-stub types) to
+event, file-change/mutation, subagent, repository-identity, model-access, model-descriptor, image and
+tool-stub types) to
 move as well; otherwise Contracts would reference Agent or Ai, or old compiled extensions would lose
-members. Keep namespaces unchanged. Concrete event channels/sinks, sequence validation, harness
+members. Move `GitIdentity` and its BCL-only path canonicalizer with the closure because
+`ToolActivationEvaluator` is implemented in Abstractions. Keep namespaces unchanged. Concrete event
+channels/sinks, sequence validation, harness
 execution state, and other implementations remain in their current projects. Keep Agent's
 ToolContext-only internal state in an Agent-owned state object rather than introducing an Agent
 reference into Contracts.

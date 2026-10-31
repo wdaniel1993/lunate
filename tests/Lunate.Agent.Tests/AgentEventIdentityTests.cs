@@ -73,6 +73,7 @@ public sealed class AgentEventIdentityTests
             typeof(ToolNamespace),
             typeof(ImageAttachment),
             typeof(IAgentEvents),
+            typeof(GitIdentity),
             typeof(IFileChangeSink),
             typeof(IFileMutationQueue),
             typeof(ISubagentRunner),
