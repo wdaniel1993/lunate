@@ -1,5 +1,5 @@
-using Lunate.Extensibility.Abstractions;
 using Lunate.Contracts;
+using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Extensibility.Tests;
 

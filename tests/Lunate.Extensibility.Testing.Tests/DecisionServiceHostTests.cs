@@ -25,7 +25,9 @@ public sealed class DecisionServiceHostTests
             }
         );
 
-        Assert.True(host.Runner.Services.TryGetCore<IDecisionService>("core/decision", out var resolved));
+        Assert.True(
+            host.Runner.Services.TryGetCore<IDecisionService>("core/decision", out var resolved)
+        );
         Assert.Same(service, resolved);
     }
 

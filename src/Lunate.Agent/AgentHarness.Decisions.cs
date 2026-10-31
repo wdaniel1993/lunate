@@ -21,7 +21,8 @@ public sealed partial class AgentHarness
             return new ApprovalDecisionResult(null, null);
         }
 
-        bool native = model.Model.ApiType == "native"
+        bool native =
+            model.Model.ApiType == "native"
             && model.Client.GetService(typeof(INativeDecisionClient)) is INativeDecisionClient;
         if (!native)
         {

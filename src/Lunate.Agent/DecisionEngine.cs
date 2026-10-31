@@ -18,10 +18,13 @@ internal static class DecisionEngine
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentException.ThrowIfNullOrWhiteSpace(modelId);
-        IReadOnlyList<PreparedDecisionQuestion> questions = DecisionRequestValidator.Prepare(request);
-        INativeDecisionClient? native = method == "native"
-            ? client.GetService(typeof(INativeDecisionClient)) as INativeDecisionClient
-            : null;
+        IReadOnlyList<PreparedDecisionQuestion> questions = DecisionRequestValidator.Prepare(
+            request
+        );
+        INativeDecisionClient? native =
+            method == "native"
+                ? client.GetService(typeof(INativeDecisionClient)) as INativeDecisionClient
+                : null;
         bool useNative = method == "native" && native is not null;
         string resolvedMethod = useNative ? "native" : "adapter";
         string? failure = null;
@@ -33,13 +36,19 @@ internal static class DecisionEngine
             try
             {
                 text = useNative
-                    ? await native!.GetDecisionAsync(request, cancellationToken).ConfigureAwait(false)
-                    : (chatResponse = await GetAdapterResponseAsync(
-                        request,
-                        questions,
-                        client,
-                        cancellationToken
-                    ).ConfigureAwait(false)).Text ?? string.Empty;
+                    ? await native!
+                        .GetDecisionAsync(request, cancellationToken)
+                        .ConfigureAwait(false)
+                    : (
+                        chatResponse = await GetAdapterResponseAsync(
+                                request,
+                                questions,
+                                client,
+                                cancellationToken
+                            )
+                            .ConfigureAwait(false)
+                    ).Text
+                        ?? string.Empty;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -108,24 +117,28 @@ internal static class DecisionEngine
                     DecisionQuestionKind.YesNo => "yes/no",
                     DecisionQuestionKind.Choice => "choice",
                     DecisionQuestionKind.Score => "score",
-                    _ => throw new InvalidOperationException("The validated question kind is unsupported."),
+                    _ => throw new InvalidOperationException(
+                        "The validated question kind is unsupported."
+                    ),
                 },
                 answers = question.Answers,
                 state = question.State,
             }),
         };
         string userText = Encoding.UTF8.GetString(JsonSerializer.SerializeToUtf8Bytes(payload));
-        return await client.GetResponseAsync(
-            [
-                new ChatMessage(
-                    ChatRole.System,
-                    "Evaluate every question independently. Return JSON with a 'results' object keyed by question id. Each value has an 'answer' string and a 'probabilities' object with one probability for every defined answer; probabilities must sum to 1."
-                ),
-                new ChatMessage(ChatRole.User, userText),
-            ],
-            new ChatOptions { ResponseFormat = ChatResponseFormat.Json },
-            cancellationToken
-        ).ConfigureAwait(false);
+        return await client
+            .GetResponseAsync(
+                [
+                    new ChatMessage(
+                        ChatRole.System,
+                        "Evaluate every question independently. Return JSON with a 'results' object keyed by question id. Each value has an 'answer' string and a 'probabilities' object with one probability for every defined answer; probabilities must sum to 1."
+                    ),
+                    new ChatMessage(ChatRole.User, userText),
+                ],
+                new ChatOptions { ResponseFormat = ChatResponseFormat.Json },
+                cancellationToken
+            )
+            .ConfigureAwait(false);
     }
 
     private static DecisionResponse ParseResponse(
@@ -154,7 +167,9 @@ internal static class DecisionEngine
             );
             if (question is null || result.Value.ValueKind != JsonValueKind.Object)
             {
-                throw new InvalidDataException($"response contains an undefined question id '{result.Name}'");
+                throw new InvalidDataException(
+                    $"response contains an undefined question id '{result.Name}'"
+                );
             }
             if (validated.ContainsKey(result.Name))
             {
@@ -168,7 +183,9 @@ internal static class DecisionEngine
                 || probabilityElement.ValueKind != JsonValueKind.Object
             )
             {
-                throw new InvalidDataException($"response for question '{result.Name}' must contain an answer and probabilities object");
+                throw new InvalidDataException(
+                    $"response for question '{result.Name}' must contain an answer and probabilities object"
+                );
             }
 
             Dictionary<string, double> probabilities = new(StringComparer.Ordinal);
@@ -179,7 +196,9 @@ internal static class DecisionEngine
                     || !probabilities.TryAdd(probability.Name, value)
                 )
                 {
-                    throw new InvalidDataException($"response for question '{result.Name}' has an invalid probability");
+                    throw new InvalidDataException(
+                        $"response for question '{result.Name}' has an invalid probability"
+                    );
                 }
             }
 
@@ -197,9 +216,12 @@ internal static class DecisionEngine
 
         if (validated.Count != questions.Count)
         {
-            string missing = string.Join(", ", questions
-                .Where(question => !validated.ContainsKey(question.Question.Id))
-                .Select(question => question.Question.Id));
+            string missing = string.Join(
+                ", ",
+                questions
+                    .Where(question => !validated.ContainsKey(question.Question.Id))
+                    .Select(question => question.Question.Id)
+            );
             throw new InvalidDataException($"response is missing question results: {missing}");
         }
 

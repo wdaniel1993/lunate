@@ -62,12 +62,23 @@ public sealed class DecisionPrimitiveTests
 
         Assert.Single(client.Requests);
         Assert.Equal(ChatResponseFormat.Json, client.Requests[0].Options?.ResponseFormat);
-        Assert.Contains("\"kind\":\"yes/no\"", client.Requests[0].Messages[1].Text, StringComparison.Ordinal);
-        Assert.Contains("\"kind\":\"choice\"", client.Requests[0].Messages[1].Text, StringComparison.Ordinal);
+        Assert.Contains(
+            "\"kind\":\"yes/no\"",
+            client.Requests[0].Messages[1].Text,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "\"kind\":\"choice\"",
+            client.Requests[0].Messages[1].Text,
+            StringComparison.Ordinal
+        );
         Assert.Equal(["confirm", "size"], response.Results.Keys);
         Assert.Equal("yes", response.Results["confirm"].Answer);
         Assert.Equal(0.7d, response.Results["confirm"].Probability);
-        Assert.Equal(["yes", "no"], response.Results["confirm"].Distribution.Select(item => item.Answer));
+        Assert.Equal(
+            ["yes", "no"],
+            response.Results["confirm"].Distribution.Select(item => item.Answer)
+        );
         Assert.Equal(0.3d, response.Results["confirm"].Distribution[1].Probability);
         Assert.Equal("large", response.Results["size"].Answer);
         Assert.Equal(0.8d, response.Results["size"].Probability);
@@ -137,7 +148,11 @@ public sealed class DecisionPrimitiveTests
             ["reject", "weak", "strong"],
             response.Results["quality"].Distribution.Select(item => item.Answer)
         );
-        Assert.Contains("\"kind\":\"score\"", client.Requests.Single().Messages[1].Text, StringComparison.Ordinal);
+        Assert.Contains(
+            "\"kind\":\"score\"",
+            client.Requests.Single().Messages[1].Text,
+            StringComparison.Ordinal
+        );
         Assert.Equal(0.5d, response.Results["quality"].Probability);
     }
 
@@ -234,11 +249,15 @@ public sealed class DecisionPrimitiveTests
     {
         var client = new ScriptedChatClient()
             .Enqueue(
-                LoopScripts.Text($"{{\"results\":{{\"confirm\":{{\"answer\":\"yes\",\"probabilities\":{{\"yes\":{yes},\"no\":{no}}}}}}}}}"),
+                LoopScripts.Text(
+                    $"{{\"results\":{{\"confirm\":{{\"answer\":\"yes\",\"probabilities\":{{\"yes\":{yes},\"no\":{no}}}}}}}}}"
+                ),
                 LoopScripts.Stop()
             )
             .Enqueue(
-                LoopScripts.Text("""{"results":{"confirm":{"answer":"yes","probabilities":{"yes":0.5,"no":0.5}}}}"""),
+                LoopScripts.Text(
+                    """{"results":{"confirm":{"answer":"yes","probabilities":{"yes":0.5,"no":0.5}}}}"""
+                ),
                 LoopScripts.Stop()
             );
         var request = new DecisionRequest(

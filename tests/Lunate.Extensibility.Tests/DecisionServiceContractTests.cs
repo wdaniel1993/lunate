@@ -13,17 +13,23 @@ public sealed class DecisionServiceContractTests
 
         Assert.DoesNotContain(
             assembly.GetReferencedAssemblies(),
-            reference => reference.Name?.StartsWith("Lunate.", StringComparison.Ordinal) == true
+            reference =>
+                reference.Name?.StartsWith("Lunate.", StringComparison.Ordinal) == true
                 && reference.Name != "Lunate.Contracts"
         );
         Assert.All(
-            typeof(IDecisionService).GetMethods().SelectMany(method =>
-                new[] { method.ReturnType }.Concat(method.GetParameters().Select(parameter => parameter.ParameterType))
-            ),
+            typeof(IDecisionService)
+                .GetMethods()
+                .SelectMany(method =>
+                    new[] { method.ReturnType }.Concat(
+                        method.GetParameters().Select(parameter => parameter.ParameterType)
+                    )
+                ),
             type =>
                 Assert.DoesNotContain(
                     new[] { "Provider", "Tool", "Loop" },
-                    marker => type.FullName?.Contains(marker, StringComparison.OrdinalIgnoreCase) == true
+                    marker =>
+                        type.FullName?.Contains(marker, StringComparison.OrdinalIgnoreCase) == true
                 )
         );
     }
@@ -33,9 +39,7 @@ public sealed class DecisionServiceContractTests
     {
         using var temp = new TempDirectory();
         var service = new TestDecisionService();
-        var loader = new ExtensionLoader(
-            new ExtensionHostOptions { StorePath = temp.Root }
-        );
+        var loader = new ExtensionLoader(new ExtensionHostOptions { StorePath = temp.Root });
         loader.Services.RegisterCore("core/decision", service);
         var context = new ExtensionContext(
             "test-extension",

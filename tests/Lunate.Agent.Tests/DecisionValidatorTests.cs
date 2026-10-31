@@ -35,7 +35,8 @@ public sealed class DecisionValidatorTests
     [Fact]
     public async Task Non_finite_probability_is_retried()
     {
-        const string response = """{"results":{"q":{"answer":"yes","probabilities":{"yes":1e400,"no":0}}}}""";
+        const string response =
+            """{"results":{"q":{"answer":"yes","probabilities":{"yes":1e400,"no":0}}}}""";
         var client = new ScriptedChatClient()
             .Enqueue(LoopScripts.Text(response), LoopScripts.Stop())
             .Enqueue(LoopScripts.Text(response), LoopScripts.Stop());
@@ -67,17 +68,24 @@ public sealed class DecisionValidatorTests
         string[] answers = answerList.Split(',');
         Dictionary<string, double> probabilities = answers.ToDictionary(
             value => value,
-            _ => probabilityCase switch
-            {
-                ProbabilityCase.Valid => 1d / answers.Length,
-                ProbabilityCase.OutOfRange => 1.2d,
-                _ => 0.2d,
-            },
+            _ =>
+                probabilityCase switch
+                {
+                    ProbabilityCase.Valid => 1d / answers.Length,
+                    ProbabilityCase.OutOfRange => 1.2d,
+                    _ => 0.2d,
+                },
             StringComparer.Ordinal
         );
         string selected = answer.Length == 0 ? answers[0] : answer;
         string raw = JsonSerializer.Serialize(
-            new { results = new Dictionary<string, object> { ["q"] = new { answer = selected, probabilities } } }
+            new
+            {
+                results = new Dictionary<string, object>
+                {
+                    ["q"] = new { answer = selected, probabilities },
+                },
+            }
         );
         var client = new ScriptedChatClient()
             .Enqueue(LoopScripts.Text(raw), LoopScripts.Stop())
@@ -88,10 +96,7 @@ public sealed class DecisionValidatorTests
             kind,
             kind == DecisionQuestionKind.YesNo ? null : answers
         );
-        var request = new DecisionRequest(
-            JsonSerializer.SerializeToElement("state"),
-            [question]
-        );
+        var request = new DecisionRequest(JsonSerializer.SerializeToElement("state"), [question]);
 
         InvalidDataException failure = await Assert.ThrowsAsync<InvalidDataException>(() =>
             DecisionEngine.EvaluateAsync(

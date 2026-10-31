@@ -1,5 +1,5 @@
-using Microsoft.Extensions.AI;
 using Lunate.Contracts;
+using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding;
 

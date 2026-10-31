@@ -3,10 +3,7 @@ using System.Text.Json;
 namespace Lunate.Contracts;
 
 /// <summary>A batch of independent questions evaluated against one text or JSON state.</summary>
-public sealed record DecisionRequest(
-    JsonElement State,
-    IReadOnlyList<DecisionQuestion> Questions
-);
+public sealed record DecisionRequest(JsonElement State, IReadOnlyList<DecisionQuestion> Questions);
 
 /// <summary>One named decision question; choice answers and score levels retain their declared order.</summary>
 public sealed record DecisionQuestion(
@@ -47,7 +44,10 @@ public interface INativeDecisionClient
     /// Evaluates the original request and returns raw JSON shaped as a <c>results</c> object keyed by
     /// question id; each value has an <c>answer</c> and a <c>probabilities</c> object.
     /// </summary>
-    Task<string> GetDecisionAsync(DecisionRequest request, CancellationToken cancellationToken = default);
+    Task<string> GetDecisionAsync(
+        DecisionRequest request,
+        CancellationToken cancellationToken = default
+    );
 }
 
 internal interface IAgentDecisionService

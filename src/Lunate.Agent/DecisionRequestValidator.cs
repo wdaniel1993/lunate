@@ -12,11 +12,17 @@ internal static class DecisionRequestValidator
         ArgumentNullException.ThrowIfNull(request.Questions);
         if (request.Questions.Count == 0)
         {
-            throw new ArgumentException("A decision request must contain at least one question.", nameof(request));
+            throw new ArgumentException(
+                "A decision request must contain at least one question.",
+                nameof(request)
+            );
         }
         if (request.State.ValueKind == JsonValueKind.Undefined)
         {
-            throw new ArgumentException("A decision request must contain a text or JSON state.", nameof(request));
+            throw new ArgumentException(
+                "A decision request must contain a text or JSON state.",
+                nameof(request)
+            );
         }
 
         HashSet<string> ids = new(StringComparer.Ordinal);
@@ -38,7 +44,11 @@ internal static class DecisionRequestValidator
             {
                 DecisionQuestionKind.YesNo => ["yes", "no"],
                 DecisionQuestionKind.Choice => ValidateAnswers(question, minimum: 2, maximum: 255),
-                DecisionQuestionKind.Score => ValidateAnswers(question, minimum: 2, maximum: int.MaxValue),
+                DecisionQuestionKind.Score => ValidateAnswers(
+                    question,
+                    minimum: 2,
+                    maximum: int.MaxValue
+                ),
                 _ => throw new ArgumentException(
                     $"Question '{question.Id}' has an unsupported kind.",
                     nameof(request)
@@ -69,7 +79,10 @@ internal static class DecisionRequestValidator
 
         if (probabilities.Count != question.Answers.Count)
         {
-            throw Invalid(question.Question.Id, "the distribution must contain every defined answer exactly once");
+            throw Invalid(
+                question.Question.Id,
+                "the distribution must contain every defined answer exactly once"
+            );
         }
 
         List<DecisionProbability> distribution = [];
@@ -78,12 +91,18 @@ internal static class DecisionRequestValidator
         {
             if (!probabilities.TryGetValue(definedAnswer, out double probability))
             {
-                throw Invalid(question.Question.Id, $"the distribution is missing '{definedAnswer}'");
+                throw Invalid(
+                    question.Question.Id,
+                    $"the distribution is missing '{definedAnswer}'"
+                );
             }
 
             if (!double.IsFinite(probability) || probability is < 0d or > 1d)
             {
-                throw Invalid(question.Question.Id, $"probability for '{definedAnswer}' must be finite and between 0 and 1");
+                throw Invalid(
+                    question.Question.Id,
+                    $"probability for '{definedAnswer}' must be finite and between 0 and 1"
+                );
             }
 
             sum += probability;
@@ -105,7 +124,11 @@ internal static class DecisionRequestValidator
         int maximum
     )
     {
-        if (question.Answers is not { } answers || answers.Count < minimum || answers.Count > maximum)
+        if (
+            question.Answers is not { } answers
+            || answers.Count < minimum
+            || answers.Count > maximum
+        )
         {
             throw new ArgumentException(
                 question.Kind == DecisionQuestionKind.Choice
@@ -143,15 +166,24 @@ internal static class DecisionRequestValidator
         JsonElement current = state;
         foreach (string token in path.Split('/').Skip(1))
         {
-            string segment = token.Replace("~1", "/", StringComparison.Ordinal)
+            string segment = token
+                .Replace("~1", "/", StringComparison.Ordinal)
                 .Replace("~0", "~", StringComparison.Ordinal);
-            if (current.ValueKind == JsonValueKind.Object && current.TryGetProperty(segment, out JsonElement property))
+            if (
+                current.ValueKind == JsonValueKind.Object
+                && current.TryGetProperty(segment, out JsonElement property)
+            )
             {
                 current = property;
             }
             else if (
                 current.ValueKind == JsonValueKind.Array
-                && int.TryParse(segment, NumberStyles.None, CultureInfo.InvariantCulture, out int index)
+                && int.TryParse(
+                    segment,
+                    NumberStyles.None,
+                    CultureInfo.InvariantCulture,
+                    out int index
+                )
                 && index >= 0
                 && index < current.GetArrayLength()
             )

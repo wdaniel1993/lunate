@@ -32,7 +32,11 @@ public sealed class DecisionCultureTests
                 TestContext.Current.CancellationToken
             );
 
-            Assert.Contains("\"score\":0.7", client.Requests.Single().Messages[1].Text, StringComparison.Ordinal);
+            Assert.Contains(
+                "\"score\":0.7",
+                client.Requests.Single().Messages[1].Text,
+                StringComparison.Ordinal
+            );
             Assert.Equal(0.7d, result.Results["confirm"].Probability);
         }
         finally
