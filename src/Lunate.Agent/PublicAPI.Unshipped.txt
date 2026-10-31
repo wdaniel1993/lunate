@@ -78,6 +78,7 @@ Lunate.Agent.AgentHarness.AgentHarness(Microsoft.Extensions.AI.IChatClient! clie
 Lunate.Agent.AgentHarness.AppendConversationMessage(Microsoft.Extensions.AI.ChatMessage! message, string? model = null) -> void
 Lunate.Agent.AgentHarness.CompactNowAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
 Lunate.Agent.AgentHarness.CompactNowAsync(string? instructions = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Lunate.Agent.AgentHarness.ContextSavings.get -> Lunate.Agent.ContextSavings!
 Lunate.Agent.AgentHarness.RunAsync(Lunate.Agent.UserInput! userInput, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Agent.AgentEvent!>!
 Lunate.Agent.AgentHarness.RunAsync(string! userInput, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Agent.AgentEvent!>!
 Lunate.Agent.AgentHarness.RunSkillAsync(string! userInput, Lunate.Agent.SessionSkillMetadata! skill, System.Threading.CancellationToken ct) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Agent.AgentEvent!>!
@@ -114,6 +115,10 @@ Lunate.Agent.AgentHarnessOptions.ModelRegistry.get -> Lunate.Agent.IModelRegistr
 Lunate.Agent.AgentHarnessOptions.ModelRegistry.init -> void
 Lunate.Agent.AgentHarnessOptions.ProjectionBatchTurns.get -> int
 Lunate.Agent.AgentHarnessOptions.ProjectionBatchTurns.init -> void
+Lunate.Agent.AgentHarnessOptions.ProjectionMaskErrorTurns.get -> int
+Lunate.Agent.AgentHarnessOptions.ProjectionMaskErrorTurns.init -> void
+Lunate.Agent.AgentHarnessOptions.ProjectionMaskTurns.get -> int
+Lunate.Agent.AgentHarnessOptions.ProjectionMaskTurns.init -> void
 Lunate.Agent.AgentHarnessOptions.PromptSections.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentPromptSection!>?
 Lunate.Agent.AgentHarnessOptions.PromptSections.init -> void
 Lunate.Agent.AgentHarnessOptions.RoutingMode.get -> Lunate.Agent.DecisionMode
@@ -355,6 +360,22 @@ Lunate.Agent.CompactionApplied.EstimatedTokensAfter.get -> int (forwarded, conta
 Lunate.Agent.CompactionApplied.EstimatedTokensAfter.init -> void (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.CompactionApplied.ReplacedEntryIds.get -> System.Collections.Generic.IReadOnlyList<string!>! (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.CompactionApplied.ReplacedEntryIds.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Agent.ContextSavings
+Lunate.Agent.ContextSavings.<Clone>$() -> Lunate.Agent.ContextSavings!
+Lunate.Agent.ContextSavings.ContextSavings(long Spills, long Masking, long ReadStubs) -> void
+Lunate.Agent.ContextSavings.Deconstruct(out long Spills, out long Masking, out long ReadStubs) -> void
+Lunate.Agent.ContextSavings.Equals(Lunate.Agent.ContextSavings? other) -> bool
+override Lunate.Agent.ContextSavings.Equals(object? obj) -> bool
+override Lunate.Agent.ContextSavings.GetHashCode() -> int
+override Lunate.Agent.ContextSavings.ToString() -> string!
+Lunate.Agent.ContextSavings.Masking.get -> long
+Lunate.Agent.ContextSavings.Spills.get -> long
+Lunate.Agent.ContextSavings.ReadStubs.get -> long
+Lunate.Agent.ContextSavings.Masking.init -> void
+Lunate.Agent.ContextSavings.Spills.init -> void
+Lunate.Agent.ContextSavings.ReadStubs.init -> void
+static Lunate.Agent.ContextSavings.operator !=(Lunate.Agent.ContextSavings? left, Lunate.Agent.ContextSavings? right) -> bool
+static Lunate.Agent.ContextSavings.operator ==(Lunate.Agent.ContextSavings? left, Lunate.Agent.ContextSavings? right) -> bool
 Lunate.Agent.DecisionEvaluated (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.DecisionEvaluated.DecisionEvaluated(string! RunId, string! ModelId, string! Method, string! Option, double Probability) -> void (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.DecisionEvaluated.Deconstruct(out string! RunId, out string! ModelId, out string! Method, out string! Option, out double Probability) -> void (forwarded, contained in Lunate.Contracts)
