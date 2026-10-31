@@ -9,6 +9,7 @@ using System.Runtime.CompilerServices;
 [assembly: TypeForwardedTo(typeof(Lunate.Agent.ExtensionEvent))]
 [assembly: TypeForwardedTo(typeof(Lunate.Agent.FileChangeEvent))]
 [assembly: TypeForwardedTo(typeof(Lunate.Agent.FileChangeKind))]
+[assembly: TypeForwardedTo(typeof(Lunate.Agent.GitIdentity))]
 [assembly: TypeForwardedTo(typeof(Lunate.Agent.IAgentEvents))]
 [assembly: TypeForwardedTo(typeof(Lunate.Agent.IFileChangeSink))]
 [assembly: TypeForwardedTo(typeof(Lunate.Agent.IFileMutationQueue))]

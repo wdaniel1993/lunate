@@ -21,5 +21,9 @@
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Agent" />
         <InternalsVisibleTo Include="Lunate.Ai" />
+        <InternalsVisibleTo Include="Lunate.Coding" />
+        <InternalsVisibleTo Include="Lunate.Coding.Tests" />
+        <InternalsVisibleTo Include="Lunate.Extensibility" />
+        <InternalsVisibleTo Include="lunate" />
     </ItemGroup>
 </Project>
