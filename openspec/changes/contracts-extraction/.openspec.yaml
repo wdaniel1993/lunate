@@ -1,0 +1,4 @@
+schema: intent-driven
+created: 2026-10-31
+goal: Make Lunate.Contracts the bottom contract assembly while preserving old
+  extension type identity
