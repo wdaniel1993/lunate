@@ -19,6 +19,6 @@
 ## 4. Share the active mechanism in `/context` and the header
 
 - [x] 4.1 Add fixture-backed tests for each normalized mechanism (`sandbox-exec`, `bwrap`, `landlock`, `none`) and probe outcome (success, failure, not run), asserting `/context` and the welcome header carry the same status and opt-out reports `none`/`not run`; do not call live container or sandbox services.
-- [ ] 4.2 Resolve the guard once before the welcome header, share the resulting status with `BashTool`, `/context`, and the header, and preserve the existing bounded probe and visible failure notice.
+- [x] 4.2 Resolve the guard once before the welcome header, share the resulting status with `BashTool`, `/context`, and the header, and preserve the existing bounded probe and visible failure notice.
 - [ ] 4.3 Build the touched `Lunate.Coding` and `Lunate.Tui` projects, then run only the filtered `Lunate.Coding.Tests` and `Lunate.Tui.Tests` classes that cover guard status, context text, and welcome-header rendering.
 - [ ] 4.4 Run `openspec validate bash-guard-follow-ups --type change --strict`, the whole-tree CSharpier check, and the required narrow build/test gates before the implementation change is ready for review; leave the session-file fixtures unchanged.
