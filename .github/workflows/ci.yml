@@ -284,6 +284,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # The docs profile compares changed paths with origin/main; a shallow
+          # checkout does not create that remote-tracking ref.
+          fetch-depth: 0
 
       # The gate pins the CLI version it was checked against; the flake that ships with a runner is
       # not that version.
