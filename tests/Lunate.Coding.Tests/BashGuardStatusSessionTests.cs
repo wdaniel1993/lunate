@@ -72,6 +72,7 @@ public sealed class BashGuardStatusSessionTests
     [InlineData("sandbox-failure", "none", "failure", true, 1)]
     [InlineData("bwrap-success", "bwrap", "success", true, 1)]
     [InlineData("landlock-success", "landlock", "success", true, 1)]
+    [InlineData("landlock-fallback", "landlock", "success", true, 2)]
     [InlineData("none-failure", "none", "failure", true, 2)]
     [InlineData("disabled", "none", "not run", false, 0)]
     public async Task Context_and_header_report_the_same_fixture_guard_status(
@@ -133,6 +134,12 @@ public sealed class BashGuardStatusSessionTests
             },
             "bwrap-success" => Fake.Unix(macOs: false, bwrap: "/usr/bin/bwrap"),
             "landlock-success" => Fake.Unix(macOs: false, setpriv: "/usr/bin/setpriv"),
+            "landlock-fallback" => Fake.Unix(
+                macOs: false,
+                bwrap: "/usr/bin/bwrap",
+                setpriv: "/usr/bin/setpriv",
+                bwrapOutput: "bwrap fixture failure"
+            ),
             "none-failure" => Fake.Unix(
                 macOs: false,
                 bwrap: "/usr/bin/bwrap",
