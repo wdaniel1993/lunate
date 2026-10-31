@@ -21,20 +21,36 @@ internal static class HarnessFactory
         SkillReadAllowance? skillReadAllowance = null,
         IExtensionLog? log = null,
         IReadOnlyList<string>? extraTools = null,
-        CredentialRedactor? redaction = null
+        CredentialRedactor? redaction = null,
+        WriteVerifierRegistry? writeVerifiers = null,
+        WriteVerificationMode verificationMode = WriteVerificationMode.Block,
+        WriteVerificationRefusalTracker? refusalTracker = null
     )
     {
+        refusalTracker ??= new WriteVerificationRefusalTracker();
         var tools = new ToolRegistry();
         tools.Add(new ReadTool(workspace, files, skillReadAllowance));
         tools.Add(
-            redaction is null
-                ? new WriteTool(workspace, files: files)
-                : new WriteTool(workspace, null, files, redaction)
+            new WriteTool(
+                workspace,
+                null,
+                files,
+                redaction,
+                writeVerifiers is null ? null : writeVerifiers.Find,
+                verificationMode,
+                refusalTracker
+            )
         );
         tools.Add(
-            redaction is null
-                ? new EditTool(workspace, files: files)
-                : new EditTool(workspace, null, files, redaction)
+            new EditTool(
+                workspace,
+                null,
+                files,
+                redaction,
+                writeVerifiers is null ? null : writeVerifiers.Find,
+                verificationMode,
+                refusalTracker
+            )
         );
         tools.Add(new BashTool(workspace, log: log));
         AddOptionalTools(tools, workspace, extraTools);
@@ -92,10 +108,14 @@ internal static class HarnessFactory
         Func<string, IReadOnlyList<string>>? skillReadRoots = null,
         IExtensionLog? log = null,
         IReadOnlyList<string>? extraTools = null,
-        CredentialRedactor? redaction = null
+        CredentialRedactor? redaction = null,
+        WriteVerifierRegistry? writeVerifiers = null,
+        WriteVerificationMode verificationMode = WriteVerificationMode.Block,
+        WriteVerificationRefusalTracker? refusalTracker = null
     )
     {
         ArgumentNullException.ThrowIfNull(inheritedTools);
+        refusalTracker ??= new WriteVerificationRefusalTracker();
         return root =>
         {
             ToolRegistry tools = CreateTools(
@@ -105,7 +125,10 @@ internal static class HarnessFactory
                     : new SkillReadAllowance(skillReadRoots(root)),
                 log: log,
                 extraTools: extraTools,
-                redaction: redaction
+                redaction: redaction,
+                writeVerifiers: writeVerifiers,
+                verificationMode: verificationMode,
+                refusalTracker: refusalTracker
             );
             if (extensionTools is not null)
             {

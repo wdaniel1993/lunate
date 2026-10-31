@@ -25,7 +25,12 @@ internal sealed class FakeExtensionContext : IExtensionContext
 
     public List<IFileChangedHandler> FileChangedSubscriptions { get; } = [];
 
+    public List<WriteVerifierRegistration> WriteVerifiers { get; } = [];
+
     public void Register(IHookHandler handler) => Handlers.Add(handler);
+
+    public void RegisterWriteVerifier(WriteVerifierRegistration registration) =>
+        WriteVerifiers.Add(registration);
 
     public void RegisterService(string name, IBackgroundService service) =>
         Services[name] = service;

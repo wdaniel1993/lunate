@@ -25,6 +25,17 @@ internal static class Fixtures
     public static FixtureSolution CopySolution(string name)
     {
         var source = Path.Combine(RepositoryRoot, "tests", "fixtures", "solutions", name);
+        return CopyFixture(source);
+    }
+
+    public static FixtureSolution CopyVerifiedProject(string name)
+    {
+        var source = Path.Combine(RepositoryRoot, "tests", "fixtures", "verified-edits", name);
+        return CopyFixture(source);
+    }
+
+    private static FixtureSolution CopyFixture(string source)
+    {
         var root = Path.Combine(
             Path.GetTempPath(),
             "lunate-roslyn-tests",

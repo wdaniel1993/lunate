@@ -36,7 +36,7 @@ internal sealed class TestPackage
     internal TestPackage Extension(
         string id = "acme-tools",
         string version = "0.1.0",
-        string apiVersion = "1.12.0",
+        string apiVersion = "^1.12.0",
         string entryAssembly = "acme-tools.dll"
     )
     {

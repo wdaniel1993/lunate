@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Spectre.Console;
 
@@ -291,6 +292,14 @@ internal static class LiveAreaRenderer
             $"{SpinnerFrames[state.FrameNumber % SpinnerFrames.Length]} working… {state.RunElapsedSeconds}s"
         );
 
+    private static string VerificationLabel(LiveAreaState state) =>
+        string.Concat(
+            SpinnerFrames[state.FrameNumber % SpinnerFrames.Length],
+            " verifying… ",
+            state.VerificationElapsedSeconds.ToString(CultureInfo.InvariantCulture),
+            "s"
+        );
+
     /// <summary>
     /// The one activity line: the thinking label, the active tool with its summary, or the generic
     /// working label, followed by the run's deltas and the interrupt hint while cancellable. The
@@ -299,7 +308,8 @@ internal static class LiveAreaRenderer
     private static string? ActivityLine(LiveAreaState state, int width)
     {
         string? text =
-            state.Thinking is { } thinking
+            state.Verifying ? VerificationLabel(state) + MetricsSuffix(state, width)
+            : state.Thinking is { } thinking
                 ? ThinkingLabel(thinking.ElapsedSeconds) + MetricsSuffix(state, width)
             : state.ToolName is { Length: > 0 } name ? ToolLabel(state, name, width)
             : state.Running ? WorkingLabel(state) + MetricsSuffix(state, width)

@@ -26,6 +26,14 @@ internal sealed record LiveAreaState
 
     public int RunElapsedSeconds { get; init; }
 
+    /// <summary>True while a staged write is being verified.</summary>
+    public bool Verifying { get; init; }
+
+    /// <summary>When the current write verification started, on the scheduler's clock.</summary>
+    public DateTimeOffset VerificationStartedAt { get; init; }
+
+    public int VerificationElapsedSeconds { get; init; }
+
     /// <summary>Whether the run can be interrupted (the interrupt hint shows only then).</summary>
     public bool Cancellable { get; init; }
 

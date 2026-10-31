@@ -3,3 +3,7 @@ obj/
 artifacts/
 eval/
 lunate.slnx
+tests/fixtures/verified-edits/generated-regex/GeneratedRegex.csproj
+tests/fixtures/verified-edits/generated-regex/GeneratedRegex.slnx
+tests/fixtures/verified-edits/multi-target/MultiTarget.csproj
+tests/fixtures/verified-edits/multi-target/MultiTarget.slnx
