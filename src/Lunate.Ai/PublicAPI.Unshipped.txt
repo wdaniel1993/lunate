@@ -9,61 +9,12 @@ Lunate.Ai.ModelCatalog
 Lunate.Ai.ModelCatalog.Find(string! id) -> Lunate.Ai.ModelInfo?
 static Lunate.Ai.ModelCatalog.Load(string? userFilePath = null) -> Lunate.Ai.ModelCatalog!
 Lunate.Ai.ModelCatalog.Models.get -> System.Collections.Generic.IReadOnlyList<Lunate.Ai.ModelInfo!>!
-Lunate.Ai.ModelInfo
-Lunate.Ai.ModelInfo.<Clone>$() -> Lunate.Ai.ModelInfo!
-Lunate.Ai.ModelInfo.AuthRef.get -> string?
-Lunate.Ai.ModelInfo.AuthRef.init -> void
-Lunate.Ai.ModelInfo.ContextWindow.get -> int
-Lunate.Ai.ModelInfo.ContextWindow.init -> void
-Lunate.Ai.ModelInfo.Deconstruct(out string! Id, out string! Provider, out System.Uri? Endpoint, out int ContextWindow, out bool SupportsTools, out string? AuthRef, out string? Reasoning) -> void
-Lunate.Ai.ModelInfo.Endpoint.get -> System.Uri?
-Lunate.Ai.ModelInfo.Endpoint.init -> void
-Lunate.Ai.ModelInfo.Equals(Lunate.Ai.ModelInfo? other) -> bool
-Lunate.Ai.ModelInfo.Id.get -> string!
-Lunate.Ai.ModelInfo.Id.init -> void
-Lunate.Ai.ModelInfo.ModelInfo(string! Id, string! Provider, System.Uri? Endpoint, int ContextWindow, bool SupportsTools, string? AuthRef = null, string? Reasoning = null) -> void
-Lunate.Ai.ModelInfo.MaxOutput.get -> int?
-Lunate.Ai.ModelInfo.MaxOutput.init -> void
-Lunate.Ai.ModelInfo.ApiType.get -> string?
-Lunate.Ai.ModelInfo.ApiType.init -> void
-Lunate.Ai.ModelInfo.Capabilities.get -> Lunate.Ai.ModelCapabilityDescriptor?
-Lunate.Ai.ModelInfo.Capabilities.init -> void
-Lunate.Ai.ModelInfo.Pricing.get -> Lunate.Ai.ModelPricing?
-Lunate.Ai.ModelInfo.Pricing.init -> void
-Lunate.Ai.ModelInfo.SupportsVision.get -> bool
-Lunate.Ai.ModelInfo.SupportsVision.init -> void
-Lunate.Ai.ModelInfo.WireId.get -> string?
-Lunate.Ai.ModelInfo.WireId.init -> void
-Lunate.Ai.ModelInfo.Reasoning.get -> string?
-Lunate.Ai.ModelInfo.Reasoning.init -> void
-Lunate.Ai.ModelInfo.Provider.get -> string!
-Lunate.Ai.ModelInfo.Provider.init -> void
-Lunate.Ai.ModelInfo.SupportsTools.get -> bool
-Lunate.Ai.ModelInfo.SupportsTools.init -> void
 override Lunate.Ai.ModelInfo.Equals(object? obj) -> bool
 override Lunate.Ai.ModelInfo.GetHashCode() -> int
 override Lunate.Ai.ModelInfo.ToString() -> string!
-static Lunate.Ai.ModelInfo.operator !=(Lunate.Ai.ModelInfo? left, Lunate.Ai.ModelInfo? right) -> bool
-static Lunate.Ai.ModelInfo.operator ==(Lunate.Ai.ModelInfo? left, Lunate.Ai.ModelInfo? right) -> bool
-Lunate.Ai.ModelPricing
-Lunate.Ai.ModelPricing.<Clone>$() -> Lunate.Ai.ModelPricing!
-Lunate.Ai.ModelPricing.CacheRead.get -> decimal?
-Lunate.Ai.ModelPricing.CacheRead.init -> void
-Lunate.Ai.ModelPricing.CacheWrite.get -> decimal?
-Lunate.Ai.ModelPricing.CacheWrite.init -> void
-Lunate.Ai.ModelPricing.ComputeCost(long inputTokens, long outputTokens, long cacheReadTokens, long cacheWriteTokens) -> decimal?
-Lunate.Ai.ModelPricing.Deconstruct(out decimal? Input, out decimal? Output, out decimal? CacheRead, out decimal? CacheWrite) -> void
-Lunate.Ai.ModelPricing.Equals(Lunate.Ai.ModelPricing? other) -> bool
-Lunate.Ai.ModelPricing.Input.get -> decimal?
-Lunate.Ai.ModelPricing.Input.init -> void
-Lunate.Ai.ModelPricing.ModelPricing(decimal? Input = null, decimal? Output = null, decimal? CacheRead = null, decimal? CacheWrite = null) -> void
-Lunate.Ai.ModelPricing.Output.get -> decimal?
-Lunate.Ai.ModelPricing.Output.init -> void
 override Lunate.Ai.ModelPricing.Equals(object? obj) -> bool
 override Lunate.Ai.ModelPricing.GetHashCode() -> int
 override Lunate.Ai.ModelPricing.ToString() -> string!
-static Lunate.Ai.ModelPricing.operator !=(Lunate.Ai.ModelPricing? left, Lunate.Ai.ModelPricing? right) -> bool
-static Lunate.Ai.ModelPricing.operator ==(Lunate.Ai.ModelPricing? left, Lunate.Ai.ModelPricing? right) -> bool
 Lunate.Ai.ReasoningParameters
 static Lunate.Ai.ReasoningParameters.Apply(Microsoft.Extensions.AI.ChatOptions! options, Lunate.Ai.ModelInfo! model, Lunate.Ai.ThinkingLevel level) -> void
 static Lunate.Ai.ReasoningParameters.Describe(Lunate.Ai.ModelInfo! model, Lunate.Ai.ThinkingLevel level) -> string!
@@ -164,16 +115,6 @@ Lunate.Ai.ModelsDevCatalog
 const Lunate.Ai.ModelsDevCatalog.SourceName = "models.dev" -> string!
 const Lunate.Ai.ModelsDevCatalog.SourceUrl = "https://models.dev/api.json" -> string!
 static Lunate.Ai.ModelsDevCatalog.Generate(string! json, System.Collections.Generic.IReadOnlyList<Lunate.Ai.ProviderPreset!>! presets) -> Lunate.Ai.CatalogSnapshot!
-Lunate.Ai.ModelCapabilityDescriptor
-Lunate.Ai.ModelCapabilityDescriptor.ModelCapabilityDescriptor(System.Collections.Generic.IReadOnlySet<string!>? apis = null, System.Collections.Generic.IReadOnlySet<string!>? inputModalities = null, System.Collections.Generic.IReadOnlySet<string!>? outputModalities = null, System.Collections.Generic.IReadOnlySet<string!>? features = null) -> void
-Lunate.Ai.ModelCapabilityDescriptor.Apis.get -> System.Collections.Generic.IReadOnlySet<string!>?
-Lunate.Ai.ModelCapabilityDescriptor.Apis.init -> void
-Lunate.Ai.ModelCapabilityDescriptor.Features.get -> System.Collections.Generic.IReadOnlySet<string!>?
-Lunate.Ai.ModelCapabilityDescriptor.Features.init -> void
-Lunate.Ai.ModelCapabilityDescriptor.InputModalities.get -> System.Collections.Generic.IReadOnlySet<string!>?
-Lunate.Ai.ModelCapabilityDescriptor.InputModalities.init -> void
-Lunate.Ai.ModelCapabilityDescriptor.OutputModalities.get -> System.Collections.Generic.IReadOnlySet<string!>?
-Lunate.Ai.ModelCapabilityDescriptor.OutputModalities.init -> void
 Lunate.Ai.CostCalculator
 static Lunate.Ai.CostCalculator.Compute(Lunate.Ai.ModelInfo? model, long inputTokens, long outputTokens, long cacheReadTokens = 0, long cacheWriteTokens = 0) -> decimal?
 static Lunate.Ai.CostCalculator.Format(decimal cost) -> string!

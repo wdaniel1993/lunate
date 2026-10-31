@@ -800,19 +800,6 @@ Lunate.Extensibility.Abstractions.TextStyle.Dim = 1 -> Lunate.Extensibility.Abst
 Lunate.Extensibility.Abstractions.TextStyle.Error = 4 -> Lunate.Extensibility.Abstractions.TextStyle
 Lunate.Extensibility.Abstractions.TextStyle.Plain = 0 -> Lunate.Extensibility.Abstractions.TextStyle
 Lunate.Extensibility.Abstractions.TextStyle.Warning = 3 -> Lunate.Extensibility.Abstractions.TextStyle
-Lunate.Extensibility.Abstractions.ToolResultView
-Lunate.Extensibility.Abstractions.ToolResultView.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolResultView!
-Lunate.Extensibility.Abstractions.ToolResultView.CallId.get -> string!
-Lunate.Extensibility.Abstractions.ToolResultView.CallId.init -> void
-Lunate.Extensibility.Abstractions.ToolResultView.Deconstruct(out string! ToolName, out string! CallId, out string! ResultText, out bool IsError) -> void
-Lunate.Extensibility.Abstractions.ToolResultView.Equals(Lunate.Extensibility.Abstractions.ToolResultView? other) -> bool
-Lunate.Extensibility.Abstractions.ToolResultView.IsError.get -> bool
-Lunate.Extensibility.Abstractions.ToolResultView.IsError.init -> void
-Lunate.Extensibility.Abstractions.ToolResultView.ResultText.get -> string!
-Lunate.Extensibility.Abstractions.ToolResultView.ResultText.init -> void
-Lunate.Extensibility.Abstractions.ToolResultView.ToolName.get -> string!
-Lunate.Extensibility.Abstractions.ToolResultView.ToolName.init -> void
-Lunate.Extensibility.Abstractions.ToolResultView.ToolResultView(string! ToolName, string! CallId, string! ResultText, bool IsError) -> void
 override Lunate.Extensibility.Abstractions.StatusView.Equals(object? obj) -> bool
 override Lunate.Extensibility.Abstractions.StatusView.GetHashCode() -> int
 override Lunate.Extensibility.Abstractions.StatusView.ToString() -> string!
@@ -826,8 +813,6 @@ static Lunate.Extensibility.Abstractions.StatusView.operator !=(Lunate.Extensibi
 static Lunate.Extensibility.Abstractions.StatusView.operator ==(Lunate.Extensibility.Abstractions.StatusView? left, Lunate.Extensibility.Abstractions.StatusView? right) -> bool
 static Lunate.Extensibility.Abstractions.TextSegment.operator !=(Lunate.Extensibility.Abstractions.TextSegment? left, Lunate.Extensibility.Abstractions.TextSegment? right) -> bool
 static Lunate.Extensibility.Abstractions.TextSegment.operator ==(Lunate.Extensibility.Abstractions.TextSegment? left, Lunate.Extensibility.Abstractions.TextSegment? right) -> bool
-static Lunate.Extensibility.Abstractions.ToolResultView.operator !=(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool
-static Lunate.Extensibility.Abstractions.ToolResultView.operator ==(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool
 Lunate.Extensibility.Abstractions.IExtensionContext.RegisterMcpServer(Lunate.Extensibility.Abstractions.McpServerRegistration! registration) -> void
 Lunate.Extensibility.Abstractions.McpServerConfig
 Lunate.Extensibility.Abstractions.McpServerConfig.<Clone>$() -> Lunate.Extensibility.Abstractions.McpServerConfig!
