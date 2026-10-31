@@ -45,7 +45,7 @@ public sealed class WriteVerifierPipelineTests
         await foreach (AgentEvent _ in harness.RunAsync("write code", Ct)) { }
 
         Assert.Equal(["approved", "verified"], order);
-        Assert.Equal("class C {}\n", File.ReadAllText(temp.File("code.cs")));
+        Assert.Equal(NewFile("class C {}\n"), File.ReadAllText(temp.File("code.cs")));
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public sealed class WriteVerifierPipelineTests
         );
 
         Assert.False(result.IsError);
-        Assert.Equal("original staged text\n", File.ReadAllText(temp.File("code.cs")));
+        Assert.Equal(NewFile("original staged text\n"), File.ReadAllText(temp.File("code.cs")));
     }
 
     [Fact]
@@ -181,7 +181,7 @@ public sealed class WriteVerifierPipelineTests
         Assert.Contains("CS1002: ; expected", result.Output, StringComparison.Ordinal);
         Assert.Contains("CS1513: } expected", result.Output, StringComparison.Ordinal);
         Assert.Equal(diagnostics.GetRawText(), result.StructuredContent?.GetRawText());
-        Assert.Equal("class C { invalid }\n", File.ReadAllText(temp.File("code.cs")));
+        Assert.Equal(NewFile("class C { invalid }\n"), File.ReadAllText(temp.File("code.cs")));
     }
 
     [Fact]
@@ -208,7 +208,7 @@ public sealed class WriteVerifierPipelineTests
         Assert.False(result.IsError);
         Assert.Equal(0, selections);
         Assert.Equal(0, verifier.Calls);
-        Assert.Equal("unverified\n", File.ReadAllText(temp.File("code.cs")));
+        Assert.Equal(NewFile("unverified\n"), File.ReadAllText(temp.File("code.cs")));
     }
 
     [Fact]
@@ -266,7 +266,7 @@ public sealed class WriteVerifierPipelineTests
         Assert.Contains("unverified", third.Output, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("two refusals", third.Output, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(2, verifier.Calls);
-        Assert.Equal("third attempt\n", File.ReadAllText(temp.File("code.cs")));
+        Assert.Equal(NewFile("third attempt\n"), File.ReadAllText(temp.File("code.cs")));
         Assert.Equal(diagnostics.GetRawText(), third.StructuredContent?.GetRawText());
     }
 
@@ -295,7 +295,7 @@ public sealed class WriteVerifierPipelineTests
         Assert.Contains("unverified", result.Output, StringComparison.Ordinal);
         Assert.Contains("10.0 s", result.Output, StringComparison.Ordinal);
         Assert.Contains("timeout", result.Output, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal("staged\n", File.ReadAllText(temp.File("code.cs")));
+        Assert.Equal(NewFile("staged\n"), File.ReadAllText(temp.File("code.cs")));
     }
 
     [Fact]
@@ -337,8 +337,14 @@ public sealed class WriteVerifierPipelineTests
 
         Assert.False(result.IsError);
         Assert.Equal(0, verifier.Calls);
-        Assert.Equal("ordinary text\n", File.ReadAllText(temp.File("code.txt")));
+        Assert.Equal(NewFile("ordinary text\n"), File.ReadAllText(temp.File("code.txt")));
     }
+
+    /// <summary>
+    /// A new file follows the platform's line endings, so the exact bytes a write test expects are
+    /// LF on POSIX and CRLF on Windows.
+    /// </summary>
+    private static string NewFile(string text) => text.ReplaceLineEndings();
 
     private static WriteVerificationResult Verified() => new(WriteVerificationStatus.Verified);
 
