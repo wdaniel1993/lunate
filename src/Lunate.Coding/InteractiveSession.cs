@@ -1618,6 +1618,14 @@ internal sealed partial class InteractiveSession : IDisposable
         {
             // The interrupted turn still hands over to the queue below.
         }
+        catch (Exception exception)
+        {
+            // A fault in the session's own event pipe — the app's observer seam or the render
+            // path a throw mid-stream surfaces in — must not end the turn silently (#338): the
+            // same `run failed:` notice a failed model request gets, and the input stays usable.
+            _lastTurnCompleted = false;
+            Notify("run failed: " + exception.Message, NoticeLevel.Error);
+        }
         finally
         {
             _runCancellation = null;
