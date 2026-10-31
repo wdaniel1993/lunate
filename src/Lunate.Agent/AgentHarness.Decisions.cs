@@ -82,10 +82,12 @@ public sealed partial class AgentHarness
         {
             foreach (DecisionQuestion question in request.Questions)
             {
-                channel.Emit(new DecisionFailed(runId, modelId, exception.Message)
-                {
-                    QuestionId = question.Id,
-                });
+                channel.Emit(
+                    new DecisionFailed(runId, modelId, exception.Message)
+                    {
+                        QuestionId = question.Id,
+                    }
+                );
             }
 
             throw;

@@ -5,8 +5,9 @@ namespace Lunate.Agent;
 
 internal sealed class DecideTool : ITool
 {
-    private static readonly JsonSerializerOptions OutputJsonOptions =
-        new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions OutputJsonOptions = new(
+        JsonSerializerDefaults.Web
+    );
 
     private static readonly JsonElement Schema = CreateSchema();
 
@@ -19,7 +20,11 @@ internal sealed class DecideTool : ITool
 
     public ToolRisk Risk => ToolRisk.ReadOnly;
 
-    public async Task<ToolResult> ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)
+    public async Task<ToolResult> ExecuteAsync(
+        JsonElement args,
+        ToolContext ctx,
+        CancellationToken ct
+    )
     {
         if (!TryParseRequest(args, out DecisionRequest? request, out string? error))
         {
@@ -108,16 +113,19 @@ internal sealed class DecideTool : ITool
             {
                 if (
                     answersElement.ValueKind != JsonValueKind.Array
-                    || answersElement.EnumerateArray().Any(answer =>
-                        answer.ValueKind != JsonValueKind.String
-                    )
+                    || answersElement
+                        .EnumerateArray()
+                        .Any(answer => answer.ValueKind != JsonValueKind.String)
                 )
                 {
                     error = "decide question answers must be an array of strings.";
                     return false;
                 }
 
-                answers = answersElement.EnumerateArray().Select(answer => answer.GetString()!).ToArray();
+                answers = answersElement
+                    .EnumerateArray()
+                    .Select(answer => answer.GetString()!)
+                    .ToArray();
             }
 
             string? jsonPath = null;
