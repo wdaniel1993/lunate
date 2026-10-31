@@ -67,6 +67,11 @@ public sealed class QuestionSuggestionFallbackTests
         await host.WaitForFrameAsync("Which plan should I use?");
 
         Assert.DoesNotContain("suggested · decision model", host.Frames, StringComparison.Ordinal);
+        await host.WaitUntilAsync(() =>
+            host
+                .Events.OfType<DecisionUnavailable>()
+                .Any(decision => decision.QuestionId == "question-1")
+        );
         Assert.Contains(
             host.Events.OfType<DecisionUnavailable>(),
             decision => decision.QuestionId == "question-1"
