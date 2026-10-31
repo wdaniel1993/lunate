@@ -1,7 +1,7 @@
 # verified-edits Specification
 
 ## Purpose
-TBD - created by archiving change verified-edits. Update Purpose after archive.
+Defines the write-path contract for verifying staged content before writes and edits, including refusal criteria and visible fallback when checks cannot run.
 
 ## Requirements
 
