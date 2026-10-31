@@ -118,6 +118,8 @@ public sealed record AgentSettings
     /// <summary>Whether the interactive session prints the welcome header; defaults to on.</summary>
     public bool StartupHeader { get; init; } = true;
 
+    internal bool BashGuard { get; init; } = true;
+
     /// <summary>Whether the interactive session checks for a newer release once a day; defaults to on.</summary>
     public bool UpdateCheck { get; init; } = true;
 
@@ -485,6 +487,12 @@ public static partial class SettingsStore
                         settings = settings with
                         {
                             StartupHeader = ReadStartupHeader(property.Value, problems),
+                        };
+                        break;
+                    case "bashGuard":
+                        settings = settings with
+                        {
+                            BashGuard = ReadBashGuard(property.Value, problems),
                         };
                         break;
                     case "updateCheck":
