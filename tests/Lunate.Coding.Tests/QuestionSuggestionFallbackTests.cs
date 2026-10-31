@@ -87,6 +87,9 @@ public sealed class QuestionSuggestionFallbackTests
         host.Advance(301);
         host.Console.SendEscape();
         await host.Client.WaitForCallAsync(2);
+        await host.WaitUntilAsync(() =>
+            host.Events.OfType<ToolCallResult>().Any(result => result.CallId == "question-call")
+        );
         ToolCallResult questionResult = Assert.Single(
             host.Events.OfType<ToolCallResult>(),
             result => result.CallId == "question-call"
