@@ -1,3 +1,5 @@
+using Lunate.Contracts;
+
 namespace Lunate.Agent;
 
 internal sealed record AgentToolContextState(
@@ -6,6 +8,8 @@ internal sealed record AgentToolContextState(
     Func<IReadOnlyList<UserQuestion>, CancellationToken, Task<UserQuestionResult>>? AskUserAsync
 )
 {
+    internal Func<DecisionRequest, CancellationToken, Task<DecisionResponse>>? DecideAsync { get; init; }
+
     internal static Session? SessionFor(ToolContext context) =>
         (context.AgentState as AgentToolContextState)?.Session;
 
