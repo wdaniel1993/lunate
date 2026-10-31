@@ -6,7 +6,7 @@
 
 ## 2. Warn about pre-existing external hardlinks
 
-- [ ] 2.1 Add deterministic `Lunate.Coding.Tests` for an external hardlink (warning names an in-root path once), multiple links wholly inside the state root (no warning), a missing state root (no creation), and a partial scan failure (startup continues); use a temporary state root and host-native paths.
+- [x] 2.1 Add deterministic `Lunate.Coding.Tests` for an external hardlink (warning names an in-root path once), multiple links wholly inside the state root (no warning), a missing state root (no creation), and a partial scan failure (startup continues); use a temporary state root and host-native paths.
 - [ ] 2.2 Implement the one-time startup scan of the existing state root, comparing filesystem link counts with links found inside it, without following directory symlinks or changing files; route the warning without writing to ACP stdout.
 - [ ] 2.3 Build `Lunate.Coding` and run the filtered startup hardlink tests, including only platform-supported hardlink fixture cases.
 
