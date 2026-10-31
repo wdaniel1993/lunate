@@ -1,6 +1,41 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <!--
+        Preview packaging (issue #237). The harness ships so a host can embed it, not as a
+        supported surface: no API stability promise before 1.0, versioned 0.2.0-preview.<n>
+        independently of the tool and of ExtensionApi. The package is self-contained in lib/
+        because its project reference to Lunate.Ai would otherwise become a nuspec dependency
+        on a package that is not published (NuGet names every project reference as one) and the
+        install would resolve nothing: PrivateAssets="All" stops the flow, the
+        PackOwnAssemblies target below carries the assembly itself.
+    -->
+    <PropertyGroup>
+        <IsPackable>true</IsPackable>
+        <PackageId>Lunate.Agent</PackageId>
+        <Version>0.2.0-preview.1</Version>
+        <Description>
+            The Lunate agent harness: the loop, tools, events, steering, approvals and the
+            session store. PREVIEW — no API stability promise before 1.0; exists so the
+            harness can be embedded by a host of its own, not as a supported surface.
+        </Description>
+        <PackageTags>lunate;agent;preview</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>lunate-logo-dark.png</PackageIcon>
+        <PackageProjectUrl>https://github.com/wdaniel1993/lunate</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/wdaniel1993/lunate</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <TargetsForTfmSpecificContentInPackage>
+            $(TargetsForTfmSpecificContentInPackage);PackOwnAssemblies
+        </TargetsForTfmSpecificContentInPackage>
+    </PropertyGroup>
+
     <ItemGroup>
-        <ProjectReference Include="../Lunate.Ai/Lunate.Ai.csproj" />
+        <None Include="README.md" Pack="true" PackagePath="/" />
+        <None Include="../../docs/media/brand/lunate-logo-dark.png" Pack="true" PackagePath="/" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Lunate.Ai/Lunate.Ai.csproj" PrivateAssets="All" />
         <ProjectReference Include="../Lunate.Contracts/Lunate.Contracts.csproj" />
     </ItemGroup>
 
@@ -32,4 +67,19 @@
              assembly is 'lunate'. -->
         <InternalsVisibleTo Include="lunate" />
     </ItemGroup>
+
+    <!--
+        The package's lib carries the harness plus the project it depends on but does not
+        depend on as a package: the file is named here, so the list is the inventory a reader
+        (and the gate) can diff against. The contract assemblies ride through the dependency
+        chain they belong to — a copy inside this package would blur which copy types bind to.
+    -->
+    <Target Name="PackOwnAssemblies">
+        <ItemGroup>
+            <TfmSpecificPackageFile
+                Include="$(OutDir)Lunate.Ai.dll"
+                PackagePath="lib/$(TargetFramework)"
+            />
+        </ItemGroup>
+    </Target>
 </Project>

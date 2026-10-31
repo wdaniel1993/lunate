@@ -1,8 +1,43 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <RootNamespace>Lunate.Contracts</RootNamespace>
+        <!--
+            Both contract assemblies' versions are the API version: ExtensionApiGate compares an
+            extension's contract assembly references with ExtensionApi.Current, and the parity test
+            (Lunate.Coding.Tests) fails when a bump of one drops the other.
+        -->
+        <!--
+            The contract ships as the stable NuGet pair beside the tool (issue #237): a test host's
+            extension compiles against the package, not the repository. The stable packages are
+            versioned by ExtensionApi, not by the tool's <Version> — the two move when the ADR-0002
+            addendum says they move, in lockstep with each other.
+        -->
         <Version>1.15.0</Version>
+        <PackageId>Lunate.Contracts</PackageId>
+        <IsPackable>true</IsPackable>
+        <Description>
+            The message and tool contract every Lunate extension and host shares: ITool,
+            ToolContext and ToolResult, the complete AgentEvent hierarchy and the decision
+            request/result types. The host loads this assembly once and every extension binds to
+            that copy, so a copy an extension ships is ignored at load.
+        </Description>
+        <PackageTags>lunate;contracts;agent</PackageTags>
+        <!--
+            The feed page is part of the product, same as the tool package's (#218/#235):
+            licence, readme, icon, repository link. The metadata gate reads the packed nupkg.
+        -->
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>lunate-logo-dark.png</PackageIcon>
+        <PackageProjectUrl>https://github.com/wdaniel1993/lunate</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/wdaniel1993/lunate</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
     </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="/" />
+        <None Include="../../docs/media/brand/lunate-logo-dark.png" Pack="true" PackagePath="/" />
+    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.10.1" />

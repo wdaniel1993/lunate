@@ -1,14 +1,49 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <!--
+        Same switch as the extension itself: the kit reaches a copied template as the preview
+        package (Lunate.Extensibility.Testing, self-contained), and as projects inside this
+        repository. The kit carries the assemblies the projects below the extension name —
+        Lunate.Ai through it, not as their own packages.
+    -->
+    <PropertyGroup Condition="'$(LunateUseNuGetContracts)' == ''">
+        <LunateUseNuGetContracts
+            Condition="!Exists('../../../src/Lunate.Contracts/Lunate.Contracts.csproj')"
+        >true</LunateUseNuGetContracts>
+        <LunateUseNuGetContracts
+            Condition="Exists('../../../src/Lunate.Contracts/Lunate.Contracts.csproj')"
+        >false</LunateUseNuGetContracts>
+    </PropertyGroup>
+
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <RootNamespace>TemplateExtension.Tests</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../../../src/Lunate.Ai/Lunate.Ai.csproj" />
-        <ProjectReference Include="../../../src/Lunate.Contracts/Lunate.Contracts.csproj" />
-        <ProjectReference Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
-        <ProjectReference Include="../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
+        <PackageReference
+            Condition="'$(LunateUseNuGetContracts)' == 'true'"
+            Include="Lunate.Extensibility.Testing"
+            Version="0.2.0-preview.1"
+        />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference
+            Condition="'$(LunateUseNuGetContracts)' != 'true'"
+            Include="../../../src/Lunate.Ai/Lunate.Ai.csproj"
+        />
+        <ProjectReference
+            Condition="'$(LunateUseNuGetContracts)' != 'true'"
+            Include="../../../src/Lunate.Contracts/Lunate.Contracts.csproj"
+        />
+        <ProjectReference
+            Condition="'$(LunateUseNuGetContracts)' != 'true'"
+            Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
+        />
+        <ProjectReference
+            Condition="'$(LunateUseNuGetContracts)' != 'true'"
+            Include="../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj"
+        />
     </ItemGroup>
 
     <ItemGroup>
@@ -20,7 +55,7 @@
         <MSBuild
             Projects="$(MSBuildThisFileDirectory)../TemplateExtension/TemplateExtension.csproj"
             Targets="Build"
-            Properties="Configuration=$(Configuration)"
+            Properties="Configuration=$(Configuration);LunateUseNuGetContracts=$(LunateUseNuGetContracts)"
         />
         <ItemGroup>
             <TemplateExtensionFiles Include="$(MSBuildThisFileDirectory)../TemplateExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />

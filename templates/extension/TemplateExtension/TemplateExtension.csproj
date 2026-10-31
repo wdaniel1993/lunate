@@ -1,4 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <!--
+        The contract reaches a template as packages (the stable pair pinned to the version
+        ExtensionApi.Current names) and as projects while the template sits inside this
+        repository, where the packages a feed serves may not exist yet. LunateUseNuGetContracts
+        switches the two: it defaults to true when the repository the template was copied from
+        is far enough away, and the verify gate forces it to true to prove the package shape
+        against a feed of freshly packed packages.
+    -->
+    <PropertyGroup Condition="'$(LunateUseNuGetContracts)' == ''">
+        <LunateUseNuGetContracts
+            Condition="!Exists('../../../src/Lunate.Contracts/Lunate.Contracts.csproj')"
+        >true</LunateUseNuGetContracts>
+        <LunateUseNuGetContracts
+            Condition="Exists('../../../src/Lunate.Contracts/Lunate.Contracts.csproj')"
+        >false</LunateUseNuGetContracts>
+    </PropertyGroup>
+
     <PropertyGroup>
         <RootNamespace>TemplateExtension</RootNamespace>
     </PropertyGroup>
@@ -7,24 +24,45 @@
         <!-- snippet:start — included by docs/extensions/README.md through scripts/docs-sync; keep the markers -->
         <!--
             The host owns Lunate.Contracts and Lunate.Extensibility.Abstractions and loads them once;
-            every extension binds to those copies so their types keep one identity. Private="false"
-            keeps the DLLs out of your output directory and ExcludeAssets="runtime" keeps them out of
-            the deps file — both still compile against. A copy in your output would be ignored, with
-            one warning saying so.
+            every extension binds to those copies so their types keep one identity. They are NuGet
+            packages pinned to the stable contract version (1.15.0, the number the manifest's
+            apiVersion is judged against), and each reference is compile-only: PrivateAssets="all"
+            keeps them from flowing to consumers of a packaged extension, ExcludeAssets="runtime"
+            keeps them out of the deps file and the output directory — a copy there is ignored at
+            load, with one warning saying so.
         -->
+        <PackageReference
+            Condition="'$(LunateUseNuGetContracts)' == 'true'"
+            Include="Lunate.Contracts"
+            Version="1.15.0"
+            PrivateAssets="all"
+            ExcludeAssets="runtime"
+        />
+        <PackageReference
+            Condition="'$(LunateUseNuGetContracts)' == 'true'"
+            Include="Lunate.Extensibility.Abstractions"
+            Version="1.15.0"
+            PrivateAssets="all"
+            ExcludeAssets="runtime"
+        />
+        <!-- snippet:end -->
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference
+            Condition="'$(LunateUseNuGetContracts)' != 'true'"
             Include="../../../src/Lunate.Contracts/Lunate.Contracts.csproj"
             PrivateAssets="all"
             Private="false"
             ExcludeAssets="runtime"
         />
         <ProjectReference
+            Condition="'$(LunateUseNuGetContracts)' != 'true'"
             Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
             PrivateAssets="all"
             Private="false"
             ExcludeAssets="runtime"
         />
-        <!-- snippet:end -->
     </ItemGroup>
 
     <ItemGroup>
