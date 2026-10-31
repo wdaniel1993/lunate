@@ -49,7 +49,11 @@ public sealed partial class AgentHarness
         _tools = tools;
         _options = options ?? new AgentHarnessOptions();
         ValidateOptions(_options);
-        if (ResolveUsageModel("decision") is not null && _tools.Find("decide") is null)
+        if (
+            _options.DecideTool
+            && ResolveUsageModel("decision") is not null
+            && _tools.Find("decide") is null
+        )
         {
             _tools.Add(new DecideTool());
         }
@@ -212,6 +216,18 @@ public sealed partial class AgentHarness
             throw new ArgumentException(
                 "Model routing needs at least two configured routing profiles.",
                 nameof(AgentHarnessOptions.RoutingProfiles)
+            );
+        }
+
+        if (
+            !double.IsFinite(options.ApprovalsThreshold)
+            || options.ApprovalsThreshold is < 0 or > 1
+        )
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.ApprovalsThreshold),
+                options.ApprovalsThreshold,
+                "The approval decision threshold must be a finite probability from 0 through 1."
             );
         }
 

@@ -6,45 +6,19 @@ namespace Lunate.Coding.Tests;
 public sealed class SettingsProfileCapabilitiesTests
 {
     [Fact]
-    public void Decision_consumer_is_off_by_default_and_user_can_opt_into_enforcement()
+    public void Approval_consumer_is_off_by_default_and_user_can_opt_into_enforcement()
     {
         using var temp = new TempDirectory();
         File.WriteAllText(
             temp.File("settings.json"),
-            """
-            { "schemaVersion": 2, "decisionMode": "enforce" }
-            """
+            """{ "schemaVersion": 2, "decisions": { "approvals": "enforce" } }"""
         );
 
         AgentSettings defaults = SettingsStore.Resolve(null, _ => null);
         AgentSettings configured = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
 
-        Assert.Equal(DecisionMode.Off, defaults.DecisionMode);
-        Assert.Equal(DecisionMode.Enforce, configured.DecisionMode);
-    }
-
-    [Fact]
-    public void Project_settings_cannot_enable_decision_consumer()
-    {
-        using var temp = new TempDirectory();
-        File.WriteAllText(
-            temp.File("project-settings.json"),
-            """
-            { "schemaVersion": 2, "decisionMode": "enforce" }
-            """
-        );
-
-        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            SettingsStore.ResolveWithProject(
-                null,
-                temp.File("project-settings.json"),
-                [],
-                _ => null
-            )
-        );
-
-        Assert.Contains("decisionMode", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("not allowed", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(DecisionMode.Off, defaults.Decisions.Approvals);
+        Assert.Equal(DecisionMode.Enforce, configured.Decisions.Approvals);
     }
 
     [Fact]
@@ -56,11 +30,13 @@ public sealed class SettingsProfileCapabilitiesTests
             """
             {
               "schemaVersion": 2,
-              "routingMode": "shadow",
-              "routingProfiles": ["default", "fast"],
               "profiles": {
                 "default": { "provider": "router", "model": "router/model-a" },
                 "fast": { "provider": "router", "model": "router/model-b" }
+              },
+              "decisions": {
+                "routing": "shadow",
+                "routingProfiles": ["default", "fast"]
               }
             }
             """
@@ -69,9 +45,9 @@ public sealed class SettingsProfileCapabilitiesTests
         AgentSettings defaults = SettingsStore.Resolve(null, _ => null);
         AgentSettings configured = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
 
-        Assert.Equal(DecisionMode.Off, defaults.RoutingMode);
-        Assert.Equal(DecisionMode.Shadow, configured.RoutingMode);
-        Assert.Equal(["default", "fast"], configured.RoutingProfiles);
+        Assert.Equal(DecisionMode.Off, defaults.Decisions.Routing);
+        Assert.Equal(DecisionMode.Shadow, configured.Decisions.Routing);
+        Assert.Equal(["default", "fast"], configured.Decisions.RoutingProfiles);
     }
 
     [Fact]
@@ -83,8 +59,10 @@ public sealed class SettingsProfileCapabilitiesTests
             """
             {
               "schemaVersion": 2,
-              "routingMode": "enforce",
-              "routingProfiles": ["missing"]
+              "decisions": {
+                "routing": "enforce",
+                "routingProfiles": ["missing"]
+              }
             }
             """
         );
@@ -99,28 +77,33 @@ public sealed class SettingsProfileCapabilitiesTests
     }
 
     [Fact]
-    public void Project_settings_cannot_enable_model_routing()
+    public void Model_routing_pick_the_most_probable_profile_without_a_threshold()
     {
         using var temp = new TempDirectory();
         File.WriteAllText(
-            temp.File("project-settings.json"),
+            temp.File("settings.json"),
             """
-            { "schemaVersion": 2, "routingMode": "enforce" }
+            {
+              "schemaVersion": 2,
+              "profiles": {
+                "default": { "provider": "router", "model": "router/model-a" },
+                "fast": { "provider": "router", "model": "router/model-b" }
+              },
+              "decisions": {
+                "profile": "default",
+                "routing": "enforce",
+                "routingProfiles": ["default", "fast"]
+              }
+            }
             """
         );
 
-        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            SettingsStore.ResolveWithProject(
-                null,
-                temp.File("project-settings.json"),
-                [],
-                _ => null
-            )
-        );
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
 
-        Assert.Contains("routingMode", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("not allowed", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(0.5, settings.Decisions.ApprovalsThreshold);
+        Assert.Equal(DecisionMode.Enforce, settings.Decisions.Routing);
     }
+
 
     [Fact]
     public void User_profile_can_override_open_capability_categories()

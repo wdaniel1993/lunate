@@ -45,10 +45,8 @@ public sealed class InteractiveSessionUsageProfileTests
                   "model": "decision-model"
                 }
               },
-              "usages": {
-                "chat": "chat-profile",
-                "decision": "decision-profile"
-              }
+              "usages": { "chat": "chat-profile" },
+              "decisions": { "profile": "decision-profile", "tool": true }
             }
             """
         );
@@ -65,6 +63,126 @@ public sealed class InteractiveSessionUsageProfileTests
         var request = chat.Requests[0];
         Assert.Contains("decide", request[0].Text, StringComparison.Ordinal);
         Assert.Contains(
+            chat.RequestOptions[0]!.Tools!,
+            declaration => declaration.Name == "decide"
+        );
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Interactive_decision_profile_offered_without_the_tool_switch_offers_nothing()
+    {
+        using var temp = new TempDirectory();
+        string modelsPath = temp.File("models.json");
+        File.WriteAllText(
+            modelsPath,
+            """
+            {
+              "schemaVersion": 2,
+              "models": [
+                { "id": "chat-model", "provider": "openai", "contextWindow": 64000,
+                  "supportsTools": true },
+                { "id": "decision-model", "provider": "openai", "contextWindow": 64000,
+                  "supportsTools": false }
+              ]
+            }
+            """
+        );
+        var chat = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(ChatRole.Assistant, []) { FinishReason = ChatFinishReason.Stop }
+        );
+        var factory = new UsageFactory(chat);
+        using var host = new InteractiveSessionHost(factory: factory, modelsPath: modelsPath);
+        File.WriteAllText(
+            host.Temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "profiles": {
+                "chat-profile": {
+                  "provider": "chat-provider",
+                  "model": "chat-model"
+                },
+                "decision-profile": {
+                  "provider": "chat-provider",
+                  "model": "decision-model"
+                }
+              },
+              "usages": { "chat": "chat-profile" },
+              "decisions": { "profile": "decision-profile", "tool": false }
+            }
+            """
+        );
+        ProviderStore.Save(
+            AuthStore.ProviderStoreFilePath(host.Temp.File("auth.json")),
+            [Provider("chat-provider", "openai")]
+        );
+        Task run = host.RunAsync();
+
+        host.Console.SendText("hello");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => chat.Requests.Count > 0);
+
+        Assert.DoesNotContain(
+            chat.RequestOptions[0]!.Tools!,
+            declaration => declaration.Name == "decide"
+        );
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Tool_on_without_a_profile_offers_nothing_and_reports_no_error()
+    {
+        using var temp = new TempDirectory();
+        string modelsPath = temp.File("models.json");
+        File.WriteAllText(
+            modelsPath,
+            """
+            {
+              "schemaVersion": 2,
+              "models": [
+                { "id": "chat-model", "provider": "openai", "contextWindow": 64000,
+                  "supportsTools": true }
+              ]
+            }
+            """
+        );
+        var chat = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(ChatRole.Assistant, []) { FinishReason = ChatFinishReason.Stop }
+        );
+        var factory = new UsageFactory(chat);
+        using var host = new InteractiveSessionHost(factory: factory, modelsPath: modelsPath);
+        File.WriteAllText(
+            host.Temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "profiles": {
+                "chat-profile": {
+                  "provider": "chat-provider",
+                  "model": "chat-model"
+                }
+              },
+              "usages": { "chat": "chat-profile" },
+              "decisions": { "tool": true }
+            }
+            """
+        );
+        ProviderStore.Save(
+            AuthStore.ProviderStoreFilePath(host.Temp.File("auth.json")),
+            [Provider("chat-provider", "openai")]
+        );
+        Task run = host.RunAsync();
+
+        host.Console.SendText("hello");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => chat.Requests.Count > 0);
+
+        Assert.DoesNotContain(
             chat.RequestOptions[0]!.Tools!,
             declaration => declaration.Name == "decide"
         );

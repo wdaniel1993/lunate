@@ -74,9 +74,12 @@ public sealed class InteractiveSessionRoutingCostTests
                 "fast": { "provider": "router", "model": "fast-model" },
                 "decision": { "provider": "router", "model": "decision-model" }
               },
-              "usages": { "chat": "default", "decision": "decision" },
-              "routingMode": "enforce",
-              "routingProfiles": ["default", "fast"]
+              "usages": { "chat": "default" },
+              "decisions": {
+                "profile": "decision",
+                "routing": "enforce",
+                "routingProfiles": ["default", "fast"]
+              }
             }
             """
         );

@@ -10,7 +10,6 @@ internal sealed record ModelProfile(
     int? MaxOutput = null,
     decimal? Temperature = null,
     int? ContextWindow = null,
-    double? DecisionThreshold = null,
     ModelCapabilityDescriptor? CapabilitiesOverride = null
 );
 
@@ -73,7 +72,6 @@ internal static class ModelProfileResolver
         ValidateOutput(profile, model);
         ValidateTemperature(profile, model);
         int contextWindow = ValidateContextWindow(profile, model);
-        ValidateDecisionThreshold(profile);
         ModelCapabilityDescriptor capabilities = (
             model.Capabilities ?? new ModelCapabilityDescriptor()
         )
@@ -181,21 +179,6 @@ internal static class ModelProfileResolver
         }
 
         return window;
-    }
-
-    private static void ValidateDecisionThreshold(ModelProfile profile)
-    {
-        if (
-            profile.DecisionThreshold is double threshold
-            && (!double.IsFinite(threshold) || threshold is < 0 or > 1)
-        )
-        {
-            throw Invalid(
-                profile,
-                "decisionThreshold",
-                "must be a finite probability from 0 through 1"
-            );
-        }
     }
 
     private static InvalidDataException Invalid(
