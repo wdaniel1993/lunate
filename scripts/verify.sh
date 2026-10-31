@@ -190,6 +190,14 @@ docs_profile() {
   python3 "${SCRIPT_DIR}/../tests/scripts/test_adr_numbers.py"
   python3 "${SCRIPT_DIR}/check-adr-numbers.py"
 
+  step "agent scratch paths"
+  python3 "${SCRIPT_DIR}/../tests/scripts/test_scratch_paths.py"
+  python3 "${SCRIPT_DIR}/check-scratch-paths.py" --base "${GITHUB_BASE_SHA:-origin/main}"
+
+  step "spec changes are archived"
+  python3 "${SCRIPT_DIR}/../tests/scripts/test_spec_archive.py"
+  python3 "${SCRIPT_DIR}/check-spec-archive.py" --base "${GITHUB_BASE_SHA:-origin/main}"
+
   step "docs are not build inputs"
   bash "${SCRIPT_DIR}/no-docs-references.sh"
 
