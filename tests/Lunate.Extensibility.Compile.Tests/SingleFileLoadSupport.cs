@@ -1,3 +1,4 @@
+using Lunate.Agent;
 using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Extensibility.Compile.Tests;
@@ -169,9 +170,23 @@ internal sealed class SingleFileLoadFixture : IDisposable
     /// </summary>
     internal ExtensionLockPackage AddContractCopy(string id, string version)
     {
-        string asset = FormattableString.Invariant(
-            $"lib/{_compile.Target.Tfm}/Lunate.Extensibility.Abstractions.dll"
+        return AddHostAssemblyCopy(
+            id,
+            version,
+            "Lunate.Extensibility.Abstractions",
+            typeof(IExtensionFactory).Assembly.Location
         );
+    }
+
+    /// <summary>A locked package whose runtime assets carry a host-owned assembly copy.</summary>
+    internal ExtensionLockPackage AddHostAssemblyCopy(
+        string id,
+        string version,
+        string assemblyName,
+        string sourceAssemblyPath
+    )
+    {
+        string asset = FormattableString.Invariant($"lib/{_compile.Target.Tfm}/{assemblyName}.dll");
         string directory = Path.Combine(
             _compile.PackagesFolder,
             id.ToLowerInvariant(),
@@ -180,8 +195,8 @@ internal sealed class SingleFileLoadFixture : IDisposable
             _compile.Target.Tfm
         );
         Directory.CreateDirectory(directory);
-        string path = Path.Combine(directory, "Lunate.Extensibility.Abstractions.dll");
-        File.Copy(typeof(IExtensionFactory).Assembly.Location, path, overwrite: true);
+        string path = Path.Combine(directory, assemblyName + ".dll");
+        File.Copy(sourceAssemblyPath, path, overwrite: true);
         byte[] bytes = File.ReadAllBytes(path);
 
         var package = new ExtensionLockPackage

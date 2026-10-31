@@ -1,7 +1,7 @@
 namespace Lunate.Extensibility.Compile;
 
 /// <summary>
-/// The compile-time contract: the four host assemblies an extension may reference, read out of this
+/// The compile-time contract: the three host assemblies an extension may reference, read out of this
 /// assembly's own manifest resources. They are embedded because a published self-contained
 /// single-file binary has no assembly on disk to point a <c>MetadataReference</c> at — the managed
 /// assemblies are bundled, so <c>Assembly.Location</c> is empty — and because an extension must
@@ -16,16 +16,16 @@ internal static class HostContractReferences
     internal const string ResourcePrefix = "contracts/";
 
     /// <summary>
-    /// The shared contract assemblies, in the order they are offered to the compiler: the
-    /// extension contract itself first, then the two host assemblies its public signatures use, then
-    /// the MEAI abstractions tools are expressed in. <c>System.Text.Json</c> is host-owned at load
-    /// but needs no entry here: it is part of the reference pack.
+    /// The shared compile-time contract assemblies, in the order they are offered to the compiler:
+    /// the tool and event contracts, the extension contract, then the MEAI abstractions tools are
+    /// expressed in. <c>Lunate.Agent</c> and <c>Lunate.Ai</c> remain host-owned at load for runtime
+    /// compatibility, but extensions do not compile directly against them. <c>System.Text.Json</c>
+    /// is host-owned at load but needs no entry here: it is part of the reference pack.
     /// </summary>
     internal static readonly string[] ContractNames =
     [
+        "Lunate.Contracts",
         "Lunate.Extensibility.Abstractions",
-        "Lunate.Agent",
-        "Lunate.Ai",
         "Microsoft.Extensions.AI.Abstractions",
     ];
 

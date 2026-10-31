@@ -45,13 +45,13 @@ After the load loop, the host fires `SessionStarted` once, so handlers observe t
 extensions that loaded. An extension loaded later would not observe it; in this version there is
 no later in-process load.
 
-`AssemblyLoadContext` isolates dependencies, not permissions. `Lunate.Extensibility.Abstractions`,
-`Lunate.Agent`, `Microsoft.Extensions.AI.Abstractions` and `System.Text.Json` are shared with the
-default context; every other dependency loads from the extension's own directory or, for a
-single-file extension, from the exact package asset its build recorded. A copy of a shared assembly
-shipped beside the entry assembly — or inside a package a single-file extension locked — is ignored,
-and the load reports it once, naming the package, so the copy is never a second identity. In-process
-extensions are fully trusted.
+`AssemblyLoadContext` isolates dependencies, not permissions. `Lunate.Contracts`,
+`Lunate.Extensibility.Abstractions`, `Lunate.Agent`, `Microsoft.Extensions.AI.Abstractions` and
+`System.Text.Json` are shared with the default context; every other dependency loads from the
+extension's own directory or, for a single-file extension, from the exact package asset its build
+recorded. A copy of a shared assembly shipped beside the entry assembly — or inside a package a
+single-file extension locked — is ignored, and the load reports it once, naming the package, so the
+copy is never a second identity. In-process extensions are fully trusted.
 
 Long-lived resources start later: a registered background service starts as the extension loads,
 a remote extension's process starts on first use (or in the background after the interactive UI is

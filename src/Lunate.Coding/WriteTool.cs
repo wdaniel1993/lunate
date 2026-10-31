@@ -164,7 +164,10 @@ public sealed class WriteTool(
                     return Error($"could not be read: {exception.Message}");
                 }
 
-                if (ctx.Reads?.Check(target, oldText, relative) is { } staleRead)
+                if (
+                    AgentToolContextState.ReadsFor(ctx)?.Check(target, oldText, relative) is
+                    { } staleRead
+                )
                 {
                     return Error(staleRead);
                 }
@@ -233,7 +236,7 @@ public sealed class WriteTool(
                         created ? FileChangeKind.Created : FileChangeKind.Modified
                     )
                 );
-                ctx.Reads?.Refresh(target, written, relative);
+                AgentToolContextState.ReadsFor(ctx)?.Refresh(target, written, relative);
 
                 var lines = CountLines(written);
                 var details = new WriteDetails(

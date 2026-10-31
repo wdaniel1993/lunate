@@ -335,9 +335,13 @@ Lunate.Agent.ToolContext.Progress.get -> System.Action<string!>?
 Lunate.Agent.ToolContext.Progress.init -> void
 Lunate.Agent.ToolContext.RunId.get -> string?
 Lunate.Agent.ToolContext.RunId.init -> void
+Lunate.Agent.ToolContext.SpillThresholdTokens.get -> int
+Lunate.Agent.ToolContext.SpillThresholdTokens.init -> void
 Lunate.Agent.ToolContext.Subagents.get -> Lunate.Agent.ISubagentRunner?
 Lunate.Agent.ToolContext.Subagents.init -> void
 Lunate.Agent.ToolContext.ToolContext(string! WorkingDirectory, Lunate.Agent.IAgentEvents! Events) -> void
+Lunate.Agent.ToolContext.ToolOutputLimit.get -> int
+Lunate.Agent.ToolContext.ToolOutputLimit.init -> void
 Lunate.Agent.ToolContext.ToolStubs.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.ToolStub!>?
 Lunate.Agent.ToolContext.ToolStubs.init -> void
 Lunate.Agent.ToolContext.WorkingDirectory.get -> string!

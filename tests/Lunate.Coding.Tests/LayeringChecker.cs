@@ -133,6 +133,7 @@ internal static class LayeringChecker
             ("FakeLsp", "Lunate.Extensibility.Abstractions"),
             ("TemplateExtension", "Lunate.Extensibility.Abstractions"),
             ("TemplateExtension.Tests", "Lunate.Ai"),
+            ("TemplateExtension.Tests", "Lunate.Contracts"),
             ("TemplateExtension.Tests", "Lunate.Extensibility.Abstractions"),
             ("TemplateExtension.Tests", "Lunate.Extensibility.Testing"),
             ("PermissionGateExtension", "Lunate.Extensibility.Abstractions"),

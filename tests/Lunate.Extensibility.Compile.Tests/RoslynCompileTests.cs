@@ -40,6 +40,20 @@ public sealed class RoslynCompileTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Fact]
+    public void Compile_references_use_only_the_extension_contract_and_shared_meai()
+    {
+        Assert.Equal(
+            new[]
+            {
+                "Lunate.Contracts",
+                "Lunate.Extensibility.Abstractions",
+                "Microsoft.Extensions.AI.Abstractions",
+            },
+            HostContractReferences.ContractNames
+        );
+    }
+
+    [Fact]
     public void An_extension_compiles_against_the_host_contract_and_a_locked_package()
     {
         using CompileFixture fixture = CompileFixture.Create();

@@ -96,17 +96,19 @@ public sealed partial class ReadTool : ITool
             }
         }
 
+        Session? session = AgentToolContextState.SessionFor(ctx);
+        IReadLedger? reads = AgentToolContextState.ReadsFor(ctx);
+
         if (!_workspace.TryResolve(pathElement.GetString()!, out var resolved, out var error))
         {
-            if (!TryResolveAllowed(pathElement.GetString()!, ctx.Session, out resolved))
+            if (!TryResolveAllowed(pathElement.GetString()!, session, out resolved))
             {
                 return Task.FromResult(Error(error));
             }
         }
 
         bool isKnownSpill =
-            ctx.Session is { } session
-            && ToolOutputSpill.IsKnownFile(session, resolved.AbsolutePath);
+            session is not null && ToolOutputSpill.IsKnownFile(session, resolved.AbsolutePath);
 
         if (Directory.Exists(resolved.AbsolutePath))
         {
@@ -194,7 +196,7 @@ public sealed partial class ReadTool : ITool
                 );
             }
 
-            ctx.Reads?.Record(
+            reads?.Record(
                 resolved.AbsolutePath,
                 text,
                 ctx.CallId ?? string.Empty,
@@ -210,7 +212,7 @@ public sealed partial class ReadTool : ITool
         var total = lines.Length;
         if (total == 0)
         {
-            ctx.Reads?.Record(
+            reads?.Record(
                 resolved.AbsolutePath,
                 text,
                 ctx.CallId ?? string.Empty,
@@ -257,7 +259,7 @@ public sealed partial class ReadTool : ITool
             );
         }
 
-        ctx.Reads?.Record(
+        reads?.Record(
             resolved.AbsolutePath,
             text,
             ctx.CallId ?? string.Empty,

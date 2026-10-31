@@ -5,13 +5,10 @@ namespace Lunate.Coding.Tests;
 
 /// <summary>
 /// The template is the place an extension author copies from, and the rule it carries is not
-/// cosmetic: the host owns <c>Lunate.Extensibility.Abstractions</c>, <c>Lunate.Agent</c> and
-/// <c>Lunate.Ai</c>, so a reference without <c>Private="false"</c> drops the DLL into the
-/// extension's output (where a load would ignore it and warn) and one without
-/// <c>ExcludeAssets="runtime"</c> keeps it in the deps file as a runtime asset. A template that loses
-/// either attribute is a template that teaches the wrong build — and one that adds
-/// <c>PrivateAssets="all"</c> teaches a worse one: it hides the Agent types an extension's signatures
-/// use, so the extension stops compiling.
+/// cosmetic: the host owns <c>Lunate.Contracts</c> and
+/// <c>Lunate.Extensibility.Abstractions</c>, so references use <c>PrivateAssets="all"</c>,
+/// <c>Private="false"</c> and <c>ExcludeAssets="runtime"</c> to keep the host assemblies out of the
+/// extension's runtime assets while allowing it to compile against them.
 /// </summary>
 /// <remarks>
 /// The authoring page shows this file's references through <c>scripts/docs-sync</c>
@@ -22,9 +19,8 @@ public sealed class ExtensionTemplateTests
 {
     private static readonly string[] HostOwned =
     [
+        "Lunate.Contracts",
         "Lunate.Extensibility.Abstractions",
-        "Lunate.Agent",
-        "Lunate.Ai",
     ];
 
     [Fact]
@@ -61,7 +57,7 @@ public sealed class ExtensionTemplateTests
                 $"the template's {assembly} reference must carry ExcludeAssets=\"runtime\": the host "
                     + "loads it, so it is not a runtime asset of the extension"
             );
-            Assert.Null(reference.Attribute("PrivateAssets"));
+            Assert.Equal("all", (string?)reference.Attribute("PrivateAssets"));
         }
     }
 

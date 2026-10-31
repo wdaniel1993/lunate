@@ -20,6 +20,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Agent" />
+        <InternalsVisibleTo Include="Lunate.Agent.Tests" />
         <InternalsVisibleTo Include="Lunate.Ai" />
         <!-- Lunate.Protocols reads the agent-only ToolContext state (the ask-user seam). -->
         <InternalsVisibleTo Include="Lunate.Protocols" />

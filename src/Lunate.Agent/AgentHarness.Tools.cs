@@ -647,6 +647,8 @@ public sealed partial class AgentHarness
         {
             RunId = runId,
             CallId = callId,
+            SpillThresholdTokens = _options.SpillThresholdTokens,
+            ToolOutputLimit = _options.ToolOutputLimit,
             ExecuteToolAsync = async (name, args, callCt) =>
             {
                 // The caller's token (for example the code-mode bridge's timeout) composes with the
@@ -674,7 +676,7 @@ public sealed partial class AgentHarness
                 _reads
             ),
             Subagents = _subagentRunner,
-            AgentState = new AgentToolContextState(_options.AskUserAsync),
+            AgentState = new AgentToolContextState(_options.Session, _reads, _options.AskUserAsync),
             ToolStubs = CallableToolStubs(),
             Models = _options.ModelRegistry is { } registry
                 ? new RunModelAccess(registry, this, channel, runId)

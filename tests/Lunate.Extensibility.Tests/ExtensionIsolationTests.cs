@@ -1,3 +1,6 @@
+using System.Runtime.Loader;
+using System.Text.Json;
+using Lunate.Agent;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Extensibility.Restore;
 
@@ -51,6 +54,61 @@ public sealed class ExtensionIsolationTests
         );
         Assert.Contains("hello", warning, StringComparison.Ordinal);
         Assert.Contains(directory, warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_packaged_extension_that_ships_contracts_uses_the_hosts_identity()
+    {
+        using var temp = new TempDirectory();
+        string directory = TestExtensions.InstallToolExtension(
+            temp,
+            "tools",
+            tools: "[\"echo\"]",
+            settings: "{\"tools\":[{\"name\":\"echo\"}]}"
+        );
+        TestExtensions.CopyHostAssembly(directory, "Lunate.Contracts.dll");
+        var log = new RecordingExtensionLog();
+        var loader = new ExtensionLoader(TestExtensions.Options(temp.Subdirectory("store"), log));
+        loader.Discover(temp.Root, "repo");
+
+        LoadedExtension loaded = await loader.Load(
+            "tools",
+            temp.Root,
+            "repo",
+            new FakeExtensionTrustPrompt(approve: true),
+            Ct
+        );
+        ExtensionToolAdapter tool = Assert.Single(loader.Tools.List());
+        ToolResult result = await tool.ExecuteAsync(
+            JsonDocument.Parse("{}").RootElement.Clone(),
+            new ToolContext(temp.Root, new NullAgentEvents()),
+            Ct
+        );
+
+        Assert.Equal($"echo: args={{}} cwd={temp.Root} run=none call=none", result.Output);
+        AssemblyLoadContext context = AssemblyLoadContext.GetLoadContext(
+            loaded.Extension.GetType().Assembly
+        )!;
+        Assert.NotSame(AssemblyLoadContext.Default, context);
+        Assert.DoesNotContain(
+            context.Assemblies,
+            assembly =>
+                string.Equals(
+                    assembly.GetName().Name,
+                    typeof(ToolContext).Assembly.GetName().Name,
+                    StringComparison.Ordinal
+                )
+        );
+
+        string warning = Assert.Single(
+            log.Messages,
+            message =>
+                message.Contains("ignored the copy of Lunate.Contracts", StringComparison.Ordinal)
+        );
+        Assert.Equal(
+            $"warn: extension 'tools': ignored the copy of Lunate.Contracts shipped by its directory '{directory}'; the host owns that assembly, so the host's copy is the one loaded.",
+            warning
+        );
     }
 
     [Fact]

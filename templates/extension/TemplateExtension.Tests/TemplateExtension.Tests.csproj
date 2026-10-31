@@ -6,6 +6,7 @@
 
     <ItemGroup>
         <ProjectReference Include="../../../src/Lunate.Ai/Lunate.Ai.csproj" />
+        <ProjectReference Include="../../../src/Lunate.Contracts/Lunate.Contracts.csproj" />
         <ProjectReference Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
         <ProjectReference Include="../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
     </ItemGroup>

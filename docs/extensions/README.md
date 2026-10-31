@@ -4,9 +4,13 @@ An in-process extension is a .NET assembly plus an `extension.json` manifest, or
 whose header declares what it provides ([single-file.md](single-file.md)). It registers
 contributions through `IExtensionContext` — tools, hook handlers, services, file-change
 subscriptions, MCP servers, model providers, middleware, virtual models, skill sources and terminal
-UI pieces — and compiles against `Lunate.Extensibility.Abstractions` and the core tool types it
-carries, never against `Lunate.Agent` internals. An out-of-process extension replaces the assembly
-with a `runtime` child process; see [remote extensions](../extensions-remote.md).
+UI pieces — and compiles against `Lunate.Contracts`, `Lunate.Extensibility.Abstractions` and
+`Microsoft.Extensions.AI.Abstractions`, never against `Lunate.Agent` internals. An out-of-process
+extension replaces the assembly with a `runtime` child process; see
+[remote extensions](../extensions-remote.md).
+
+The tool namespace remains `Lunate.Agent` for source compatibility; using that namespace does not
+require a project reference to the `Lunate.Agent` assembly.
 
 This section is the authoring guide. The normative contract is
 [`docs/spec/extensibility.md`](../spec/extensibility.md); when this guide and the spec disagree,
@@ -39,25 +43,21 @@ cannot drift from the file:
 <!-- snippet: templates/extension/TemplateExtension/TemplateExtension.csproj -->
 ```xml
 <!--
-    The host owns the contract, Lunate.Agent and Lunate.Ai: Lunate loads them once and every
-    extension binds to those copies so their types keep one identity. Private="false" keeps
-    the DLLs out of your output directory and ExcludeAssets="runtime" keeps them out of the
-    deps file — both still compile against. A copy in your output would be ignored, with one
-    warning saying so. Do not reach for PrivateAssets="all" here: it also hides the Agent
-    types your signatures use.
+    The host owns Lunate.Contracts and Lunate.Extensibility.Abstractions and loads them once;
+    every extension binds to those copies so their types keep one identity. Private="false"
+    keeps the DLLs out of your output directory and ExcludeAssets="runtime" keeps them out of
+    the deps file — both still compile against. A copy in your output would be ignored, with
+    one warning saying so.
 -->
 <ProjectReference
+    Include="../../../src/Lunate.Contracts/Lunate.Contracts.csproj"
+    PrivateAssets="all"
+    Private="false"
+    ExcludeAssets="runtime"
+/>
+<ProjectReference
     Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
-    Private="false"
-    ExcludeAssets="runtime"
-/>
-<ProjectReference
-    Include="../../../src/Lunate.Agent/Lunate.Agent.csproj"
-    Private="false"
-    ExcludeAssets="runtime"
-/>
-<ProjectReference
-    Include="../../../src/Lunate.Ai/Lunate.Ai.csproj"
+    PrivateAssets="all"
     Private="false"
     ExcludeAssets="runtime"
 />
@@ -69,12 +69,12 @@ the repository root (`templates/extension/TemplateExtension/`); adjust them for 
 The template inherits its target framework, nullability and implicit usings from the repository's
 `Directory.Build.props`, so a project of your own declares those itself.
 
-The host owns `Lunate.Extensibility.Abstractions`, `Lunate.Agent` and `Lunate.Ai`, and loads them
-once, so every extension binds to those copies. `Private="false"` keeps them out of your output
-directory and `ExcludeAssets="runtime"` keeps them out of the deps file, while both still compile
-against. A copy in the output is ignored at load, with one line saying which copy and who shipped
-it — so keep these references as they are. `PrivateAssets="all"` is not a substitute: it also hides
-the `Lunate.Agent` types your signatures use.
+The host owns `Lunate.Contracts`, `Lunate.Extensibility.Abstractions` and `Lunate.Agent`, and loads
+them once, so every extension binds to those copies. `Private="false"` keeps the contract assemblies
+out of your output directory and `ExcludeAssets="runtime"` keeps them out of the deps file, while
+both still compile against. A copy in the output is ignored at load, with one line saying which copy
+and who shipped it — so keep these references as they are. `PrivateAssets="all"` prevents the
+contract references from flowing to consumers of a packaged extension.
 
 ### 2. Write the extension
 
@@ -146,10 +146,10 @@ cp bin/Release/net10.0/HelloExtension.dll \
    ~/.lunate/extensions/hello/
 ```
 
-Copy any further dependencies next to the assembly. `Lunate.Extensibility.Abstractions`,
-`Lunate.Agent`, `Microsoft.Extensions.AI.Abstractions` and `System.Text.Json` are shared from the
-host and are never loaded from the extension folder: a copy shipped there anyway is ignored, and
-`/extensions` and the log say so once, naming what was dropped.
+Copy any further dependencies next to the assembly. `Lunate.Contracts`,
+`Lunate.Extensibility.Abstractions`, `Lunate.Agent`, `Microsoft.Extensions.AI.Abstractions` and
+`System.Text.Json` are shared from the host and are never loaded from the extension folder: a copy
+shipped there anyway is ignored, and `/extensions` and the log say so once, naming what was dropped.
 
 There are two installation scopes:
 

@@ -12,6 +12,13 @@
         -->
         <ProjectReference
             Include="../../../src/Lunate.Contracts/Lunate.Contracts.csproj"
+            PrivateAssets="all"
+            Private="false"
+            ExcludeAssets="runtime"
+        />
+        <ProjectReference
+            Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
+            PrivateAssets="all"
             Private="false"
             ExcludeAssets="runtime"
         />

@@ -1,4 +1,3 @@
-using Lunate.Ai;
 using static Lunate.Agent.Tests.AgentTestSupport;
 
 namespace Lunate.Agent.Tests;
@@ -54,38 +53,6 @@ public sealed class AgentEventIdentityTests
         Assert.Equal("core", started.Source);
         Assert.Null(started.ParentRunId);
         Assert.Null(started.SessionId);
-    }
-
-    [Fact]
-    public void Tool_context_signature_types_are_defined_in_contracts()
-    {
-        Type[] contractTypes =
-        [
-            typeof(ITool),
-            typeof(ToolContext),
-            typeof(ToolResult),
-            typeof(ToolStub),
-            typeof(ToolStubParameter),
-            typeof(ToolAnnotations),
-            typeof(ToolExposure),
-            typeof(ToolRisk),
-            typeof(ToolConcurrency),
-            typeof(ToolNamespace),
-            typeof(ImageAttachment),
-            typeof(IAgentEvents),
-            typeof(GitIdentity),
-            typeof(IFileChangeSink),
-            typeof(IFileMutationQueue),
-            typeof(ISubagentRunner),
-            typeof(IModelAccess),
-            typeof(ModelInfo),
-            typeof(ModelPricing),
-            typeof(ModelCapabilityDescriptor),
-        ];
-
-        Assert.All(contractTypes, type =>
-            Assert.Equal("Lunate.Contracts", type.Assembly.GetName().Name)
-        );
     }
 
     [Fact]

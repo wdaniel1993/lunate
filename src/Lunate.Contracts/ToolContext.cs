@@ -26,6 +26,9 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events)
     /// <summary>Reports progress to the run's event stream as a <see cref="ToolProgressUpdate"/>.</summary>
     public Action<string>? Progress { get; init; }
 
+    /// <summary>The estimated-token threshold above which a tool result is spilled.</summary>
+    public int SpillThresholdTokens { get; init; } = 2_000;
+
     /// <summary>The queue serializing file mutations per path.</summary>
     public IFileMutationQueue FileMutations { get; init; } = FileMutationQueue.Shared;
 
@@ -61,7 +64,9 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events)
     /// </summary>
     public IModelAccess? Models { get; init; }
 
+    /// <summary>The character budget for one tool result before truncation.</summary>
+    public int ToolOutputLimit { get; init; } = 30_000;
+
     /// <summary>Opaque Agent-owned execution state; Contracts does not depend on the agent.</summary>
     internal object? AgentState { get; init; }
-
 }
