@@ -71,6 +71,7 @@ SERIAL_TEST_PROJECTS="Lunate.Coding.Tests Lunate.Agent.Tests Lunate.Extensibilit
 # UI strings are pinned — the de-AT pass below still sets the TEST culture via
 # LANG, and the product itself must behave identically under any machine culture.
 export DOTNET_CLI_UI_LANGUAGE="${DOTNET_CLI_UI_LANGUAGE:-en}"
+export MSBUILDDISABLENODEREUSE=1
 
 RID="${RID:-$(detect_rid verify)}"
 BINARY="${PUBLISH_DIR}/${RID}/lunate"
@@ -608,7 +609,7 @@ for contract_project in \
   src/Lunate.Agent/Lunate.Agent.csproj \
   src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj
 do
-  dotnet pack "$contract_project" -c "$CONFIGURATION" -o "$contract_feed" --nologo
+  dotnet pack "$contract_project" -c "$CONFIGURATION" -o "$contract_feed" --nologo -nodeReuse:false
 done
 # The stable pair is versioned with ExtensionApi, the preview pair 0.2.0-preview.<n> — neither is
 # the repository <Version>, so each is read from the csproj that owns it.
@@ -619,18 +620,25 @@ preview_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Lunate.Agen
 "${SCRIPT_DIR}/check-package-metadata.sh" \
   "${contract_feed}/Lunate.Extensibility.Abstractions.${contract_version}.nupkg" --id Lunate.Extensibility.Abstractions
 "${SCRIPT_DIR}/check-package-metadata.sh" \
-  --prerelease "${contract_feed}/Lunate.Agent.${preview_version}.nupkg" --id Lunate.Agent
+  "${contract_feed}/Lunate.Agent.${preview_version}.nupkg" --id Lunate.Agent --prerelease
 "${SCRIPT_DIR}/check-package-metadata.sh" \
-  --prerelease "${contract_feed}/Lunate.Extensibility.Testing.${preview_version}.nupkg" --id Lunate.Extensibility.Testing
+  "${contract_feed}/Lunate.Extensibility.Testing.${preview_version}.nupkg" --id Lunate.Extensibility.Testing --prerelease
 # The template in NuGet mode binds the contract packages: restore pulls them from the folder feed
 # the step just packed, build compiles the extension against them, and the test project builds the
-# extension the consumer way (it carries the switch to its child itself).
+# extension the consumer way (it carries the switch to its child itself). Restore the child as well
+# as the test project: the test's after-build target invokes a second project, whose assets file
+# would otherwise still describe the earlier in-repository ProjectReference shape.
+dotnet restore templates/extension/TemplateExtension/TemplateExtension.csproj \
+  -p:LunateUseNuGetContracts=true \
+  -p:RestoreAdditionalProjectSources="$contract_feed" --nologo -nodeReuse:false
+dotnet build templates/extension/TemplateExtension/TemplateExtension.csproj \
+  -c "$CONFIGURATION" -p:LunateUseNuGetContracts=true --nologo -nodeReuse:false
 dotnet restore templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj \
   -p:LunateUseNuGetContracts=true \
-  -p:RestoreAdditionalProjectSources="$contract_feed" --nologo
+  -p:RestoreAdditionalProjectSources="$contract_feed" --nologo -nodeReuse:false
 dotnet build templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj \
   -c "$CONFIGURATION" \
-  -p:LunateUseNuGetContracts=true --nologo
+  -p:LunateUseNuGetContracts=true --nologo -nodeReuse:false
 
 step "packaging files"
 for packaging_file in \

@@ -12,6 +12,7 @@ try {
     # English-first gate output: pin the dotnet CLI / test-runner UI language
     # (parity with scripts/verify.sh). Only UI strings are pinned, never cultures.
     if (-not $env:DOTNET_CLI_UI_LANGUAGE) { $env:DOTNET_CLI_UI_LANGUAGE = 'en' }
+    $env:MSBUILDDISABLENODEREUSE = '1'
 
     # Stale scratch sweep (parity with scripts/verify.sh): a hard-killed run can
     # leave a lunate-verify-* dir in the temp path; remove ones older than 4
@@ -423,7 +424,7 @@ try {
             'src/Lunate.Agent/Lunate.Agent.csproj',
             'src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj'
         )) {
-            dotnet pack $contractProject -c $configuration -o $contractFeed --nologo
+            dotnet pack $contractProject -c $configuration -o $contractFeed --nologo -nodeReuse:false
             if ($LASTEXITCODE -ne 0) { throw "verify: dotnet pack failed for $contractProject" }
         }
         # The stable pair is versioned with ExtensionApi, the preview pair 0.2.0-preview.<n> —
@@ -436,9 +437,16 @@ try {
         Assert-PackageMetadata -Package (Join-Path $contractFeed "Lunate.Extensibility.Abstractions.$contractVersion.nupkg") -PackageId 'Lunate.Extensibility.Abstractions'
         Assert-PackageMetadata -Package (Join-Path $contractFeed "Lunate.Agent.$previewVersion.nupkg") -PackageId 'Lunate.Agent' -Prerelease
         Assert-PackageMetadata -Package (Join-Path $contractFeed "Lunate.Extensibility.Testing.$previewVersion.nupkg") -PackageId 'Lunate.Extensibility.Testing' -Prerelease
-        dotnet restore templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj -p:LunateUseNuGetContracts=true -p:RestoreAdditionalProjectSources="$contractFeed" --nologo
+        # Restore and build the child extension directly too: the test project's after-build target
+        # invokes it as a second project, whose assets file would otherwise still describe the
+        # earlier in-repository ProjectReference shape.
+        dotnet restore templates/extension/TemplateExtension/TemplateExtension.csproj -p:LunateUseNuGetContracts=true -p:RestoreAdditionalProjectSources="$contractFeed" --nologo -nodeReuse:false
+        if ($LASTEXITCODE -ne 0) { throw 'verify: contract feed restore of the template extension failed' }
+        dotnet build templates/extension/TemplateExtension/TemplateExtension.csproj -c $configuration -p:LunateUseNuGetContracts=true --nologo -nodeReuse:false
+        if ($LASTEXITCODE -ne 0) { throw 'verify: the template NuGet build failed' }
+        dotnet restore templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj -p:LunateUseNuGetContracts=true -p:RestoreAdditionalProjectSources="$contractFeed" --nologo -nodeReuse:false
         if ($LASTEXITCODE -ne 0) { throw 'verify: contract feed restore of the template failed' }
-        dotnet build templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj -c $configuration -p:LunateUseNuGetContracts=true --nologo
+        dotnet build templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj -c $configuration -p:LunateUseNuGetContracts=true --nologo -nodeReuse:false
         if ($LASTEXITCODE -ne 0) { throw 'verify: the template NuGet build failed' }
     }
     finally {
