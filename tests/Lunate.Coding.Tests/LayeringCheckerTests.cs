@@ -13,6 +13,26 @@ public sealed class LayeringCheckerTests
     }
 
     [Fact]
+    public void FindViolations_rejects_agent_to_extension_abstractions()
+    {
+        var violations = LayeringChecker.FindViolations([
+            ("Lunate.Agent", "Lunate.Extensibility.Abstractions"),
+        ]);
+
+        Assert.Single(violations);
+    }
+
+    [Fact]
+    public void FindViolations_rejects_extension_abstractions_to_agent()
+    {
+        var violations = LayeringChecker.FindViolations([
+            ("Lunate.Extensibility.Abstractions", "Lunate.Agent"),
+        ]);
+
+        Assert.Single(violations);
+    }
+
+    [Fact]
     public void FindPackageViolations_reports_disallowed_runtime_package()
     {
         var violations = LayeringChecker.FindPackageViolations([
