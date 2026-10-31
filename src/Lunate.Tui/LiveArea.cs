@@ -147,6 +147,9 @@ internal sealed partial class LiveArea : IDisposable
 
     public void SetRunning(bool running) => Post(new RunningInput(running, _scheduler.Now));
 
+    /// <summary>Sets whether a staged write is being verified.</summary>
+    public void SetVerifying(bool verifying) => Post(new VerifyingInput(verifying, _scheduler.Now));
+
     public void SetCancellable(bool cancellable) => Post(new CancellableInput(cancellable));
 
     /// <summary>
@@ -434,7 +437,7 @@ internal sealed partial class LiveArea : IDisposable
             SpinnerTick tick => state with
             {
                 FrameNumber =
-                    state.ToolName is not null || state.Running
+                    state.ToolName is not null || state.Running || state.Verifying
                         ? state.FrameNumber + 1
                         : state.FrameNumber,
                 Thinking = WithElapsedSeconds(state.Thinking, tick.At),
@@ -444,6 +447,9 @@ internal sealed partial class LiveArea : IDisposable
                 RunElapsedSeconds = state.Running
                     ? SecondsSince(state.RunStartedAt, tick.At)
                     : state.RunElapsedSeconds,
+                VerificationElapsedSeconds = state.Verifying
+                    ? SecondsSince(state.VerificationStartedAt, tick.At)
+                    : state.VerificationElapsedSeconds,
             },
             TailInput tail => state with { TailText = state.TailText + tail.Text },
             TailSetInput tail => state with { TailText = tail.Text },
@@ -496,6 +502,19 @@ internal sealed partial class LiveArea : IDisposable
                 Running = true,
                 RunStartedAt = at,
                 RunElapsedSeconds = 0,
+            },
+            VerifyingInput { Verifying: false } => state with
+            {
+                Verifying = false,
+                VerificationStartedAt = default,
+                VerificationElapsedSeconds = 0,
+            },
+            VerifyingInput { Verifying: true } when state.Verifying => state,
+            VerifyingInput { Verifying: true, At: var at } => state with
+            {
+                Verifying = true,
+                VerificationStartedAt = at,
+                VerificationElapsedSeconds = 0,
             },
             CancellableInput cancellable => state with { Cancellable = cancellable.Cancellable },
             ColorInput color => state with { Color = color.Color },
@@ -571,6 +590,8 @@ internal sealed partial class LiveArea : IDisposable
     private sealed record ToolSummaryInput(string? Summary) : LiveAreaInput;
 
     private sealed record RunningInput(bool Running, DateTimeOffset At) : LiveAreaInput;
+
+    private sealed record VerifyingInput(bool Verifying, DateTimeOffset At) : LiveAreaInput;
 
     private sealed record CancellableInput(bool Cancellable) : LiveAreaInput;
 

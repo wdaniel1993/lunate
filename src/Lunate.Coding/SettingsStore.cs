@@ -17,6 +17,19 @@ public enum ApprovalPolicy
     AutoEdit,
 }
 
+/// <summary>How staged writes behave when a registered verifier refuses the content.</summary>
+public enum WriteVerificationMode
+{
+    /// <summary>Refuse writes that introduce errors; the default.</summary>
+    Block,
+
+    /// <summary>Write refused content but report the result as unverified.</summary>
+    Warn,
+
+    /// <summary>Skip write-verifier selection and execution.</summary>
+    Off,
+}
+
 /// <summary>The resolved agent settings: file values overridden by the environment.</summary>
 public sealed record AgentSettings
 {
@@ -25,6 +38,9 @@ public sealed record AgentSettings
 
     /// <summary>The approval policy; defaults to <see cref="ApprovalPolicy.Ask"/>.</summary>
     public ApprovalPolicy Approval { get; init; } = ApprovalPolicy.Ask;
+
+    /// <summary>How staged writes are verified; defaults to <see cref="WriteVerificationMode.Block"/>.</summary>
+    public WriteVerificationMode Verify { get; init; } = WriteVerificationMode.Block;
 
     /// <summary>The optional approval decision consumer; defaults to off.</summary>
     public DecisionMode DecisionMode { get; init; } = DecisionMode.Off;
@@ -103,7 +119,8 @@ public sealed record RoslynSettings
 /// (<c>LUNATE_MODEL</c>, <c>LUNATE_APPROVAL</c>, <c>LUNATE_TOOL_DETAILS</c>,
 /// <c>LUNATE_TOOL_OUTPUT_LIMIT</c>, <c>LUNATE_TOOL_SPILL_THRESHOLD</c>, <c>LUNATE_STARTUP_HEADER</c>, <c>LUNATE_UPDATE_CHECK</c>,
 /// <c>LUNATE_SUBAGENTS_CONCURRENCY</c>, <c>LUNATE_SUBAGENTS_TOKEN_BUDGET</c>,
-/// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file values. Both
+/// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file values. <c>verify</c> is a file-only
+/// setting. Both
 /// the path and the environment lookup are injectable.
 /// </summary>
 public static partial class SettingsStore
@@ -360,6 +377,9 @@ public static partial class SettingsStore
                             Approval = ReadApproval(property.Value, "approval", problems),
                         };
                         break;
+                    case "verify":
+                        settings = settings with { Verify = ReadVerify(property.Value, problems) };
+                        break;
                     case "toolDetails":
                         settings = settings with
                         {
@@ -490,6 +510,25 @@ public static partial class SettingsStore
             )
         );
         return ApprovalPolicy.Ask;
+    }
+
+    private static WriteVerificationMode ReadVerify(JsonElement value, List<string> problems)
+    {
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            switch (value.GetString())
+            {
+                case "block":
+                    return WriteVerificationMode.Block;
+                case "warn":
+                    return WriteVerificationMode.Warn;
+                case "off":
+                    return WriteVerificationMode.Off;
+            }
+        }
+
+        problems.Add("'verify' must be 'block', 'warn' or 'off'");
+        return WriteVerificationMode.Block;
     }
 
     /// <summary>

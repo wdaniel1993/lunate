@@ -46,6 +46,7 @@ internal static class LayeringChecker
             ("Lunate.Roslyn.BuiltIn", "Lunate.Roslyn"),
             ("Lunate.Roslyn.Tests", "Lunate.Roslyn"),
             ("Lunate.Roslyn.Tests", "Lunate.Agent"),
+            ("Lunate.Roslyn.Tests", "Lunate.Extensibility.Abstractions"),
             ("Lunate.Coding", "Lunate.Agent"),
             ("Lunate.Coding", "Lunate.Extensibility"),
             // The composition owns the restore engine factory: it constructs the engine only when

@@ -944,7 +944,7 @@ static Lunate.Extensibility.Abstractions.ProcessRunRequest.operator !=(Lunate.Ex
 static Lunate.Extensibility.Abstractions.ProcessRunRequest.operator ==(Lunate.Extensibility.Abstractions.ProcessRunRequest? left, Lunate.Extensibility.Abstractions.ProcessRunRequest? right) -> bool
 static Lunate.Extensibility.Abstractions.ProcessRunResult.operator !=(Lunate.Extensibility.Abstractions.ProcessRunResult? left, Lunate.Extensibility.Abstractions.ProcessRunResult? right) -> bool
 static Lunate.Extensibility.Abstractions.ProcessRunResult.operator ==(Lunate.Extensibility.Abstractions.ProcessRunResult? left, Lunate.Extensibility.Abstractions.ProcessRunResult? right) -> bool
-const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.12.0" -> string!
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.13.0" -> string!
 Lunate.Extensibility.Abstractions.CommandKind
 Lunate.Extensibility.Abstractions.CommandKind.Builtin = 0 -> Lunate.Extensibility.Abstractions.CommandKind
 Lunate.Extensibility.Abstractions.CommandKind.Skill = 1 -> Lunate.Extensibility.Abstractions.CommandKind
@@ -1210,3 +1210,31 @@ static Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.operator ==(L
 Lunate.Extensibility.Abstractions.ToolActivationEvaluator
 static Lunate.Extensibility.Abstractions.ToolActivationEvaluator.Evaluate(Lunate.Extensibility.Abstractions.ExtensionToolActivationRule? rule, string! worktreeRoot) -> bool
 static Lunate.Extensibility.Abstractions.ToolActivationEvaluator.Evaluate(Lunate.Extensibility.Abstractions.ExtensionToolActivationRule? rule, string! worktreeRoot, string? gitCommonDir) -> bool
+Lunate.Extensibility.Abstractions.IExtensionContext.RegisterWriteVerifier(Lunate.Extensibility.Abstractions.WriteVerifierRegistration! registration) -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.WriteVerifiers.get -> System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.WriteVerifierDeclaration!>!
+Lunate.Extensibility.Abstractions.ExtensionManifest.WriteVerifiers.init -> void
+Lunate.Extensibility.Abstractions.IWriteVerifier
+Lunate.Extensibility.Abstractions.IWriteVerifier.VerifyAsync(Lunate.Extensibility.Abstractions.WriteVerificationRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Extensibility.Abstractions.WriteVerificationResult!>
+Lunate.Extensibility.Abstractions.WriteVerificationRequest
+Lunate.Extensibility.Abstractions.WriteVerificationRequest.WriteVerificationRequest(string! relativePath, string! baselineContent, string! stagedContent, Lunate.Extensibility.Abstractions.WorkspaceInfo! workspace) -> void
+Lunate.Extensibility.Abstractions.WriteVerificationRequest.RelativePath.get -> string!
+Lunate.Extensibility.Abstractions.WriteVerificationRequest.BaselineContent.get -> string!
+Lunate.Extensibility.Abstractions.WriteVerificationRequest.StagedContent.get -> string!
+Lunate.Extensibility.Abstractions.WriteVerificationRequest.Workspace.get -> Lunate.Extensibility.Abstractions.WorkspaceInfo!
+Lunate.Extensibility.Abstractions.WriteVerificationResult
+Lunate.Extensibility.Abstractions.WriteVerificationResult.WriteVerificationResult(Lunate.Extensibility.Abstractions.WriteVerificationStatus status, string? reason = null, System.Text.Json.JsonElement? structuredContent = null) -> void
+Lunate.Extensibility.Abstractions.WriteVerificationResult.Status.get -> Lunate.Extensibility.Abstractions.WriteVerificationStatus
+Lunate.Extensibility.Abstractions.WriteVerificationResult.Reason.get -> string?
+Lunate.Extensibility.Abstractions.WriteVerificationResult.StructuredContent.get -> System.Text.Json.JsonElement?
+Lunate.Extensibility.Abstractions.WriteVerificationStatus
+Lunate.Extensibility.Abstractions.WriteVerificationStatus.Verified = 0 -> Lunate.Extensibility.Abstractions.WriteVerificationStatus
+Lunate.Extensibility.Abstractions.WriteVerificationStatus.Unverified = 1 -> Lunate.Extensibility.Abstractions.WriteVerificationStatus
+Lunate.Extensibility.Abstractions.WriteVerificationStatus.Refused = 2 -> Lunate.Extensibility.Abstractions.WriteVerificationStatus
+Lunate.Extensibility.Abstractions.WriteVerifierDeclaration
+Lunate.Extensibility.Abstractions.WriteVerifierDeclaration.WriteVerifierDeclaration(string! name, System.Collections.Generic.IReadOnlyList<string!>! patterns) -> void
+Lunate.Extensibility.Abstractions.WriteVerifierDeclaration.Name.get -> string!
+Lunate.Extensibility.Abstractions.WriteVerifierDeclaration.Patterns.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.WriteVerifierRegistration
+Lunate.Extensibility.Abstractions.WriteVerifierRegistration.WriteVerifierRegistration(string! name, Lunate.Extensibility.Abstractions.IWriteVerifier! verifier) -> void
+Lunate.Extensibility.Abstractions.WriteVerifierRegistration.Name.get -> string!
+Lunate.Extensibility.Abstractions.WriteVerifierRegistration.Verifier.get -> Lunate.Extensibility.Abstractions.IWriteVerifier!

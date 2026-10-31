@@ -20,6 +20,7 @@ public sealed class ExtensionHeaderScannerTests
             #:service greeter
             #:capability net
             #:provider acme-models
+            #:verifier csharp *.cs *.csx
             #:package Octokit@14.0.0
             #:generators on
 
@@ -37,6 +38,9 @@ public sealed class ExtensionHeaderScannerTests
         Assert.Equal(["greeter"], header.Services);
         Assert.Equal(["net"], header.Capabilities);
         Assert.Equal(["acme-models"], header.Providers);
+        Abstractions.WriteVerifierDeclaration verifier = Assert.Single(header.WriteVerifiers);
+        Assert.Equal("csharp", verifier.Name);
+        Assert.Equal(["*.cs", "*.csx"], verifier.Patterns);
         Assert.Equal("Octokit@14.0.0", Assert.Single(header.Packages).Written);
         Assert.True(header.Generators);
         Assert.True(header.IsValid);
@@ -214,6 +218,38 @@ public sealed class ExtensionHeaderScannerTests
         ExtensionHeaderIssue error = Assert.Single(header.Errors);
         Assert.Equal(3, error.Line);
         Assert.Contains("fetch_issue", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("#:verifier csharp", "#:verifier")]
+    [InlineData("#:verifier csharp nested/file.cs", "path separator")]
+    [InlineData("#:verifier csharp *.cs *.CS", "duplicated")]
+    public void A_verifier_directive_refuses_what_the_manifest_refuses(string line, string expected)
+    {
+        ExtensionHeader header = ExtensionHeaderScanner.Scan(
+            $"#:extension acme-tools@1.0.0\n{line}\n\npublic sealed class Acme;\n"
+        );
+
+        ExtensionHeaderIssue error = Assert.Single(header.Errors);
+        Assert.Contains(expected, error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_duplicate_verifier_name_is_refused()
+    {
+        ExtensionHeader header = ExtensionHeaderScanner.Scan(
+            """
+            #:extension acme-tools@1.0.0
+            #:verifier csharp *.cs
+            #:verifier csharp *.csx
+
+            public sealed class Acme;
+            """
+        );
+
+        ExtensionHeaderIssue error = Assert.Single(header.Errors);
+        Assert.Equal(3, error.Line);
+        Assert.Contains("csharp", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -13,7 +13,7 @@ public sealed class PackageExtensionTests
         using var temp = new TempDirectory();
         string nupkg = new TestPackage(temp.Root)
             .Manifest("""{"schema":1,"extension":"extension"}""")
-            .Extension(id: "acme-tools", version: "0.1.0", apiVersion: "1.12.0")
+            .Extension(id: "acme-tools", version: "0.1.0", apiVersion: "^1.12.0")
             .Save();
 
         PackageInfo info = PackageReader.Read(nupkg);
@@ -37,7 +37,7 @@ public sealed class PackageExtensionTests
                 {
                   "id": "acme-remote",
                   "version": "0.1.0",
-                  "apiVersion": "1.12.0",
+                  "apiVersion": "^1.12.0",
                   "runtime": { "command": "node", "args": ["index.js"] }
                 }
                 """
@@ -74,7 +74,7 @@ public sealed class PackageExtensionTests
         using var temp = new TempDirectory();
         string nupkg = new TestPackage(temp.Root)
             .Manifest("""{"schema":1,"extension":"extension"}""")
-            .File("extension/extension.json", """{"version":"0.1.0","apiVersion":"1.12.0"}""")
+            .File("extension/extension.json", """{"version":"0.1.0","apiVersion":"^1.12.0"}""")
             .Save();
 
         InvalidDataException failure = Assert.Throws<InvalidDataException>(() =>
@@ -113,7 +113,7 @@ public sealed class PackageExtensionTests
                 {
                   "id": "acme-tools",
                   "version": "0.1.0",
-                  "apiVersion": "1.12.0",
+                  "apiVersion": "^1.12.0",
                   "entryAssembly": "acme-tools.dll"
                 }
                 """

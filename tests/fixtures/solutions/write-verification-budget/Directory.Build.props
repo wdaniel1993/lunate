@@ -1,0 +1,25 @@
+<Project>
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <Deterministic>true</Deterministic>
+        <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+        <IsPackable>false</IsPackable>
+        <Version>0.1.0</Version>
+
+        <!--
+            The in-process restore engine ships NuGet.Frameworks as a runtime asset — it parses the
+            TFM and picks the nearest framework group — and MSBuild ships its own copy of the same
+            assembly. Microsoft.Build.Locator's MSBL001 check cannot express the rule that actually
+            matters ("no Microsoft.Build.* assembly is copied beside the app"), so it is disabled
+            here and that rule is enforced by a test instead: Lunate.Coding.Tests'
+            AssemblyLayoutTests. The overlap itself is bounded: MSBuild's NuGet.Frameworks is loaded
+            only by the Roslyn workspace path, Lunate's only when a restore runs. ADR 0017 addendum
+            records the decision.
+        -->
+        <DisableMSBuildAssemblyCopyCheck>true</DisableMSBuildAssemblyCopyCheck>
+    </PropertyGroup>
+</Project>
