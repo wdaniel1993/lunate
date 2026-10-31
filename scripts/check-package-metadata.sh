@@ -12,7 +12,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: check-package-metadata.sh <package.nupkg> [--id <package-id>]" >&2
+  echo "usage: check-package-metadata.sh <package.nupkg> [--id <package-id>] [--prerelease]" >&2
   echo "       check-package-metadata.sh --self-test" >&2
   exit 2
 }
@@ -28,8 +28,8 @@ element_attributes() {
 }
 
 check_package() {
-  local package="$1" expected_id="$2" failures=0
-  local work nuspec package_id license readme repository
+  local package="$1" expected_id="$2" requires_prerelease="$3" failures=0
+  local work nuspec package_id license readme icon repository version
 
   if [ ! -f "$package" ]; then
     echo "check-package-metadata: no package at ${package}" >&2
@@ -63,6 +63,8 @@ check_package() {
   package_id="$(element_text id "$nuspec")"
   license="$(element_text license "$nuspec")"
   readme="$(element_text readme "$nuspec")"
+  icon="$(element_text icon "$nuspec")"
+  version="$(element_text version "$nuspec")"
   repository="$(element_attributes repository "$nuspec")"
 
   if [ -n "$expected_id" ] && [ "$package_id" != "$expected_id" ]; then
@@ -97,11 +99,36 @@ check_package() {
       ;;
   esac
 
+  # The feed page shows the icon next to the name; a declared icon NuGet cannot find in the
+  # archive is the same broken page as an unpacked readme.
+  if [ -z "$icon" ]; then
+    echo "check-package-metadata: ${package} declares no icon" >&2
+    echo "check-package-metadata: set PackageIcon (lunate-logo-dark.png) in the project file" >&2
+    failures=$((failures + 1))
+  elif [ "${icon#*/}" != "$icon" ] || [ ! -f "${work}/${icon}" ]; then
+    echo "check-package-metadata: ${package} declares icon '${icon}' but carries no such entry at its root" >&2
+    echo "check-package-metadata: add <None Include=\"...\" Pack=\"true\" PackagePath=\"/\" /> for ${icon}" >&2
+    failures=$((failures + 1))
+  fi
+
+  # The preview packages must say preview where the feed reads it: the version. A push that
+  # would publish stable metadata for a preview surface fails here, before nuget.org serves it.
+  if [ "$requires_prerelease" = "true" ]; then
+    case "$version" in
+      *-preview.*) ;;
+      *)
+        echo "check-package-metadata: ${package} is published as preview but its version '${version}' names no '-preview.' prerelease" >&2
+        echo "check-package-metadata: set <Version>0.2.0-preview.<n></Version> in the project file" >&2
+        failures=$((failures + 1))
+        ;;
+    esac
+  fi
+
   rm -rf "$work"
   if [ "$failures" -ne 0 ]; then
     return 1
   fi
-  echo "check-package-metadata: ${package_id} carries a licence, readme '${readme}' at its root and a git repository"
+  echo "check-package-metadata: ${package_id} carries a licence, readme '${readme}' and icon '${icon}' at its root, and a git repository"
 }
 
 SELF_TEST_DIR=""
@@ -167,7 +194,33 @@ self_test() {
     <version>0.1.0</version>
     <license type="expression">MIT</license>
     <readme>README.md</readme>
+    <icon>lunate-logo-dark.png</icon>
     <repository type="git" url="https://github.com/wdaniel1993/lunate" commit="0123456" />
+  </metadata>
+</package>
+XML
+  cat >"${dir}/fixtures/no-icon.nuspec" <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>lunate</id>
+    <version>0.1.0</version>
+    <license type="expression">MIT</license>
+    <readme>README.md</readme>
+    <repository type="git" url="https://github.com/wdaniel1993/lunate" />
+  </metadata>
+</package>
+XML
+  cat >"${dir}/fixtures/preview.nuspec" <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>lunate</id>
+    <version>0.2.0-preview.1</version>
+    <license type="expression">MIT</license>
+    <readme>README.md</readme>
+    <icon>lunate-logo-dark.png</icon>
+    <repository type="git" url="https://github.com/wdaniel1993/lunate" />
   </metadata>
 </package>
 XML
@@ -178,6 +231,7 @@ XML
     <id>lunate</id>
     <license type="file">LICENSE.txt</license>
     <readme>README.md</readme>
+    <icon>lunate-logo-dark.png</icon>
     <repository type="git" url="https://github.com/wdaniel1993/lunate" />
   </metadata>
 </package>
@@ -225,14 +279,18 @@ XML
 </package>
 XML
 
-  build_package complete "${dir}/fixtures/complete.nuspec" README.md
-  build_package license-file "${dir}/fixtures/license-file.nuspec" README.md LICENSE.txt
+  build_package complete "${dir}/fixtures/complete.nuspec" README.md lunate-logo-dark.png
+  build_package license-file "${dir}/fixtures/license-file.nuspec" README.md LICENSE.txt lunate-logo-dark.png
   build_package no-license "${dir}/fixtures/no-license.nuspec" README.md
   build_package no-readme "${dir}/fixtures/no-readme.nuspec" README.md
+  build_package no-icon "${dir}/fixtures/no-icon.nuspec" README.md
+  build_package preview-ok "${dir}/fixtures/preview.nuspec" README.md lunate-logo-dark.png
   # The declaration is there and the file is not: NuGet's "Readme missing" page.
   build_package readme-not-packed "${dir}/fixtures/complete.nuspec"
   # Declared in a subdirectory, which is not where nuget.org renders the introduction.
   build_package nested-readme "${dir}/fixtures/nested-readme.nuspec" docs/README.md
+  # The same breakage for the icon: declared, then the entry the page would show is absent.
+  build_package icon-not-packed "${dir}/fixtures/complete.nuspec" README.md
   build_package no-repository-url "${dir}/fixtures/no-repository-url.nuspec" README.md
   build_package no-nuspec "" README.md
 
@@ -243,10 +301,17 @@ XML
     fi
     cases=$((cases + 1))
   done
+  if ! bash "${BASH_SOURCE[0]}" "${dir}/preview-ok.nupkg" --prerelease --id lunate >/dev/null; then
+    echo "self-test: FAIL: rejected the preview package the prerelease flag accepts" >&2
+    return 1
+  fi
   expect_rejected no-license "no licence" "declares no licence"
   expect_rejected no-readme "no readme" "declares no readme"
+  expect_rejected no-icon "no icon" "declares no icon"
   expect_rejected readme-not-packed "an unpacked readme" "carries no such entry at its root"
   expect_rejected nested-readme "a readme outside the package root" "carries no such entry at its root"
+  expect_rejected icon-not-packed "an unpacked icon" "declares icon 'lunate-logo-dark.png' but carries no such entry"
+  expect_rejected complete "a stable version under the prerelease flag" "names no '-preview.'" --prerelease
   expect_rejected no-repository-url "no repository url" "no repository url and type"
   expect_rejected no-nuspec "no nuspec" "carries no nuspec at its root"
   expect_rejected complete "the wrong package id" "expected 'other'" --id other
@@ -270,6 +335,7 @@ fi
 package="$1"
 shift
 expected_id=""
+requires_prerelease="false"
 while [ $# -gt 0 ]; do
   case "$1" in
     --id)
@@ -277,10 +343,14 @@ while [ $# -gt 0 ]; do
       expected_id="$2"
       shift 2
       ;;
+    --prerelease)
+      requires_prerelease="true"
+      shift
+      ;;
     *)
       usage
       ;;
   esac
 done
 
-check_package "$package" "$expected_id"
+check_package "$package" "$expected_id" "$requires_prerelease"
