@@ -203,7 +203,7 @@ jobs:
           bwrap --version
 
       - name: Install hyperfine (Linux)
-        if: matrix.shard == 1
+        if: runner.os == 'Linux' && matrix.shard == 1
         run: |
           set -euo pipefail
           version=1.20.0
