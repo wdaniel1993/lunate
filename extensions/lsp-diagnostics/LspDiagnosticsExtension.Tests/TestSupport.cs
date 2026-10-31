@@ -25,8 +25,9 @@ internal static class TestSupport
             }
         );
         var workspace = new Workspace(host.WorkingDirectory);
-        host.Tools.Add(new WriteTool(workspace));
-        host.Tools.Add(new EditTool(workspace));
+        // The loaded extension's manifest-matched verifiers gate the real write pipeline.
+        host.Tools.Add(new WriteTool(workspace, host.Runner.WriteVerifiers.Find));
+        host.Tools.Add(new EditTool(workspace, host.Runner.WriteVerifiers.Find));
         host.Tools.Add(new ReadTool(workspace));
         return host;
     }
@@ -39,6 +40,7 @@ internal static class TestSupport
         ExtensionTestHost host,
         int timeoutMs = 4000,
         int maxDiagnostics = 5,
+        string serverCommand = "dotnet",
         params string[] serverArgs
     )
     {
@@ -50,7 +52,7 @@ internal static class TestSupport
             JsonSerializer.Serialize(
                 new
                 {
-                    serverCommand = "dotnet",
+                    serverCommand,
                     serverArgs = args,
                     timeoutMs,
                     maxDiagnostics,

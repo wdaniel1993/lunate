@@ -4,6 +4,7 @@
     "apiVersion": "^1.6.0",
     "entryAssembly": "LspDiagnosticsExtension.dll",
     "hooks": ["tool-result-ready"],
+    "writeVerifiers": [{ "name": "typescript", "patterns": ["*.ts", "*.tsx"] }],
     "services": ["ext/lsp-diagnostics/server"],
     "settingsSchema": {
         "type": "object",
