@@ -894,7 +894,11 @@ internal sealed partial class InteractiveSession : IDisposable
         UsageModelClient? chatModel = usageModels?.GetValueOrDefault("chat");
         ModelInfo resolvedModel = chatModel?.Model ?? model;
         List<string> toolNames = [.. _tools.Tools.Select(tool => tool.Name)];
-        if (usageModels?.ContainsKey("decision") == true && _settings.Decisions.Tool && !toolNames.Contains("decide"))
+        if (
+            usageModels?.ContainsKey("decision") == true
+            && _settings.Decisions.Tool
+            && !toolNames.Contains("decide")
+        )
         {
             toolNames.Add("decide");
         }

@@ -220,8 +220,7 @@ public sealed partial class AgentHarness
         }
 
         if (
-            !double.IsFinite(options.ApprovalsThreshold)
-            || options.ApprovalsThreshold is < 0 or > 1
+            !double.IsFinite(options.ApprovalsThreshold) || options.ApprovalsThreshold is < 0 or > 1
         )
         {
             throw new ArgumentOutOfRangeException(

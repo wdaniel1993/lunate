@@ -90,10 +90,7 @@ public static partial class SettingsStore
 
     private static string? ReadDecisionsProfile(JsonElement value, List<string> problems)
     {
-        if (
-            value.ValueKind != JsonValueKind.String
-            || string.IsNullOrWhiteSpace(value.GetString())
-        )
+        if (value.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(value.GetString()))
         {
             problems.Add("'decisions.profile' must be a non-empty profile name");
             return null;
@@ -137,16 +134,11 @@ public static partial class SettingsStore
             return threshold;
         }
 
-        problems.Add(
-            "'decisions.approvalsThreshold' must be a finite number from 0 through 1"
-        );
+        problems.Add("'decisions.approvalsThreshold' must be a finite number from 0 through 1");
         return DecisionsSettings.DefaultApprovalsThreshold;
     }
 
-    private static DecisionQuestionsMode ReadQuestionsMode(
-        JsonElement value,
-        List<string> problems
-    )
+    private static DecisionQuestionsMode ReadQuestionsMode(JsonElement value, List<string> problems)
     {
         if (value.ValueKind == JsonValueKind.String)
         {
@@ -207,10 +199,7 @@ public static partial class SettingsStore
     /// </summary>
     private static void ValidateDecisions(AgentSettings settings, List<string> problems)
     {
-        if (
-            settings.Decisions.Profile is { } profile
-            && !settings.Profiles.ContainsKey(profile)
-        )
+        if (settings.Decisions.Profile is { } profile && !settings.Profiles.ContainsKey(profile))
         {
             problems.Add($"'decisions.profile' names an unknown profile: {profile}");
         }
@@ -226,7 +215,10 @@ public static partial class SettingsStore
             problems.Add($"'routingProfiles' names unknown profiles: {missing}");
         }
 
-        if (settings.Decisions.Routing != DecisionMode.Off && settings.Decisions.RoutingProfiles.Count < 2)
+        if (
+            settings.Decisions.Routing != DecisionMode.Off
+            && settings.Decisions.RoutingProfiles.Count < 2
+        )
         {
             problems.Add("'decisions.routing' requires at least two 'routingProfiles'");
         }
