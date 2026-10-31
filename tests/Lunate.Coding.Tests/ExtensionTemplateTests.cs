@@ -23,41 +23,76 @@ public sealed class ExtensionTemplateTests
         "Lunate.Extensibility.Abstractions",
     ];
 
+    /// <summary>
+    /// The stable contract version §the template pins when it is outside this repository: the
+    /// packages are versioned with <see cref="ExtensionApi"/> (Lunate.Extensibility.Tests pins the
+    /// csprojs to the same number), so a bump cannot leave the template behind.
+    /// </summary>
     [Fact]
-    public void The_template_references_each_host_assembly_compile_only()
+    public void The_template_pins_the_stable_contract_version()
     {
         string path = TemplateProject();
-        XElement[] references = [.. XDocument.Load(path).Descendants("ProjectReference")];
         foreach (string assembly in HostOwned)
         {
             XElement reference = Assert.Single(
-                references,
+                XDocument.Load(path).Descendants("PackageReference"),
                 element =>
                     ((string?)element.Attribute("Include"))?.Contains(
                         assembly,
                         StringComparison.Ordinal
                     ) == true
             );
+            Assert.Equal(
+                Lunate.Extensibility.Abstractions.ExtensionApi.Current,
+                (string?)reference.Attribute("Version")
+            );
+        }
+    }
 
-            Assert.True(
-                string.Equals(
-                    "false",
-                    (string?)reference.Attribute("Private"),
-                    StringComparison.Ordinal
-                ),
-                $"the template's {assembly} reference must carry Private=\"false\": a copy in the "
-                    + "output directory is ignored at load, so shipping one is a warning for nothing"
+    [Fact]
+    public void The_template_references_each_host_assembly_compile_only()
+    {
+        string path = TemplateProject();
+        XDocument document = XDocument.Load(path);
+        // The package shape is the packaged-extension story; the project shape keeps this
+        // repository building before the packages are on the machine's feed. Both must carry the
+        // host-owned attribute set or their own shape's equivalents.
+        foreach (string assembly in HostOwned)
+        {
+            XElement package = Assert.Single(
+                document.Descendants("PackageReference"),
+                element =>
+                    ((string?)element.Attribute("Include"))?.Contains(
+                        assembly,
+                        StringComparison.Ordinal
+                    ) == true
             );
             Assert.True(
-                string.Equals(
-                    "runtime",
-                    (string?)reference.Attribute("ExcludeAssets"),
-                    StringComparison.Ordinal
-                ),
-                $"the template's {assembly} reference must carry ExcludeAssets=\"runtime\": the host "
-                    + "loads it, so it is not a runtime asset of the extension"
+                string.Equals("all", (string?)package.Attribute("PrivateAssets"), StringComparison.Ordinal),
+                $"the template's {assembly} package reference must carry PrivateAssets=\"all\": the " + "references must not flow to consumers of a packaged extension"
             );
-            Assert.Equal("all", (string?)reference.Attribute("PrivateAssets"));
+            Assert.True(
+                string.Equals("runtime", (string?)package.Attribute("ExcludeAssets"), StringComparison.Ordinal),
+                $"the template's {assembly} package reference must carry ExcludeAssets=\"runtime\": " + "the host loads it, so it is not a runtime asset of the extension"
+            );
+
+            XElement project = Assert.Single(
+                document.Descendants("ProjectReference"),
+                element =>
+                    ((string?)element.Attribute("Include"))?.Contains(
+                        assembly,
+                        StringComparison.Ordinal
+                    ) == true
+            );
+            Assert.True(
+                string.Equals("false", (string?)project.Attribute("Private"), StringComparison.Ordinal),
+                $"the template's {assembly} reference must carry Private=\"false\": a copy in the " + "output directory is ignored at load, so shipping one is a warning for nothing"
+            );
+            Assert.True(
+                string.Equals("runtime", (string?)project.Attribute("ExcludeAssets"), StringComparison.Ordinal),
+                $"the template's {assembly} reference must carry ExcludeAssets=\"runtime\": the host " + "loads it, so it is not a runtime asset of the extension"
+            );
+            Assert.Equal("all", (string?)project.Attribute("PrivateAssets"));
         }
     }
 
