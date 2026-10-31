@@ -41,7 +41,7 @@ shard_spec_parse() {
     echo "shard index $i is out of range (1..$n)" >&2
     return 2
   fi
-  printf '%s\n' "$i" "$n"
+  printf '%s %s\n' "$i" "$n"
 }
 
 # Fails when any existing PublicAPI.Shipped.txt is edited or deleted relative
