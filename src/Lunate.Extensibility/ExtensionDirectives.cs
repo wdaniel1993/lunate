@@ -37,6 +37,12 @@ public static class ExtensionDirectives
     /// <summary>Declares a model-provider id; mirrors the manifest's <c>modelProviders</c>.</summary>
     public const string Provider = "provider";
 
+    /// <summary>
+    /// Declares a write verifier and its filename patterns; mirrors the manifest's
+    /// <c>writeVerifiers</c>.
+    /// </summary>
+    public const string Verifier = "verifier";
+
     /// <summary>Declares a package to restore, in the documented .NET 10 syntax.</summary>
     public const string Package = "package";
 
@@ -52,6 +58,7 @@ public static class ExtensionDirectives
         new(Service, "Services"),
         new(Capability, "Capabilities"),
         new(Provider, "ModelProviders"),
+        new(Verifier, "WriteVerifiers"),
         new(Package, null),
         new(Generators, null),
     ];
@@ -63,7 +70,7 @@ public static class ExtensionDirectives
     /// The directive that declares <paramref name="manifestField"/>, or null when the manifest
     /// field has no directive. Callers pass the manifest's own property names (<c>Tools</c>,
     /// <c>Commands</c>, <c>Hooks</c>, <c>Services</c>, <c>Capabilities</c>,
-    /// <c>ModelProviders</c>), which is what the mirror test reflects over.
+    /// <c>ModelProviders</c>, <c>WriteVerifiers</c>), which is what the mirror test reflects over.
     /// </summary>
     public static ExtensionDirective? ForManifestField(string manifestField) =>
         Table.FirstOrDefault(directive =>
@@ -97,6 +104,7 @@ public static class ExtensionDirectives
             "Services" => header.Services,
             "Capabilities" => header.Capabilities,
             "ModelProviders" => header.Providers,
+            "WriteVerifiers" => [.. header.WriteVerifiers.Select(verifier => verifier.Name)],
             _ => throw new ArgumentOutOfRangeException(
                 nameof(manifestField),
                 manifestField,

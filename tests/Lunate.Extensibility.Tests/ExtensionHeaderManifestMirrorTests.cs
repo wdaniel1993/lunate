@@ -19,7 +19,15 @@ public sealed class ExtensionHeaderManifestMirrorTests
         // Pinned by name so a change to the manifest's shape (or to the reflection's criteria)
         // cannot silently shrink the set this test walks.
         Assert.Equal(
-            ["Capabilities", "Commands", "Hooks", "ModelProviders", "Services", "Tools"],
+            [
+                "Capabilities",
+                "Commands",
+                "Hooks",
+                "ModelProviders",
+                "Services",
+                "Tools",
+                "WriteVerifiers",
+            ],
             declarations.Select(property => property.Name)
         );
         foreach (PropertyInfo property in declarations)
@@ -34,8 +42,14 @@ public sealed class ExtensionHeaderManifestMirrorTests
                 return;
             }
 
+            // A verifier is the one declaration whose value carries more than a name: its
+            // patterns are part of the declaration, so the sample supplies one.
+            string value =
+                property.Name == nameof(ExtensionManifest.WriteVerifiers)
+                    ? "mirror-value *.cs"
+                    : "mirror-value";
             string source =
-                $"#:extension mirror-test@1.0.0\n#:{directive.Name} mirror-value\n\npublic sealed class M;\n";
+                $"#:extension mirror-test@1.0.0\n#:{directive.Name} {value}\n\npublic sealed class M;\n";
             ExtensionHeader header = ExtensionHeaderScanner.Scan(source);
 
             Assert.Empty(header.Errors);
@@ -76,6 +90,7 @@ public sealed class ExtensionHeaderManifestMirrorTests
             #:service a-service
             #:capability a-capability
             #:provider a-provider
+            #:verifier a-verifier *.cs
 
             public sealed class M;
             """

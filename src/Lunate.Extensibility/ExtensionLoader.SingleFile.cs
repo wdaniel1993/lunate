@@ -215,6 +215,7 @@ public sealed partial class ExtensionLoader
                 // The header declares provider ids; the descriptors are the code's to register, so
                 // nothing is declared here that a load would then report as unfulfilled.
                 ModelProviders = [],
+                WriteVerifiers = header.WriteVerifiers,
             }
         );
     }
