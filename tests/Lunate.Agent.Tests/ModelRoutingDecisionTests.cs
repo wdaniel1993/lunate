@@ -32,6 +32,19 @@ public sealed class ModelRoutingDecisionTests
     }
 
     [Fact]
+    public async Task Acting_decision_routes_to_the_most_probable_profile()
+    {
+        DecisionRun run = await RunAsync(
+            DecisionMode.Enforce,
+            """{"results":{"routing":{"answer":"default","probabilities":{"default":0.1,"fast":0.9}}}}"""
+        );
+
+        Assert.Empty(run.Configured.Requests);
+        Assert.Single(run.Fast.Requests);
+        Assert.Equal("fast", Assert.Single(run.Events.OfType<DecisionEvaluated>()).Answer);
+    }
+
+    [Fact]
     public async Task Shadow_decision_records_its_choice_without_changing_the_configured_model()
     {
         DecisionRun run = await RunAsync(

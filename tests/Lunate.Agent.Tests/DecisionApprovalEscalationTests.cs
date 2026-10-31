@@ -54,9 +54,45 @@ public sealed class DecisionApprovalEscalationTests
         Assert.Equal(2, run.Executions);
     }
 
+    [Fact]
+    public async Task A_deny_below_the_threshold_runs_the_ordinary_approval_flow()
+    {
+        DecisionRun run = await RunAsync(new RecordingApprover(decision: true), threshold: 0.9);
+
+        Assert.Empty(Assert.IsType<RecordingApprover>(run.Approver).PromptRequests);
+        Assert.Equal(1, run.Executions);
+    }
+
+    [Fact]
+    public async Task A_deny_that_reaches_the_threshold_escalates()
+    {
+        DecisionRun run = await RunAsync(new RecordingApprover(decision: true), threshold: 0.87);
+
+        Assert.True(
+            Assert
+                .Single(Assert.IsType<RecordingApprover>(run.Approver).PromptRequests)
+                .EscalationRequested
+        );
+        Assert.Equal(1, run.Executions);
+    }
+
+    [Fact]
+    public async Task A_deny_above_a_default_threshold_escalates()
+    {
+        DecisionRun run = await RunAsync(new RecordingApprover(decision: true));
+
+        Assert.True(
+            Assert
+                .Single(Assert.IsType<RecordingApprover>(run.Approver).PromptRequests)
+                .EscalationRequested
+        );
+        Assert.Equal(1, run.Executions);
+    }
+
     private static async Task<DecisionRun> RunAsync(
         IToolApprover approver,
-        string? secondDecision = null
+        string? secondDecision = null,
+        double? threshold = null
     )
     {
         var chat = new ScriptedChatClient().Enqueue(
@@ -98,6 +134,7 @@ public sealed class DecisionApprovalEscalationTests
             {
                 DecisionMode = DecisionMode.Enforce,
                 Approver = approver,
+                ApprovalsThreshold = threshold is { } value ? value : 0.5,
                 UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
                 {
                     ["chat"] = new(

@@ -120,6 +120,10 @@ Lunate.Agent.AgentHarnessOptions.RoutingMode.get -> Lunate.Agent.DecisionMode
 Lunate.Agent.AgentHarnessOptions.RoutingMode.init -> void
 Lunate.Agent.AgentHarnessOptions.RoutingProfiles.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Agent.UsageModelClient!>?
 Lunate.Agent.AgentHarnessOptions.RoutingProfiles.init -> void
+Lunate.Agent.AgentHarnessOptions.ApprovalsThreshold.get -> double
+Lunate.Agent.AgentHarnessOptions.ApprovalsThreshold.init -> void
+Lunate.Agent.AgentHarnessOptions.DecideTool.get -> bool
+Lunate.Agent.AgentHarnessOptions.DecideTool.init -> void
 Lunate.Agent.AgentHarnessOptions.RetryBaseDelay.get -> System.TimeSpan
 Lunate.Agent.AgentHarnessOptions.RetryBaseDelay.init -> void
 Lunate.Agent.AgentHarnessOptions.Session.get -> Lunate.Agent.Session?
@@ -1038,9 +1042,7 @@ Lunate.Agent.UsageModelClient
 Lunate.Agent.UsageModelClient.<Clone>$() -> Lunate.Agent.UsageModelClient!
 Lunate.Agent.UsageModelClient.Client.get -> Microsoft.Extensions.AI.IChatClient!
 Lunate.Agent.UsageModelClient.Client.init -> void
-Lunate.Agent.UsageModelClient.DecisionThreshold.get -> double?
-Lunate.Agent.UsageModelClient.DecisionThreshold.init -> void
-Lunate.Agent.UsageModelClient.Deconstruct(out Microsoft.Extensions.AI.IChatClient! Client, out string! ProfileName, out string! ProviderName, out Lunate.Ai.ModelInfo! Model, out double? DecisionThreshold) -> void
+Lunate.Agent.UsageModelClient.Deconstruct(out Microsoft.Extensions.AI.IChatClient! Client, out string! ProfileName, out string! ProviderName, out Lunate.Ai.ModelInfo! Model) -> void
 Lunate.Agent.UsageModelClient.Equals(Lunate.Agent.UsageModelClient? other) -> bool
 Lunate.Agent.UsageModelClient.Model.get -> Lunate.Ai.ModelInfo!
 Lunate.Agent.UsageModelClient.Model.init -> void
@@ -1049,7 +1051,7 @@ Lunate.Agent.UsageModelClient.ProfileName.init -> void
 Lunate.Agent.UsageModelClient.ProviderKind.get -> string!
 Lunate.Agent.UsageModelClient.ProviderName.get -> string!
 Lunate.Agent.UsageModelClient.ProviderName.init -> void
-Lunate.Agent.UsageModelClient.UsageModelClient(Microsoft.Extensions.AI.IChatClient! Client, string! ProfileName, string! ProviderName, Lunate.Ai.ModelInfo! Model, double? DecisionThreshold = null) -> void
+Lunate.Agent.UsageModelClient.UsageModelClient(Microsoft.Extensions.AI.IChatClient! Client, string! ProfileName, string! ProviderName, Lunate.Ai.ModelInfo! Model) -> void
 Lunate.Agent.UsageUpdated (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.UsageUpdated.Attribution.get -> Lunate.Agent.ModelUsageAttribution? (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.UsageUpdated.Attribution.init -> void (forwarded, contained in Lunate.Contracts)

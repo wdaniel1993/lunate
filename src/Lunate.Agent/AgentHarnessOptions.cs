@@ -13,14 +13,26 @@ public sealed record AgentHarnessOptions
     /// <summary>The resolved client/profile/provider for each configured model usage.</summary>
     public IReadOnlyDictionary<string, UsageModelClient>? UsageModels { get; init; }
 
-    /// <summary>Whether the configured decision profile observes or can veto approval asks.</summary>
+    /// <summary>Whether the configured decision profile participates in approval asks as a consumer.</summary>
     public DecisionMode DecisionMode { get; init; } = DecisionMode.Off;
+
+    /// <summary>
+    /// The probability a <c>deny</c> recommendation must reach for the approval-gate consumer
+    /// to escalate; a deny below it leaves the ordinary approval flow unchanged (default 0.5).
+    /// </summary>
+    public double ApprovalsThreshold { get; init; } = 0.5;
 
     /// <summary>Whether the configured decision profile can choose a model profile for this exchange.</summary>
     public DecisionMode RoutingMode { get; init; } = DecisionMode.Off;
 
     /// <summary>The named model profiles available to the routing decision.</summary>
     public IReadOnlyDictionary<string, UsageModelClient>? RoutingProfiles { get; init; }
+
+    /// <summary>
+    /// Whether the information-only <c>decide</c> tool is offered to the chat model; it is added
+    /// only when this is on and a decision usage resolves.
+    /// </summary>
+    public bool DecideTool { get; init; }
 
     /// <summary>The maximum number of model calls per run.</summary>
     public int MaxSteps { get; init; } = 50;
@@ -153,8 +165,7 @@ public sealed record UsageModelClient(
     IChatClient Client,
     string ProfileName,
     string ProviderName,
-    ModelInfo Model,
-    double? DecisionThreshold = null
+    ModelInfo Model
 )
 {
     /// <summary>The provider template kind of <see cref="Model"/>.</summary>

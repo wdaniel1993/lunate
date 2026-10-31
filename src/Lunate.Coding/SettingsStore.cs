@@ -7,6 +7,52 @@ using Lunate.Tui;
 
 namespace Lunate.Coding;
 
+/// <summary>
+/// The decision-layer configuration (the <c>decisions</c> settings section): the shared
+/// decision profile and each consumer's opt-in. Without <see cref="Profile"/> the layer is
+/// unavailable and nothing is offered — no consumer is configured by default and no error
+/// results from a consumer turned on without a profile.
+/// </summary>
+public sealed record DecisionsSettings
+{
+    /// <summary>The documented default of <see cref="ApprovalsThreshold"/>.</summary>
+    public const double DefaultApprovalsThreshold = 0.5;
+
+    /// <summary>The named profile the decision layer runs on; null leaves the layer unavailable.</summary>
+    public string? Profile { get; init; }
+
+    /// <summary>The approval-gate consumer; defaults to off.</summary>
+    public DecisionMode Approvals { get; init; } = DecisionMode.Off;
+
+    /// <summary>
+    /// The probability a <c>deny</c> recommendation must reach for the approval gate to
+    /// escalate; a deny below it stays an ordinary approval ask. Defaults to 0.5.
+    /// </summary>
+    public double ApprovalsThreshold { get; init; } = DefaultApprovalsThreshold;
+
+    /// <summary>The model-routing consumer; defaults to off.</summary>
+    public DecisionMode Routing { get; init; } = DecisionMode.Off;
+
+    /// <summary>The named profiles the routing consumer may select (at least two with routing on).</summary>
+    public IReadOnlyList<string> RoutingProfiles { get; init; } = [];
+
+    /// <summary>Whether the <c>decide</c> tool is offered; requires <see cref="Profile"/> to resolve.</summary>
+    public bool Tool { get; init; }
+
+    /// <summary>The question-suggestion consumer; defaults to off. Display only in this version.</summary>
+    public DecisionQuestionsMode Questions { get; init; } = DecisionQuestionsMode.Off;
+}
+
+/// <summary>The question-suggestion consumer's literals: <c>off</c> or <c>suggest</c>.</summary>
+public enum DecisionQuestionsMode
+{
+    /// <summary>No suggestion is shown beside a question the user is answering (default).</summary>
+    Off,
+
+    /// <summary>A decision-model suggestion is shown display-only beside a question.</summary>
+    Suggest,
+}
+
 /// <summary>How tool calls are handled once the non-interactive approver consumes the setting.</summary>
 public enum ApprovalPolicy
 {
@@ -42,17 +88,8 @@ public sealed record AgentSettings
     /// <summary>How staged writes are verified; defaults to <see cref="WriteVerificationMode.Block"/>.</summary>
     public WriteVerificationMode Verify { get; init; } = WriteVerificationMode.Block;
 
-    /// <summary>The optional approval decision consumer; defaults to off.</summary>
-    public DecisionMode DecisionMode { get; init; } = DecisionMode.Off;
-
-    /// <summary>Whether decision-model suggestions appear beside interactive question options; defaults to off.</summary>
-    public bool QuestionSuggestions { get; init; }
-
-    /// <summary>The optional model-routing decision consumer; defaults to off.</summary>
-    internal DecisionMode RoutingMode { get; init; } = DecisionMode.Off;
-
-    /// <summary>The named profiles the model-routing consumer may select.</summary>
-    internal IReadOnlyList<string> RoutingProfiles { get; init; } = [];
+    /// <summary>The resolved decision-layer settings (the <c>decisions</c> section).</summary>
+    public DecisionsSettings Decisions { get; init; } = new();
 
     /// <summary>How much of a tool call the scrollback shows; defaults to collapsed.</summary>
     public ToolDetails ToolDetails { get; init; } = ToolDetails.Collapsed;
@@ -190,7 +227,7 @@ public static partial class SettingsStore
             settings = ParseFile(path, problems);
         }
 
-        ValidateRoutingSettings(settings, problems);
+        ValidateDecisions(settings, problems);
         settings = ApplyEnvironment(
             settings,
             environment ?? Environment.GetEnvironmentVariable,
@@ -481,28 +518,10 @@ public static partial class SettingsStore
                     case "usages":
                         settings = settings with { Usages = ReadUsages(property.Value, problems) };
                         break;
-                    case "decisionMode":
+                    case "decisions":
                         settings = settings with
                         {
-                            DecisionMode = ReadDecisionMode(property.Value, problems),
-                        };
-                        break;
-                    case "questionSuggestions":
-                        settings = settings with
-                        {
-                            QuestionSuggestions = ReadQuestionSuggestions(property.Value, problems),
-                        };
-                        break;
-                    case "routingMode":
-                        settings = settings with
-                        {
-                            RoutingMode = ReadRoutingMode(property.Value, problems),
-                        };
-                        break;
-                    case "routingProfiles":
-                        settings = settings with
-                        {
-                            RoutingProfiles = ReadRoutingProfiles(property.Value, problems),
+                            Decisions = ReadDecisions(property.Value, problems),
                         };
                         break;
                     case "tui":
@@ -804,17 +823,6 @@ public static partial class SettingsStore
 
         problems.Add("'updateCheck' must be true or false");
         return true;
-    }
-
-    private static bool ReadQuestionSuggestions(JsonElement value, List<string> problems)
-    {
-        if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
-        {
-            return value.GetBoolean();
-        }
-
-        problems.Add("'questionSuggestions' must be true or false");
-        return false;
     }
 
     /// <summary>

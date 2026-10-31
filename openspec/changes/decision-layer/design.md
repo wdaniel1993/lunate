@@ -6,8 +6,9 @@ asks, `EvaluateApprovalDecisionAsync` resolves the `decision` usage, calls the m
 response format, validates the response (`TryReadDecision`: one defined option, one finite
 probability per option in [0, 1], summing to 1 within 1e-6), and emits `DecisionEvaluated`,
 `DecisionUnavailable` and `DecisionFailed` events. Usage attribution already records the decision
-method (`native` | `adapter`) and probability per the schema-4 attribution contract, and
-`ModelProfile.DecisionThreshold` is validated for well-formedness.
+method (`native` | `adapter`) and probability per the schema-4 attribution contract, and the
+approval threshold sits on the model profile. #409 moves that threshold off the profile and onto the
+approval consumer (`decisions.approvalsThreshold`); the profile key and its validation are removed.
 
 The gap this change closes: the path is private and approval-shaped. The decision layer is a
 **general-purpose primitive** — an abstraction over the Jev-compatible decision API — and approvals,
@@ -26,9 +27,11 @@ Approved decisions that bind this design (do not re-open):
 - **Sign-off scope correction (2026-10-31)**: the primitive mirrors the Jev-compatible API, its
   contract is extension-facing, and 0.2 ships four consumers: model routing, the approval gate
   (escalate-only), question suggestions, and a `decide` tool for the chat model.
-- **Provider store and usages (#253, merged)**: `decision` is an existing usage; selection is
-  usage → profile → provider; no decision profile means the layer reports unavailable and stays
-  off; it never borrows the chat model. The agent-sessions schema-4 attribution delta lives in that
+- **Provider store and usages (#253, merged)**: a configured decision profile is required before
+  the layer proposes anything; absent one the layer reports unavailable and stays off; it never
+  borrows the chat model. #409 moves the profile's selection from `usages.decision` into the
+  `decisions` block (`decisions.profile`); the internal `decision` usage — attribution and `/cost`
+  — keeps its name. The agent-sessions schema-4 attribution delta lives in the provider-store
   change, not in this one.
 
 ## Goals / Non-Goals

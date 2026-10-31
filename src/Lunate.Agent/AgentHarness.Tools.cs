@@ -495,6 +495,7 @@ public sealed partial class AgentHarness
                     if (
                         _options.DecisionMode == DecisionMode.Enforce
                         && decision.Evaluation is { Answer: "deny" } evaluation
+                        && evaluation.Probability >= _options.ApprovalsThreshold
                     )
                     {
                         if (decisionApprover is not IUserPromptToolApprover promptApprover)

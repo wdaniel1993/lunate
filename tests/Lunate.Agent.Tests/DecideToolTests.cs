@@ -82,6 +82,7 @@ public sealed class DecideToolTests
             new AgentHarnessOptions
             {
                 Approver = approver,
+                DecideTool = true,
                 UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
                 {
                     ["chat"] = new(
@@ -149,6 +150,43 @@ public sealed class DecideToolTests
 
         await AgentTestSupport.Run(harness);
 
+        Assert.DoesNotContain(
+            chat.Requests[0].Options!.Tools!,
+            declaration => declaration.Name == "decide"
+        );
+    }
+
+    [Fact]
+    public async Task Decide_tool_is_not_offered_when_the_tool_consumer_is_off()
+    {
+        var chat = new ScriptedChatClient().Enqueue(LoopScripts.Stop());
+        var decision = new ScriptedChatClient().Enqueue(LoopScripts.Stop());
+        var harness = new AgentHarness(
+            chat,
+            new ToolRegistry(),
+            new AgentHarnessOptions
+            {
+                UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+                {
+                    ["chat"] = new(
+                        chat,
+                        "chat-profile",
+                        "openai",
+                        new ModelInfo("chat-model", "openai", null, 64000, SupportsTools: true)
+                    ),
+                    ["decision"] = new(
+                        decision,
+                        "decision-profile",
+                        "openai",
+                        new ModelInfo("decision-model", "openai", null, 64000, SupportsTools: false)
+                    ),
+                },
+            }
+        );
+
+        await AgentTestSupport.Run(harness);
+
+        Assert.Empty(decision.Requests);
         Assert.DoesNotContain(
             chat.Requests[0].Options!.Tools!,
             declaration => declaration.Name == "decide"

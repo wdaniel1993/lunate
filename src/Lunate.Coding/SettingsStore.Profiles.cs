@@ -46,7 +46,6 @@ public static partial class SettingsStore
             int? maxOutput = null;
             decimal? temperature = null;
             int? contextWindow = null;
-            double? decisionThreshold = null;
             ModelCapabilityDescriptor? capabilities = null;
             foreach (JsonProperty field in property.Value.EnumerateObject())
             {
@@ -72,14 +71,6 @@ public static partial class SettingsStore
                         break;
                     case "contextWindow":
                         contextWindow = ReadProfileInt(field.Value, name, field.Name, problems);
-                        break;
-                    case "decisionThreshold":
-                        decisionThreshold = ReadProfileDouble(
-                            field.Value,
-                            name,
-                            field.Name,
-                            problems
-                        );
                         break;
                     case "capabilities":
                         capabilities = ReadProfileCapabilities(field.Value, name, problems);
@@ -113,7 +104,6 @@ public static partial class SettingsStore
                         maxOutput,
                         temperature,
                         contextWindow,
-                        decisionThreshold,
                         capabilities
                     )
                 );
@@ -137,9 +127,7 @@ public static partial class SettingsStore
         var usages = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (JsonProperty property in value.EnumerateObject())
         {
-            if (
-                property.Name is not ("chat" or "fast" or "decision" or "subagents" or "compaction")
-            )
+            if (property.Name is not ("chat" or "fast" or "subagents" or "compaction"))
             {
                 problems.Add($"unknown usage 'usages.{property.Name}'");
                 continue;
@@ -158,25 +146,6 @@ public static partial class SettingsStore
         }
 
         return usages;
-    }
-
-    private static DecisionMode ReadDecisionMode(JsonElement value, List<string> problems)
-    {
-        if (value.ValueKind == JsonValueKind.String)
-        {
-            switch (value.GetString())
-            {
-                case "off":
-                    return DecisionMode.Off;
-                case "shadow":
-                    return DecisionMode.Shadow;
-                case "enforce":
-                    return DecisionMode.Enforce;
-            }
-        }
-
-        problems.Add("'decisionMode' must be 'off', 'shadow', or 'enforce'");
-        return DecisionMode.Off;
     }
 
     private static string? ReadProfileString(
@@ -219,22 +188,6 @@ public static partial class SettingsStore
     )
     {
         if (value.ValueKind != JsonValueKind.Number || !value.TryGetDecimal(out decimal number))
-        {
-            problems.Add($"'profiles.{profile}.{field}' must be a finite number");
-            return null;
-        }
-
-        return number;
-    }
-
-    private static double? ReadProfileDouble(
-        JsonElement value,
-        string profile,
-        string field,
-        List<string> problems
-    )
-    {
-        if (value.ValueKind != JsonValueKind.Number || !value.TryGetDouble(out double number))
         {
             problems.Add($"'profiles.{profile}.{field}' must be a finite number");
             return null;

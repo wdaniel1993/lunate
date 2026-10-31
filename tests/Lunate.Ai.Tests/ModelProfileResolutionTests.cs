@@ -138,8 +138,7 @@ public sealed class ModelProfileResolutionTests
             ReasoningLevel: "medium",
             MaxOutput: 4096,
             Temperature: 0.4m,
-            ContextWindow: 64_000,
-            DecisionThreshold: 0.75
+            ContextWindow: 64_000
         );
 
         ResolvedModelProfile result = ModelProfileResolver.Resolve(profile, [provider], catalog);
@@ -217,7 +216,6 @@ public sealed class ModelProfileResolutionTests
     [InlineData("maxOutput")]
     [InlineData("temperature")]
     [InlineData("contextWindow")]
-    [InlineData("decisionThreshold")]
     public void Unsupported_profile_option_names_the_field_and_profile(string field)
     {
         using var temp = new TempDirectory();
@@ -250,7 +248,6 @@ public sealed class ModelProfileResolutionTests
             "maxOutput" => profile with { MaxOutput = 8192 },
             "temperature" => profile with { Temperature = 0.4m },
             "contextWindow" => profile with { ContextWindow = 256_000 },
-            "decisionThreshold" => profile with { DecisionThreshold = 1.1 },
             _ => throw new ArgumentOutOfRangeException(nameof(field)),
         };
     }

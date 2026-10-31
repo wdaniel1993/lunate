@@ -691,7 +691,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 WorkspaceServiceCapLimit = _settings.Roslyn.MaxLoadedWorkspaces,
             };
             if (
-                _settings.Usages.ContainsKey("decision")
+                _settings.Decisions.Profile is { }
                 && ResolveUsageModels(_model)?.GetValueOrDefault("decision") is { } decisionModel
             )
             {
@@ -895,7 +895,11 @@ internal sealed partial class InteractiveSession : IDisposable
         UsageModelClient? chatModel = usageModels?.GetValueOrDefault("chat");
         ModelInfo resolvedModel = chatModel?.Model ?? model;
         List<string> toolNames = [.. _tools.Tools.Select(tool => tool.Name)];
-        if (usageModels?.ContainsKey("decision") == true && !toolNames.Contains("decide"))
+        if (
+            usageModels?.ContainsKey("decision") == true
+            && _settings.Decisions.Tool
+            && !toolNames.Contains("decide")
+        )
         {
             toolNames.Add("decide");
         }
@@ -917,14 +921,19 @@ internal sealed partial class InteractiveSession : IDisposable
             // The same redactor masks the model-facing text; the interactive session always has one.
             ToolOutputMask = _redaction.Redact,
             SubagentLimits = _settings.Subagents,
-            DecisionMode = _settings.DecisionMode,
-            QuestionSuggestionsEnabled = _settings.QuestionSuggestions,
+            DecisionMode = _settings.Decisions.Approvals,
+            RoutingMode = _settings.Decisions.Routing,
+            QuestionSuggestionsEnabled =
+                _settings.Decisions.Questions == DecisionQuestionsMode.Suggest,
             QuestionDecisionAsync =
-                _settings.QuestionSuggestions && _extensions?.DecisionService is { } decisionService
+                _settings.Decisions.Questions == DecisionQuestionsMode.Suggest
+                && _settings.Decisions.Profile is not null
+                && _extensions?.DecisionService is { } decisionService
                     ? decisionService.DecideAsync
                     : null,
-            RoutingMode = _settings.RoutingMode,
             RoutingProfiles = routingProfiles,
+            ApprovalsThreshold = _settings.Decisions.ApprovalsThreshold,
+            DecideTool = _settings.Decisions.Tool,
             Approver = _approver,
             AskUserAsync = AskUserAsync,
             Hooks = _extensions?.Hooks,

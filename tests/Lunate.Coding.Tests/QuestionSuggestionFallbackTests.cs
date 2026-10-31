@@ -9,13 +9,9 @@ public sealed class QuestionSuggestionFallbackTests
     public static TheoryData<string, string?> UnavailableDecisionProfiles =>
         new()
         {
-            { """{"schemaVersion":2,"questionSuggestions":true}""", null },
+            { """{"schemaVersion":2,"decisions":{"questions":"suggest"}}""", null },
             {
-                """{"schemaVersion":2,"questionSuggestions":true,"usages":{"decision":"missing-profile"}}""",
-                "decision profile 'missing-profile' is unavailable"
-            },
-            {
-                """{"schemaVersion":2,"questionSuggestions":true,"profiles":{"reviewer":{"provider":"missing-provider","model":"gpt-4o-mini"}},"usages":{"decision":"reviewer"}}""",
+                """{"schemaVersion":2,"profiles":{"reviewer":{"provider":"missing-provider","model":"gpt-4o-mini"}},"decisions":{"profile":"reviewer","questions":"suggest"}}""",
                 "decision profile 'reviewer' is unavailable"
             },
         };

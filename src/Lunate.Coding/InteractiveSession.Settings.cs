@@ -45,6 +45,24 @@ internal sealed partial class InteractiveSession
         lines.Add(Row("favorites", ListValue(_settings.Favorites)));
         lines.Add(Row("tools.extra", ListValue(_settings.Tools.Extra)));
         lines.Add(Row("providers", ListCount("endpoint", _settings.Providers)));
+        lines.Add(Row("decisions.profile", _settings.Decisions.Profile ?? "none"));
+        lines.Add(
+            Row("decisions.approvals", _settings.Decisions.Approvals.ToString().ToLowerInvariant())
+        );
+        lines.Add(
+            Row(
+                "decisions.approvalsThreshold",
+                _settings.Decisions.ApprovalsThreshold.ToString(CultureInfo.InvariantCulture)
+            )
+        );
+        lines.Add(
+            Row("decisions.routing", _settings.Decisions.Routing.ToString().ToLowerInvariant())
+        );
+        lines.Add(Row("decisions.routingProfiles", ListValue(_settings.Decisions.RoutingProfiles)));
+        lines.Add(Row("decisions.tool", BooleanLiteral(_settings.Decisions.Tool)));
+        lines.Add(
+            Row("decisions.questions", _settings.Decisions.Questions.ToString().ToLowerInvariant())
+        );
         lines.Add(Row("tui.fullscreen", BooleanLiteral(_settings.Tui.Fullscreen)));
         lines.Add(Row("roslyn", RoslynText()));
         lines.Add(Row("subagents", SubagentsText(_settings.Subagents)));
@@ -77,6 +95,15 @@ internal sealed partial class InteractiveSession
             "favorites" => ListValue(_settings.Favorites),
             "tools.extra" => ListValue(_settings.Tools.Extra),
             "providers" => ListCount("endpoint", _settings.Providers),
+            "decisions.profile" => _settings.Decisions.Profile ?? "none",
+            "decisions.approvals" => _settings.Decisions.Approvals.ToString().ToLowerInvariant(),
+            "decisions.approvalsThreshold" => _settings.Decisions.ApprovalsThreshold.ToString(
+                CultureInfo.InvariantCulture
+            ),
+            "decisions.routing" => _settings.Decisions.Routing.ToString().ToLowerInvariant(),
+            "decisions.routingProfiles" => ListValue(_settings.Decisions.RoutingProfiles),
+            "decisions.tool" => BooleanLiteral(_settings.Decisions.Tool),
+            "decisions.questions" => _settings.Decisions.Questions.ToString().ToLowerInvariant(),
             "tui.fullscreen" => BooleanLiteral(_settings.Tui.Fullscreen),
             "roslyn" => RoslynText(),
             "subagents" => SubagentsText(_settings.Subagents),
@@ -221,11 +248,20 @@ internal sealed partial class InteractiveSession
                 or "favorites"
                 or "tools.extra"
                 or "providers"
+                or "decisions.profile"
+                or "decisions.approvals"
+                or "decisions.approvalsThreshold"
+                or "decisions.routing"
+                or "decisions.routingProfiles"
+                or "decisions.tool"
+                or "decisions.questions"
                 or "roslyn"
                 or "subagents"
                 or "tui.fullscreen";
 
-    private static string Row(string key, string value) => key.PadRight(24) + value;
+    /// <summary>One <c>/settings</c> line: the key padded to the table width and its value.</summary>
+    private static string Row(string key, string value) =>
+        key.Length >= 24 ? key + " " + value : key.PadRight(24) + value;
 
     private static string ApprovalLiteral(ApprovalPolicy policy) =>
         policy == ApprovalPolicy.AutoEdit ? "auto-edit" : "ask";

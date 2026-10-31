@@ -83,30 +83,51 @@ profiles to existing usages. For example:
   "schemaVersion": 2,
   "profiles": {
     "chat-main": { "provider": "work-openai", "model": "gpt-4o-mini" },
-    "reviewer": { "provider": "work-openai", "model": "gpt-4o-mini" }
+    "reviewer": { "provider": "work-openai", "model": "gpt-4o-mini" },
+    "quick": { "provider": "work-openai", "model": "gpt-4o-mini" }
   },
-  "usages": { "chat": "chat-main", "decision": "reviewer" }
+  "usages": { "chat": "chat-main" }
 }
 ```
 
-Profiles may set supported reasoning, output, temperature, context-window, decision-threshold, and
-capability-override fields. Unsupported settings are refused by field and profile name before a
-request. `/model` changes only the chat profile; `provider/model` selects through a named provider,
-and a bare model id must be unique. Subagents and compaction default to chat when unassigned;
-compaction uses `fast` only when explicitly selected.
+Profiles may set supported reasoning, output, temperature, context-window, and capability-override
+fields. Unsupported settings are refused by field and profile name before a request. `/model`
+changes only the chat profile; `provider/model` selects through a named provider, and a bare model
+id must be unique. Subagents and compaction default to chat when unassigned; compaction uses `fast`
+only when explicitly selected.
 
-Set `"questionSuggestions": true` in user settings to show a separately marked decision-model
-ranking beside interactive question options. It is off by default and uses only the configured
-`decision` usage profile. A missing or invalid profile warns and leaves the ordinary question picker
-available without a suggestion. The marker never selects an option, answers a skipped question, or
-approves a tool call.
+## Decisions
 
-Model routing is separate from the approval decision. In user settings, set `routingMode` to `shadow`
-to record a suggested profile without changing the configured chat model, or `enforce` to use the
-selected profile; `off` is the default. `routingProfiles` names 2–255 configured profiles that the
-router may choose. An unavailable decision profile or an invalid response leaves the configured chat
-model in use. Routing decisions are charged to the `decision` usage and `/cost` distinguishes the
-`native` and `adapter` methods.
+Decision consumption is configured by one `decisions` block, with the same shape for every consumer.
+Without `profile` the layer is unavailable and nothing is offered; enabling a consumer without a
+profile is not an error — the layer stays off. The names below are the only ones this version
+accepts:
+
+```yaml
+decisions:
+  profile: reviewer        # required; the profile the layer runs on
+  approvals: enforce       # off (default) | shadow | enforce
+  approvalsThreshold: 0.5  # 0.0–1.0, default 0.5; a deny must reach this to escalate
+  routing: shadow          # off (default) | shadow | enforce
+  routingProfiles:         # 2–255 configured profiles the router may choose
+    - chat-main
+    - quick
+  tool: off                # off (default) | on; the decide tool is offered only when on
+  questions: suggest       # off (default) | suggest; display-only suggestions
+```
+
+`routing` records a suggested profile without changing the configured chat model in shadow, or uses
+the selected profile in enforce; routing picks the most probable profile and uses no threshold. An
+unavailable decision profile or an invalid response leaves the configured chat model in use.
+Decision spend is charged to the `decision` usage and `/cost` distinguishes the `native` and
+`adapter` methods. The approval gate acts by escalation only: with `enforce`, a `deny`
+recommendation whose probability reaches `approvalsThreshold` turns the ask into a user prompt (and
+denies it when no user is present); below the threshold the ordinary approval flow runs unchanged.
+
+With `questions: suggest`, the decision model adds a probability marker beside its top option. The
+user still chooses; the suggestion never selects an option, answers a skipped question, or approves a
+tool call. Without a configured decision profile, the ordinary question picker remains available and
+the layer reports unavailable without an error state.
 
 Decision use is the user's choice, not a model-intelligence verdict. The consumer is off by default
 and must be enabled in user settings. Any configured model may be used; known structured-output
@@ -114,6 +135,7 @@ support is checked as a technical requirement, while unknown capability facts ar
 decision response must name a defined option and provide valid probabilities; a malformed response
 is retried once and then fails with the model named. Provenance labels `native` or `adapter` and
 records the model id. Decisions can only tighten approvals: they never override deny or approve
+
 outside the user's allow envelope. See [`guide.md`](guide.md) for the full model and cost behavior.
 
 ## The in-session picker

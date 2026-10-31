@@ -43,6 +43,14 @@ public sealed class InteractiveSessionSettingsTests
         Assert.Contains("favorites               none", scrollback, StringComparison.Ordinal);
         Assert.Contains("tools.extra             none", scrollback, StringComparison.Ordinal);
         Assert.Contains("providers               none", scrollback, StringComparison.Ordinal);
+        Assert.Contains("decisions.profile       none", scrollback, StringComparison.Ordinal);
+        Assert.Contains("decisions.approvals     off", scrollback, StringComparison.Ordinal);
+        Assert.Contains("decisions.approvalsThreshold 0.5", scrollback, StringComparison.Ordinal);
+        Assert.Contains("decisions.routing       off", scrollback, StringComparison.Ordinal);
+        Assert.Contains("decisions.routingProfiles none", scrollback, StringComparison.Ordinal);
+        Assert.Contains("decisions.tool          off", scrollback, StringComparison.Ordinal);
+        Assert.Contains("decisions.questions     off", scrollback, StringComparison.Ordinal);
+
         Assert.Contains(
             "roslyn                  max 2 loaded Roslyn workspaces",
             scrollback,

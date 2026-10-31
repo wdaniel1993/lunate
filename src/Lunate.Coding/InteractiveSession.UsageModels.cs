@@ -64,6 +64,38 @@ internal sealed partial class InteractiveSession
             }
         }
 
+        // The decision profile is configured in the decisions block, not as a usage.
+        if (_settings.Decisions.Profile is { } decisionProfile)
+        {
+            try
+            {
+                usages["decision"] = GetClient(
+                    ModelSelectionResolver.ResolveChatModel(
+                        decisionProfile,
+                        _settings,
+                        _providerEntries,
+                        _catalog
+                    )
+                );
+            }
+            catch (Exception exception)
+                when (exception
+                        is UnknownModelException
+                            or InvalidDataException
+                            or InvalidOperationException
+                            or ArgumentException
+                )
+            {
+                if (_warnedDecisionProfiles.Add(decisionProfile))
+                {
+                    Notify(
+                        $"decision profile '{decisionProfile}' is unavailable; decision suggestions are off: {exception.Message}",
+                        NoticeLevel.Warning
+                    );
+                }
+            }
+        }
+
         return usages;
 
         UsageModelClient GetClient(ResolvedModelProfile profile)
@@ -78,8 +110,7 @@ internal sealed partial class InteractiveSession
                 new DeferredChatClient(() => CreateUsageClient(profile)),
                 profile.Profile.Name,
                 profile.Provider.Name,
-                profile.Model,
-                profile.Profile.DecisionThreshold
+                profile.Model
             );
             clientsByProfile.Add(key, client);
             return client;
@@ -88,13 +119,13 @@ internal sealed partial class InteractiveSession
 
     private IReadOnlyDictionary<string, UsageModelClient>? ResolveRoutingProfiles()
     {
-        if (_settings.RoutingMode == DecisionMode.Off)
+        if (_settings.Decisions.Routing == DecisionMode.Off)
         {
             return null;
         }
 
         var profiles = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal);
-        foreach (string profileName in _settings.RoutingProfiles)
+        foreach (string profileName in _settings.Decisions.RoutingProfiles)
         {
             ResolvedModelProfile profile = ModelSelectionResolver.ResolveChatModel(
                 profileName,
@@ -108,8 +139,7 @@ internal sealed partial class InteractiveSession
                     new DeferredChatClient(() => CreateUsageClient(profile)),
                     profile.Profile.Name,
                     profile.Provider.Name,
-                    profile.Model,
-                    profile.Profile.DecisionThreshold
+                    profile.Model
                 )
             );
         }

@@ -104,7 +104,6 @@ public static partial class SettingsStore
                 MaxOutput = overlay.MaxOutput ?? existing.MaxOutput,
                 Temperature = overlay.Temperature ?? existing.Temperature,
                 ContextWindow = overlay.ContextWindow ?? existing.ContextWindow,
-                DecisionThreshold = overlay.DecisionThreshold ?? existing.DecisionThreshold,
                 CapabilitiesOverride =
                     overlay.CapabilitiesOverride ?? existing.CapabilitiesOverride,
             };
