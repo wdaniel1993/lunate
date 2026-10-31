@@ -102,11 +102,12 @@ invalid (`DecisionFailed` — the model answered, off-contract, twice).
 
 ### D4: The primitive is an extension-facing service
 
-The contract is public surface, not an agent internal: `IDecisionService` and its request, question,
-result and answer types live in `Lunate.Extensibility.Abstractions`, the implementation lives in
-`Lunate.Agent`, and the agent registers it so an extension can resolve it like any other service.
-This is what makes the layer a primitive rather than an approval feature — an extension that wants a
-judgement asks for one, and does not have to route through approvals to get it.
+The contract is public surface, not an agent internal: request, question, result and answer types live
+in `Lunate.Contracts`; `IDecisionService` lives in `Lunate.Extensibility.Abstractions`; the evaluator
+lives in `Lunate.Agent`; and `Lunate.Extensibility` bridges the service to the evaluator. The host
+registers the bridge as a core service so an extension can resolve it like any other service. This is
+what makes the layer a primitive rather than an approval feature — an extension that wants a judgement
+asks for one, and does not have to route through approvals to get it.
 
 Front ends keep observing through `AgentEvent` (`DecisionEvaluated`, `DecisionUnavailable`,
 `DecisionFailed`); the service is for callers that need an answer, the events are for surfaces that
@@ -114,11 +115,13 @@ need to show one. The public shape lands **before #237 publishes Abstractions as
 reviewed while it is still cheap to change; the additions are additive and come with the
 `ExtensionApi` bump the repository requires for new surface.
 
-Layering holds: `Abstractions` references no Lunate project, `Agent` already references
-`Abstractions`, and no contract type mentions a provider, a tool or the loop.
+Layering holds: `Abstractions` references only the bottom `Contracts` assembly, `Agent` references
+`Contracts` and never `Abstractions`, and `Extensibility` is the bridge that references both. No
+decision contract type mentions a provider, a tool or the loop.
 
 *Alternatives considered:* `Lunate.Agent` types with `InternalsVisibleTo` (extensions could not use
-them at all); a second message type in `Abstractions` mirroring the agent's (two homes, two copies).
+them at all); copying agent-owned types into Abstractions (two homes, two copies); making Agent
+reference Abstractions (the forbidden dependency inversion in ADR-0002).
 
 ### D5: Shadow mode records what it would have done, never acts
 

@@ -689,6 +689,21 @@ internal sealed partial class InteractiveSession : IDisposable
                 ClientFactory = _factory,
                 WorkspaceServiceCapLimit = _settings.Roslyn.MaxLoadedWorkspaces,
             };
+            if (
+                _settings.Usages.ContainsKey("decision")
+                && ResolveUsageModels(_model)?.GetValueOrDefault("decision") is { } decisionModel
+            )
+            {
+                seams = seams with
+                {
+                    AgentDecisionService = new AgentDecisionService(
+                        decisionModel.Client,
+                        decisionModel.Model.Id,
+                        decisionModel.Model.ApiType == "native" ? "native" : "adapter"
+                    ),
+                };
+            }
+
             _extensions = await ExtensionSession
                 .StartAsync(_workspace.Identity, seams, ct)
                 .ConfigureAwait(false);

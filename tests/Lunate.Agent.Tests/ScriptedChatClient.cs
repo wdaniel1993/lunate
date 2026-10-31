@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Lunate.Contracts;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent.Tests;
@@ -10,6 +11,8 @@ internal sealed class ScriptedChatClient : IChatClient
     private readonly Dictionary<int, TaskCompletionSource> _release = new();
 
     public List<ScriptedRequest> Requests { get; } = [];
+
+    public INativeDecisionClient? NativeDecisionClient { get; init; }
 
     /// <summary>The start of one call as an awaitable; 1-based over the call order.</summary>
     public Task WaitForCallAsync(int call)
@@ -94,7 +97,8 @@ internal sealed class ScriptedChatClient : IChatClient
         }
     }
 
-    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public object? GetService(Type serviceType, object? serviceKey = null) =>
+        serviceType == typeof(INativeDecisionClient) ? NativeDecisionClient : null;
 
     public void Dispose() { }
 

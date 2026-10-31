@@ -1,6 +1,7 @@
 using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility;
+using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Extensibility.Testing;
 
@@ -13,6 +14,9 @@ public sealed record ExtensionTestHostOptions
     /// declared endpoints with the host-read secret).
     /// </summary>
     public IChatClientFactory? ClientFactory { get; init; }
+
+    /// <summary>The decision service exposed to the extension as <c>core/decision</c>.</summary>
+    public IDecisionService? DecisionService { get; init; }
 
     /// <summary>
     /// The caller-owned temp directory every piece of host state lives under. The host creates its

@@ -128,16 +128,26 @@ internal static class PrintEventJson
                 "decision_evaluated",
                 new JsonObject
                 {
+                    ["questionId"] = e.QuestionId,
                     ["modelId"] = e.ModelId,
                     ["method"] = e.Method,
+                    ["answer"] = e.Answer,
                     ["option"] = e.Option,
                     ["probability"] = e.Probability,
                 }
             ),
-            DecisionUnavailable => ("decision_unavailable", new JsonObject()),
+            DecisionUnavailable e => (
+                "decision_unavailable",
+                new JsonObject { ["questionId"] = e.QuestionId }
+            ),
             DecisionFailed e => (
                 "decision_failed",
-                new JsonObject { ["modelId"] = e.ModelId, ["reason"] = e.Reason }
+                new JsonObject
+                {
+                    ["questionId"] = e.QuestionId,
+                    ["modelId"] = e.ModelId,
+                    ["reason"] = e.Reason,
+                }
             ),
             ModelRouted e => (
                 "model_routed",

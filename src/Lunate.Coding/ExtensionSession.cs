@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Contracts;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Roslyn.BuiltIn;
@@ -45,6 +46,9 @@ internal sealed record ExtensionSeams
 
     /// <summary>The session catalog the model registry falls back to; null disables the fallback.</summary>
     public ModelCatalog? ModelCatalog { get; init; }
+
+    /// <summary>The agent decision primitive exposed to extensions as <c>core/decision</c>.</summary>
+    public IAgentDecisionService? AgentDecisionService { get; init; }
 
     /// <summary>The client factory the model registry uses; null leaves those paths teaching errors.</summary>
     public IChatClientFactory? ClientFactory { get; init; }
@@ -218,6 +222,14 @@ internal sealed class ExtensionSession : IAsyncDisposable
             WorkspaceServiceCapLimit = seams.WorkspaceServiceCapLimit,
         };
         var loader = new ExtensionLoader(options);
+        if (seams.AgentDecisionService is { } agentDecisionService)
+        {
+            loader.Services.RegisterCore(
+                "core/decision",
+                new DecisionServiceAdapter(agentDecisionService)
+            );
+        }
+
         // Created eagerly, but it only holds the factory: nothing NuGet-shaped exists until a
         // restore runs, which is why composing an all-built session loads no NuGet assembly.
         var singleFileRestorer = new SingleFileExtensionRestorer(

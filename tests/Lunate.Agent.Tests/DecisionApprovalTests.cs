@@ -73,7 +73,7 @@ public sealed class DecisionApprovalTests
     public async Task Decision_allow_does_not_override_user_deny()
     {
         DecisionRun run = await RunApprovalAsync(
-            """{"option":"approve","probabilities":{"approve":0.8,"deny":0.2}}""",
+            """{"results":{"approval":{"answer":"approve","probabilities":{"approve":0.8,"deny":0.2}}}}""",
             DecisionMode.Enforce,
             userApproval: false,
             apiType: "native"
@@ -81,8 +81,10 @@ public sealed class DecisionApprovalTests
 
         DecisionEvaluated decision = Assert.Single(run.Events.OfType<DecisionEvaluated>());
         Assert.Equal("decision-model", decision.ModelId);
-        Assert.Equal("native", decision.Method);
+        Assert.Equal("adapter", decision.Method);
         Assert.Equal("approve", decision.Option);
+        Assert.Equal("approval", decision.QuestionId);
+        Assert.Equal(decision.Option, decision.Answer);
         Assert.Equal(0.8d, decision.Probability);
         Assert.Single(run.Approver.Requests);
         Assert.Equal(0, run.Executions);
@@ -92,7 +94,7 @@ public sealed class DecisionApprovalTests
     public async Task Shadow_decision_does_not_veto_user_approval()
     {
         DecisionRun run = await RunApprovalAsync(
-            """{"option":"deny","probabilities":{"approve":0.2,"deny":0.8}}""",
+            """{"results":{"approval":{"answer":"deny","probabilities":{"approve":0.2,"deny":0.8}}}}""",
             DecisionMode.Shadow,
             userApproval: true
         );
@@ -108,7 +110,7 @@ public sealed class DecisionApprovalTests
     public async Task Enforced_decision_can_tighten_a_user_approval()
     {
         DecisionRun run = await RunApprovalAsync(
-            """{"option":"deny","probabilities":{"approve":0.2,"deny":0.8}}""",
+            """{"results":{"approval":{"answer":"deny","probabilities":{"approve":0.2,"deny":0.8}}}}""",
             DecisionMode.Enforce,
             userApproval: true
         );
@@ -181,7 +183,7 @@ public sealed class DecisionApprovalTests
             .Enqueue(LoopScripts.Text("still not JSON"), LoopScripts.Stop())
             .Enqueue(
                 LoopScripts.Text(
-                    """{"option":"approve","probabilities":{"approve":0.9,"deny":0.1}}"""
+                    """{"results":{"approval":{"answer":"approve","probabilities":{"approve":0.9,"deny":0.1}}}}"""
                 ),
                 LoopScripts.Stop()
             );

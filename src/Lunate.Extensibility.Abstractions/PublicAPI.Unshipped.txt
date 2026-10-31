@@ -1,4 +1,6 @@
 #nullable enable
+Lunate.Extensibility.Abstractions.IDecisionService
+Lunate.Extensibility.Abstractions.IDecisionService.DecideAsync(Lunate.Contracts.DecisionRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Lunate.Contracts.DecisionResponse!>!
 Lunate.Extensibility.Abstractions.CommandDescriptor
 Lunate.Extensibility.Abstractions.CommandDescriptor.<Clone>$() -> Lunate.Extensibility.Abstractions.CommandDescriptor!
 Lunate.Extensibility.Abstractions.CommandDescriptor.ArgumentHint.get -> string?
@@ -842,7 +844,7 @@ abstract Lunate.Extensibility.Abstractions.ProjectTrustResult.<Clone>$() -> Luna
 abstract Lunate.Extensibility.Abstractions.RunStartingResult.<Clone>$() -> Lunate.Extensibility.Abstractions.RunStartingResult!
 abstract Lunate.Extensibility.Abstractions.ToolCallingResult.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolCallingResult!
 abstract Lunate.Extensibility.Abstractions.TurnEndedResult.<Clone>$() -> Lunate.Extensibility.Abstractions.TurnEndedResult!
-const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.14.0" -> string!
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.15.0" -> string!
 const Lunate.Extensibility.Abstractions.ExtensionRuntime.BackgroundStartup = "background" -> string!
 const Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.Always = "always" -> string!
 const Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.WorkspaceIsGitRepository = "workspace-is-git-repository" -> string!

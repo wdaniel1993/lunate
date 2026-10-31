@@ -107,19 +107,19 @@ internal sealed partial class InteractiveSession
             case DecisionEvaluated decision when !child:
                 Notify(
                     FormattableString.Invariant(
-                        $"decision {decision.ModelId} ({decision.Method}): {decision.Option} ({decision.Probability.ToString("P0", CultureInfo.InvariantCulture)})"
+                        $"decision {decision.QuestionId} {decision.ModelId} ({decision.Method}): {decision.Answer} ({decision.Probability.ToString("P0", CultureInfo.InvariantCulture)})"
                     )
                 );
                 break;
-            case DecisionUnavailable when !child:
+            case DecisionUnavailable unavailable when !child:
                 Notify(
-                    "decision unavailable: configure a decision profile; normal approval remains active.",
+                    $"decision unavailable for question {unavailable.QuestionId}: configure a decision profile; normal approval remains active.",
                     NoticeLevel.Warning
                 );
                 break;
             case DecisionFailed failed when !child:
                 Notify(
-                    $"decision failed for model {failed.ModelId}: {failed.Reason}",
+                    $"decision failed for question {failed.QuestionId} on model {failed.ModelId}: {failed.Reason}",
                     NoticeLevel.Warning
                 );
                 break;

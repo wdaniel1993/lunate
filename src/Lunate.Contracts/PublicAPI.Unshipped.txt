@@ -32,6 +32,8 @@ Lunate.Agent.CompactionApplied.EstimatedTokensAfter.init -> void
 Lunate.Agent.CompactionApplied.ReplacedEntryIds.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Lunate.Agent.CompactionApplied.ReplacedEntryIds.init -> void
 Lunate.Agent.DecisionEvaluated
+Lunate.Agent.DecisionEvaluated.Answer.get -> string!
+Lunate.Agent.DecisionEvaluated.Answer.init -> void
 Lunate.Agent.DecisionEvaluated.DecisionEvaluated(string! RunId, string! ModelId, string! Method, string! Option, double Probability) -> void
 Lunate.Agent.DecisionEvaluated.Deconstruct(out string! RunId, out string! ModelId, out string! Method, out string! Option, out double Probability) -> void
 Lunate.Agent.DecisionEvaluated.Equals(Lunate.Agent.DecisionEvaluated? other) -> bool
@@ -43,6 +45,8 @@ Lunate.Agent.DecisionEvaluated.Option.get -> string!
 Lunate.Agent.DecisionEvaluated.Option.init -> void
 Lunate.Agent.DecisionEvaluated.Probability.get -> double
 Lunate.Agent.DecisionEvaluated.Probability.init -> void
+Lunate.Agent.DecisionEvaluated.QuestionId.get -> string!
+Lunate.Agent.DecisionEvaluated.QuestionId.init -> void
 Lunate.Agent.DecisionFailed
 Lunate.Agent.DecisionFailed.DecisionFailed(string! RunId, string! ModelId, string! Reason) -> void
 Lunate.Agent.DecisionFailed.Deconstruct(out string! RunId, out string! ModelId, out string! Reason) -> void
@@ -51,10 +55,14 @@ Lunate.Agent.DecisionFailed.ModelId.get -> string!
 Lunate.Agent.DecisionFailed.ModelId.init -> void
 Lunate.Agent.DecisionFailed.Reason.get -> string!
 Lunate.Agent.DecisionFailed.Reason.init -> void
+Lunate.Agent.DecisionFailed.QuestionId.get -> string!
+Lunate.Agent.DecisionFailed.QuestionId.init -> void
 Lunate.Agent.DecisionUnavailable
 Lunate.Agent.DecisionUnavailable.DecisionUnavailable(string! RunId) -> void
 Lunate.Agent.DecisionUnavailable.Deconstruct(out string! RunId) -> void
 Lunate.Agent.DecisionUnavailable.Equals(Lunate.Agent.DecisionUnavailable? other) -> bool
+Lunate.Agent.DecisionUnavailable.QuestionId.get -> string!
+Lunate.Agent.DecisionUnavailable.QuestionId.init -> void
 Lunate.Agent.ExtensionEvent
 Lunate.Agent.ExtensionEvent.Deconstruct(out string! RunId) -> void
 Lunate.Agent.ExtensionEvent.ExtensionEvent(Lunate.Agent.ExtensionEvent! original) -> void
@@ -783,6 +791,92 @@ virtual Lunate.Agent.AgentEvent.EqualityContract.get -> System.Type!
 virtual Lunate.Agent.AgentEvent.Equals(Lunate.Agent.AgentEvent? other) -> bool
 virtual Lunate.Agent.AgentEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
 virtual Lunate.Agent.ExtensionEvent.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+Lunate.Contracts.DecisionAnswer
+Lunate.Contracts.DecisionAnswer.DecisionAnswer(string! Answer, double Probability, System.Collections.Generic.IReadOnlyList<Lunate.Contracts.DecisionProbability!>! Distribution, string! ModelId, string! Method) -> void
+Lunate.Contracts.DecisionAnswer.Deconstruct(out string! Answer, out double Probability, out System.Collections.Generic.IReadOnlyList<Lunate.Contracts.DecisionProbability!>! Distribution, out string! ModelId, out string! Method) -> void
+Lunate.Contracts.DecisionAnswer.Distribution.get -> System.Collections.Generic.IReadOnlyList<Lunate.Contracts.DecisionProbability!>!
+Lunate.Contracts.DecisionAnswer.Distribution.init -> void
+Lunate.Contracts.DecisionAnswer.Equals(Lunate.Contracts.DecisionAnswer? other) -> bool
+Lunate.Contracts.DecisionAnswer.ModelId.get -> string!
+Lunate.Contracts.DecisionAnswer.ModelId.init -> void
+Lunate.Contracts.DecisionAnswer.Method.get -> string!
+Lunate.Contracts.DecisionAnswer.Method.init -> void
+Lunate.Contracts.DecisionAnswer.Probability.get -> double
+Lunate.Contracts.DecisionAnswer.Probability.init -> void
+Lunate.Contracts.DecisionAnswer.Answer.get -> string!
+Lunate.Contracts.DecisionAnswer.Answer.init -> void
+Lunate.Contracts.DecisionAnswer.<Clone>$() -> Lunate.Contracts.DecisionAnswer!
+Lunate.Contracts.DecisionProbability
+Lunate.Contracts.DecisionProbability.DecisionProbability(string! Answer, double Probability) -> void
+Lunate.Contracts.DecisionProbability.Deconstruct(out string! Answer, out double Probability) -> void
+Lunate.Contracts.DecisionProbability.Equals(Lunate.Contracts.DecisionProbability? other) -> bool
+Lunate.Contracts.DecisionProbability.Answer.get -> string!
+Lunate.Contracts.DecisionProbability.Answer.init -> void
+Lunate.Contracts.DecisionProbability.Probability.get -> double
+Lunate.Contracts.DecisionProbability.Probability.init -> void
+Lunate.Contracts.DecisionProbability.<Clone>$() -> Lunate.Contracts.DecisionProbability!
+Lunate.Contracts.DecisionQuestion
+Lunate.Contracts.DecisionQuestion.DecisionQuestion(string! Id, string! Text, Lunate.Contracts.DecisionQuestionKind Kind, System.Collections.Generic.IReadOnlyList<string!>? Answers = null, string? JsonPath = null) -> void
+Lunate.Contracts.DecisionQuestion.Deconstruct(out string! Id, out string! Text, out Lunate.Contracts.DecisionQuestionKind Kind, out System.Collections.Generic.IReadOnlyList<string!>? Answers, out string? JsonPath) -> void
+Lunate.Contracts.DecisionQuestion.Equals(Lunate.Contracts.DecisionQuestion? other) -> bool
+Lunate.Contracts.DecisionQuestion.Id.get -> string!
+Lunate.Contracts.DecisionQuestion.Id.init -> void
+Lunate.Contracts.DecisionQuestion.JsonPath.get -> string?
+Lunate.Contracts.DecisionQuestion.JsonPath.init -> void
+Lunate.Contracts.DecisionQuestion.Kind.get -> Lunate.Contracts.DecisionQuestionKind
+Lunate.Contracts.DecisionQuestion.Kind.init -> void
+Lunate.Contracts.DecisionQuestion.Answers.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Lunate.Contracts.DecisionQuestion.Answers.init -> void
+Lunate.Contracts.DecisionQuestion.Text.get -> string!
+Lunate.Contracts.DecisionQuestion.Text.init -> void
+Lunate.Contracts.DecisionQuestion.<Clone>$() -> Lunate.Contracts.DecisionQuestion!
+Lunate.Contracts.DecisionQuestionKind
+Lunate.Contracts.DecisionQuestionKind.Choice = 1 -> Lunate.Contracts.DecisionQuestionKind
+Lunate.Contracts.DecisionQuestionKind.Score = 2 -> Lunate.Contracts.DecisionQuestionKind
+Lunate.Contracts.DecisionQuestionKind.YesNo = 0 -> Lunate.Contracts.DecisionQuestionKind
+Lunate.Contracts.DecisionRequest
+Lunate.Contracts.DecisionRequest.DecisionRequest(System.Text.Json.JsonElement State, System.Collections.Generic.IReadOnlyList<Lunate.Contracts.DecisionQuestion!>! Questions) -> void
+Lunate.Contracts.DecisionRequest.Deconstruct(out System.Text.Json.JsonElement State, out System.Collections.Generic.IReadOnlyList<Lunate.Contracts.DecisionQuestion!>! Questions) -> void
+Lunate.Contracts.DecisionRequest.Equals(Lunate.Contracts.DecisionRequest? other) -> bool
+Lunate.Contracts.DecisionRequest.Questions.get -> System.Collections.Generic.IReadOnlyList<Lunate.Contracts.DecisionQuestion!>!
+Lunate.Contracts.DecisionRequest.Questions.init -> void
+Lunate.Contracts.DecisionRequest.State.get -> System.Text.Json.JsonElement
+Lunate.Contracts.DecisionRequest.State.init -> void
+Lunate.Contracts.DecisionRequest.<Clone>$() -> Lunate.Contracts.DecisionRequest!
+Lunate.Contracts.DecisionResponse
+Lunate.Contracts.DecisionResponse.DecisionResponse(System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Contracts.DecisionAnswer!>! Results) -> void
+Lunate.Contracts.DecisionResponse.Deconstruct(out System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Contracts.DecisionAnswer!>! Results) -> void
+Lunate.Contracts.DecisionResponse.Equals(Lunate.Contracts.DecisionResponse? other) -> bool
+Lunate.Contracts.DecisionResponse.Results.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Contracts.DecisionAnswer!>!
+Lunate.Contracts.DecisionResponse.Results.init -> void
+Lunate.Contracts.DecisionResponse.<Clone>$() -> Lunate.Contracts.DecisionResponse!
+Lunate.Contracts.INativeDecisionClient
+Lunate.Contracts.INativeDecisionClient.GetDecisionAsync(Lunate.Contracts.DecisionRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+static Lunate.Contracts.DecisionAnswer.operator !=(Lunate.Contracts.DecisionAnswer? left, Lunate.Contracts.DecisionAnswer? right) -> bool
+static Lunate.Contracts.DecisionAnswer.operator ==(Lunate.Contracts.DecisionAnswer? left, Lunate.Contracts.DecisionAnswer? right) -> bool
+static Lunate.Contracts.DecisionProbability.operator !=(Lunate.Contracts.DecisionProbability? left, Lunate.Contracts.DecisionProbability? right) -> bool
+static Lunate.Contracts.DecisionProbability.operator ==(Lunate.Contracts.DecisionProbability? left, Lunate.Contracts.DecisionProbability? right) -> bool
+static Lunate.Contracts.DecisionQuestion.operator !=(Lunate.Contracts.DecisionQuestion? left, Lunate.Contracts.DecisionQuestion? right) -> bool
+static Lunate.Contracts.DecisionQuestion.operator ==(Lunate.Contracts.DecisionQuestion? left, Lunate.Contracts.DecisionQuestion? right) -> bool
+static Lunate.Contracts.DecisionRequest.operator !=(Lunate.Contracts.DecisionRequest? left, Lunate.Contracts.DecisionRequest? right) -> bool
+static Lunate.Contracts.DecisionRequest.operator ==(Lunate.Contracts.DecisionRequest? left, Lunate.Contracts.DecisionRequest? right) -> bool
+static Lunate.Contracts.DecisionResponse.operator !=(Lunate.Contracts.DecisionResponse? left, Lunate.Contracts.DecisionResponse? right) -> bool
+static Lunate.Contracts.DecisionResponse.operator ==(Lunate.Contracts.DecisionResponse? left, Lunate.Contracts.DecisionResponse? right) -> bool
+override Lunate.Contracts.DecisionAnswer.Equals(object? obj) -> bool
+override Lunate.Contracts.DecisionAnswer.GetHashCode() -> int
+override Lunate.Contracts.DecisionAnswer.ToString() -> string!
+override Lunate.Contracts.DecisionProbability.Equals(object? obj) -> bool
+override Lunate.Contracts.DecisionProbability.GetHashCode() -> int
+override Lunate.Contracts.DecisionProbability.ToString() -> string!
+override Lunate.Contracts.DecisionQuestion.Equals(object? obj) -> bool
+override Lunate.Contracts.DecisionQuestion.GetHashCode() -> int
+override Lunate.Contracts.DecisionQuestion.ToString() -> string!
+override Lunate.Contracts.DecisionRequest.Equals(object? obj) -> bool
+override Lunate.Contracts.DecisionRequest.GetHashCode() -> int
+override Lunate.Contracts.DecisionRequest.ToString() -> string!
+override Lunate.Contracts.DecisionResponse.Equals(object? obj) -> bool
+override Lunate.Contracts.DecisionResponse.GetHashCode() -> int
+override Lunate.Contracts.DecisionResponse.ToString() -> string!
 Lunate.Agent.GitIdentity
 static Lunate.Agent.GitIdentity.Canonicalize(string! path) -> string!
 static Lunate.Agent.GitIdentity.Detect(string! worktreeRoot) -> (string? RepoRoot, string? GitCommonDir)

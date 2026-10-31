@@ -9,29 +9,29 @@
 
 ## 2. The contract in `Lunate.Extensibility.Abstractions`
 
-- [ ] 2.1 Write the failing tests first: a request carries a state and several named questions and
+- [x] 2.1 Write the failing tests first: a request carries a state and several named questions and
       returns keyed results; a yes/no answer is a probability with its complement; a choice question
       with one option or with 256 is refused before any model call; a score question keeps its rubric
       order; a JSON-path question evaluates that field.
-- [ ] 2.2 Add `IDecisionService` and the request/question/result/answer types to `Abstractions` (three
-      question kinds, question ids unique within a request, provenance repeated on every result). Add
-      them to `PublicAPI.Unshipped.txt` and bump `ExtensionApi.Current`, since #237 publishes this
-      assembly as stable only after this lands.
-- [ ] 2.3 Write the failing validator tests per kind: undefined answer, probability outside [0, 1], a
+- [x] 2.2 Add the request/question/result/answer types to `Lunate.Contracts` and `IDecisionService` to
+      `Lunate.Extensibility.Abstractions` (three question kinds, question ids unique within a request,
+      provenance repeated on every result). Add the public service to `PublicAPI.Unshipped.txt` and
+      bump `ExtensionApi.Current`, since #237 publishes these assemblies as stable only after this lands.
+- [x] 2.3 Write the failing validator tests per kind: undefined answer, probability outside [0, 1], a
       distribution that misses 1 by more than the tolerance, and retry-once-then-fail naming the
       model. One validator serves all three kinds.
 
 ## 3. The implementation in `Lunate.Agent`
 
-- [ ] 3.1 Implement the service and the shared validator; move `TryReadDecision` out of the approval
+- [x] 3.1 Implement the service and the shared validator; move `TryReadDecision` out of the approval
       path. `DecisionEvaluated`, `DecisionUnavailable` and `DecisionFailed` stay the observation
       surface, now carrying the question id and answer.
-- [ ] 3.2 Map the contract onto the model: a native provider passes the request through; the chat
+- [x] 3.2 Map the contract onto the model: a native provider passes the request through; the chat
       adapter translates all three kinds into one structured-output request and back, with
       `CultureInfo.InvariantCulture` for every formatted number.
-- [ ] 3.3 Register the service in the agent's service provider so an extension can resolve it, and add
-      the layering test that `Abstractions` references no Lunate project and names no provider, tool
-      or loop type.
+- [x] 3.3 Bridge and register the Agent evaluator as `core/decision` through `Lunate.Extensibility` so
+      an extension can resolve `IDecisionService`; add the layering test that Abstractions references
+      only Contracts (not Agent) and the decision contract names no provider, tool or loop type.
 
 ## 4. The four consumers
 

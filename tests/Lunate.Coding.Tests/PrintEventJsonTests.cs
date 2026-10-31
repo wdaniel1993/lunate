@@ -91,15 +91,15 @@ public sealed class PrintEventJsonTests
             },
             {
                 new DecisionEvaluated("run_1", "model-x", "adapter", "approve", 0.8d),
-                """{"type":"decision_evaluated","runId":"run_1","modelId":"model-x","method":"adapter","option":"approve","probability":0.8}"""
+                """{"type":"decision_evaluated","runId":"run_1","questionId":"approval","modelId":"model-x","method":"adapter","answer":"approve","option":"approve","probability":0.8}"""
             },
             {
                 new DecisionUnavailable("run_1"),
-                """{"type":"decision_unavailable","runId":"run_1"}"""
+                """{"type":"decision_unavailable","runId":"run_1","questionId":"approval"}"""
             },
             {
                 new DecisionFailed("run_1", "model-x", "invalid JSON"),
-                """{"type":"decision_failed","runId":"run_1","modelId":"model-x","reason":"invalid JSON"}"""
+                """{"type":"decision_failed","runId":"run_1","questionId":"approval","modelId":"model-x","reason":"invalid JSON"}"""
             },
             {
                 new Retrying("run_1", 2, "transient"),

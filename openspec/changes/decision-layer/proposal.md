@@ -15,9 +15,11 @@ user's approval boundary and keeping the decision source inspectable.
   exchange's provenance (`model id`, `native|adapter`).
 - Define one technical validator over that contract, per kind, with retry-once-then-fail naming the
   model, so no consumer validates a response itself.
-- Define the primitive as extension-facing surface: `IDecisionService` and its contract types in
-  `Lunate.Extensibility.Abstractions`, implemented in `Lunate.Agent`, landing before #237 publishes
-  Abstractions as stable. Front ends keep observing through `AgentEvent`.
+- Define the primitive as extension-facing surface: the request/result contract in
+  `Lunate.Contracts`, `IDecisionService` in `Lunate.Extensibility.Abstractions`, and evaluation in
+  `Lunate.Agent`, bridged by `Lunate.Extensibility` without an Agent-to-Abstractions dependency.
+  This lands before #237 publishes Abstractions as stable. Front ends keep observing through
+  `AgentEvent`.
 - Name the 0.2 consumers, all opt-in and all through the same primitive: model routing (acting), the
   approval gate (acting, **escalate-only** — a deny recommendation turns an allowed call into a user
   ask, fail-closed when unattended, and an approve recommendation never skips a prompt), question
@@ -47,8 +49,9 @@ user's approval boundary and keeping the decision source inspectable.
 
 ## Impact
 
-Contracts affect `Lunate.Extensibility.Abstractions` (service and contract types, public API and
-`ExtensionApi` bump), `Lunate.Agent` (primitive, validator, routing and approval consumers, `decide`
-tool), `Lunate.Coding` (settings and `/cost`), and session attribution. `DecisionMode.Enforce`
+Contracts affect `Lunate.Contracts` (request/result types), `Lunate.Extensibility.Abstractions`
+(service, public API and `ExtensionApi` bump), `Lunate.Agent` (primitive, validator, routing and
+approval consumers, `decide` tool), `Lunate.Extensibility` (service bridge), `Lunate.Coding`
+(settings and `/cost`), and session attribution. `DecisionMode.Enforce`
 changes meaning from veto to escalate. No new dependencies, no session-format change beyond the
 merged schema-4 contract, and no implementation until this change is approved.

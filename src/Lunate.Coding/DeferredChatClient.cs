@@ -1,3 +1,4 @@
+using Lunate.Contracts;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding;
@@ -32,11 +33,14 @@ internal sealed class DeferredChatClient : IChatClient
     ) => _client.Value.GetStreamingResponseAsync(messages, options, cancellationToken);
 
     /// <summary>
-    /// The inner client's service when it was created; null before the first request, so metadata
-    /// lookups never force the credential resolution this class exists to postpone.
+    /// The inner client's service when it was created; ordinary metadata lookups never force
+    /// credential resolution. A native decision capability lookup is the first model use and may
+    /// create the client so the decision request can pass through unchanged.
     /// </summary>
     public object? GetService(Type serviceType, object? serviceKey = null) =>
-        _client.IsValueCreated ? _client.Value.GetService(serviceType, serviceKey) : null;
+        serviceType == typeof(INativeDecisionClient) || _client.IsValueCreated
+            ? _client.Value.GetService(serviceType, serviceKey)
+            : null;
 
     public void Dispose()
     {

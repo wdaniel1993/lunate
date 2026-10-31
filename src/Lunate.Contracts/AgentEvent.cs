@@ -104,14 +104,29 @@ public sealed record DecisionEvaluated(
     string Method,
     string Option,
     double Probability
-) : ExtensionEvent(RunId);
+) : ExtensionEvent(RunId)
+{
+    /// <summary>The question this result answers; legacy approval events use <c>approval</c>.</summary>
+    public string QuestionId { get; init; } = "approval";
+
+    /// <summary>The selected answer; mirrors <see cref="Option"/> for compatibility.</summary>
+    public string Answer { get; init; } = Option;
+}
 
 /// <summary>A decision consumer was enabled without a configured decision profile.</summary>
-public sealed record DecisionUnavailable(string RunId) : ExtensionEvent(RunId);
+public sealed record DecisionUnavailable(string RunId) : ExtensionEvent(RunId)
+{
+    /// <summary>The question that could not be evaluated.</summary>
+    public string QuestionId { get; init; } = "approval";
+}
 
 /// <summary>A decision model returned a malformed contract twice; this is not a model verdict.</summary>
 public sealed record DecisionFailed(string RunId, string ModelId, string Reason)
-    : ExtensionEvent(RunId);
+    : ExtensionEvent(RunId)
+{
+    /// <summary>The question whose response remained off-contract.</summary>
+    public string QuestionId { get; init; } = "approval";
+}
 
 /// <summary>Usage/profile/provider attribution for one recorded model call.</summary>
 public sealed record ModelUsageAttribution(

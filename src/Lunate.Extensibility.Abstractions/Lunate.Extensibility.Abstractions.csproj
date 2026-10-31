@@ -5,7 +5,7 @@
             Both contract assemblies' versions are the API version: ExtensionApiGate compares an
             extension's contract assembly references with ExtensionApi.Current.
         -->
-        <Version>1.14.0</Version>
+        <Version>1.15.0</Version>
     </PropertyGroup>
 
     <ItemGroup>
