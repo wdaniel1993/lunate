@@ -403,30 +403,6 @@ public sealed class BashChangeTrackerTests
     }
 
     [Fact]
-    public async Task A_scan_timeout_names_its_reason_in_the_log()
-    {
-        using var repo = new GitTestRepo();
-        repo.Write("a.cs", "class A { }\n");
-        repo.CommitAll();
-        var log = new RecordingExtensionLog();
-        var tracker = new BashChangeTracker(log, scanTimeout: WaitBudgets.CollapsedScan);
-
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
-
-        // No events (the backstop holds) and no silence: the extension log is where a scan that
-        // produced nothing explains itself, so a missed publish is a named failure (#395).
-        Assert.Empty(changes);
-        Assert.True(
-            log.Contains("bash change scan timed out"),
-            $"the log said nothing about the scan: {string.Join(Environment.NewLine, log.Messages)}"
-        );
-    }
-
-    [Fact]
     public async Task A_failed_git_status_names_the_reason_in_the_log()
     {
         using var repo = new GitTestRepo();

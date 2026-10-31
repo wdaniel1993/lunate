@@ -210,7 +210,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
             // A git failure never publishes; it does say why (#395): a scan that produces nothing
             // must be distinguishable from "no change", in the log the extension owner reads.
             log?.Warn(
-                $"bash change scan: git status failed (exit {status.ExitCode.Value}; "
+                $"bash change scan: git status failed (exit {status.ExitCode!.Value}; "
                     + $"{FirstLine(status.Stderr)}); the content-stamp scan stays the backstop."
             );
             return null;

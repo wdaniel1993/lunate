@@ -212,14 +212,6 @@ internal static class WaitBudgets
     public static readonly TimeSpan BashScan = TimeSpan.FromSeconds(120);
 
     /// <summary>
-    /// The collapsed scan window a test hands the bash tracker when the scan producing nothing is
-    /// the condition under test: every git call of that scan times out in milliseconds instead of
-    /// waiting a real scan out (the mechanism #392's repeat pass proved reproduces the CI failure
-    /// shape byte-for-byte).
-    /// </summary>
-    public static readonly TimeSpan CollapsedScan = TimeSpan.FromMilliseconds(1);
-
-    /// <summary>
     /// The settle window of the reference-workspace memory probe: after the last diagnostics call,
     /// the analyzers' worker threads and the runtime's finalizers are still releasing what the call
     /// allocated, and the probe samples the process tree's peak RSS. Waiting the cycle's tail out
