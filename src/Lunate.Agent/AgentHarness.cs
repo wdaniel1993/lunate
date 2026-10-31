@@ -244,6 +244,15 @@ public sealed partial class AgentHarness
             );
         }
 
+        if (options.ProjectionBatchTurns < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.ProjectionBatchTurns),
+                options.ProjectionBatchTurns,
+                "ProjectionBatchTurns must be at least 1."
+            );
+        }
+
         if (options.SubagentLimits.Concurrency is { } concurrency && concurrency < 1)
         {
             throw new ArgumentOutOfRangeException(
@@ -378,6 +387,7 @@ public sealed partial class AgentHarness
                 }
 
                 modelCalls++;
+                AdvanceProjectionTurn();
                 DrainSteering(runId, channel);
                 await CompactBeforeRequestAsync(runId, channel, sections, ct);
                 ModelStreamResult stream = await StreamModelWithRetriesAsync(
@@ -1057,7 +1067,7 @@ public sealed partial class AgentHarness
 
     private List<ChatMessage> BuildRequest(IReadOnlyList<AgentPromptSection> sections)
     {
-        StubStaleReadResults();
+        ApplyProjectionBatchIfDue();
         EnsureUsageCapabilities();
         EnsureImagesSupported();
 

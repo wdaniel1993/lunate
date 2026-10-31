@@ -41,8 +41,14 @@ public sealed class InteractiveSessionTuiSettingsTests
 
         host.Console.SendText("/settings");
         host.Console.SendEnter();
-        string scrollback = await host.WaitForScrollbackAsync("tui.theme       mono");
-        Assert.Contains("tui.keys        none", scrollback, StringComparison.Ordinal);
+        string scrollback = await host.WaitForScrollbackAsync(
+            text =>
+                Regex.IsMatch(text, @"(?m)^tui\.theme[ \t]+mono$", RegexOptions.CultureInvariant),
+            "the mono theme row"
+        );
+        Assert.True(
+            Regex.IsMatch(scrollback, @"(?m)^tui\.keys[ \t]+none$", RegexOptions.CultureInvariant)
+        );
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
@@ -168,9 +174,21 @@ public sealed class InteractiveSessionTuiSettingsTests
             // ...and the new key drives the binding through the real key pump.
             await host.SendLineAsync("/settings");
             string scrollback = await host.WaitForScrollbackAsync(
-                "tui.keys        ctrl-o.transcript=Ctrl+T"
+                text =>
+                    Regex.IsMatch(
+                        text,
+                        @"(?m)^tui\.keys[ \t]+ctrl-o\.transcript=Ctrl\+T$",
+                        RegexOptions.CultureInvariant
+                    ),
+                "the remapped transcript-key row"
             );
-            Assert.Contains("tui.theme       mono", scrollback, StringComparison.Ordinal);
+            Assert.True(
+                Regex.IsMatch(
+                    scrollback,
+                    @"(?m)^tui\.theme[ \t]+mono$",
+                    RegexOptions.CultureInvariant
+                )
+            );
 
             host.Console.SendCtrl("t");
             await host.WaitUntilAsync(() => host.Console.InAlternateScreen);

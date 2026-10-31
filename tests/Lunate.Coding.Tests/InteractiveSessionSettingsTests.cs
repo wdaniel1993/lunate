@@ -17,29 +17,42 @@ public sealed class InteractiveSessionSettingsTests
         host.Console.SendEnter();
         string scrollback = await InteractiveSessionCommandTests.WaitForScrollbackAsync(
             host,
-            "subagents       4"
+            "subagents               4"
         );
 
         Assert.Contains("settings: ", scrollback);
-        Assert.Contains("model           gpt-4o-mini", scrollback, StringComparison.Ordinal);
-        Assert.Contains("approval        ask", scrollback, StringComparison.Ordinal);
-        Assert.Contains("thinking        off", scrollback, StringComparison.Ordinal);
-        Assert.Contains("thinkingFull    off", scrollback, StringComparison.Ordinal);
-        Assert.Contains("toolDetails     collapsed", scrollback, StringComparison.Ordinal);
-        Assert.Contains("toolResultLimit 30,000 characters", scrollback, StringComparison.Ordinal);
-        Assert.Contains("tui.theme       default", scrollback, StringComparison.Ordinal);
-        Assert.Contains("tui.keys        none", scrollback, StringComparison.Ordinal);
-        Assert.Contains("startupHeader   on", scrollback, StringComparison.Ordinal);
-        Assert.Contains("updateCheck     on", scrollback, StringComparison.Ordinal);
-        Assert.Contains("favorites       none", scrollback, StringComparison.Ordinal);
-        Assert.Contains("tools.extra     none", scrollback, StringComparison.Ordinal);
-        Assert.Contains("providers       none", scrollback, StringComparison.Ordinal);
         Assert.Contains(
-            "roslyn          max 2 loaded Roslyn workspaces",
+            "model                   gpt-4o-mini",
             scrollback,
             StringComparison.Ordinal
         );
-        Assert.Contains("subagents       4 concurrent", scrollback, StringComparison.Ordinal);
+        Assert.Contains("approval                ask", scrollback, StringComparison.Ordinal);
+        Assert.Contains("thinking                off", scrollback, StringComparison.Ordinal);
+        Assert.Contains("thinkingFull            off", scrollback, StringComparison.Ordinal);
+        Assert.Contains("toolDetails             collapsed", scrollback, StringComparison.Ordinal);
+        Assert.Contains(
+            "toolResultLimit         30,000 characters",
+            scrollback,
+            StringComparison.Ordinal
+        );
+        Assert.Contains("projection.batchTurns   4", scrollback, StringComparison.Ordinal);
+        Assert.Contains("tui.theme               default", scrollback, StringComparison.Ordinal);
+        Assert.Contains("tui.keys                none", scrollback, StringComparison.Ordinal);
+        Assert.Contains("startupHeader           on", scrollback, StringComparison.Ordinal);
+        Assert.Contains("updateCheck             on", scrollback, StringComparison.Ordinal);
+        Assert.Contains("favorites               none", scrollback, StringComparison.Ordinal);
+        Assert.Contains("tools.extra             none", scrollback, StringComparison.Ordinal);
+        Assert.Contains("providers               none", scrollback, StringComparison.Ordinal);
+        Assert.Contains(
+            "roslyn                  max 2 loaded Roslyn workspaces",
+            scrollback,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "subagents               4 concurrent",
+            scrollback,
+            StringComparison.Ordinal
+        );
         Assert.Contains(
             "editable here: approval, thinkingFull, toolDetails, toolResultLimit,",
             scrollback,
@@ -71,7 +84,7 @@ public sealed class InteractiveSessionSettingsTests
         host.Console.SendEnter();
         await InteractiveSessionCommandTests.WaitForScrollbackAsync(
             host,
-            "toolDetails     expanded"
+            "toolDetails             expanded"
         );
 
         host.Console.SendText("/settings toolResultLimit 6000");
@@ -83,7 +96,10 @@ public sealed class InteractiveSessionSettingsTests
 
         host.Console.SendText("/settings");
         host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "toolResultLimit 6,000");
+        await InteractiveSessionCommandTests.WaitForScrollbackAsync(
+            host,
+            "toolResultLimit         6,000"
+        );
 
         host.Console.SendText("/settings approval auto-edit");
         host.Console.SendEnter();
@@ -96,7 +112,7 @@ public sealed class InteractiveSessionSettingsTests
         host.Console.SendEnter();
         await InteractiveSessionCommandTests.WaitForScrollbackAsync(
             host,
-            "approval        auto-edit"
+            "approval                auto-edit"
         );
 
         host.Console.SendText("/quit");

@@ -382,6 +382,8 @@ Lunate.Agent.AgentHarnessOptions.Approver.get -> Lunate.Agent.IToolApprover?
 Lunate.Agent.AgentHarnessOptions.Approver.init -> void
 Lunate.Agent.AgentHarnessOptions.CompactionKeepTurns.get -> int
 Lunate.Agent.AgentHarnessOptions.CompactionKeepTurns.init -> void
+Lunate.Agent.AgentHarnessOptions.ProjectionBatchTurns.get -> int
+Lunate.Agent.AgentHarnessOptions.ProjectionBatchTurns.init -> void
 Lunate.Agent.AgentHarnessOptions.Equals(Lunate.Agent.AgentHarnessOptions? other) -> bool
 Lunate.Agent.AgentHarnessOptions.FileMutations.get -> Lunate.Agent.IFileMutationQueue!
 Lunate.Agent.AgentHarnessOptions.FileMutations.init -> void

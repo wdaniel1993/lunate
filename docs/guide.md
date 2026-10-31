@@ -277,7 +277,7 @@ internal sealed class ToolDeclaration(ITool tool) : AIFunction { /* Name, Descri
 
 `bash` sends a concise answer—stderr, the exit footer and the last 20 stdout lines within 2,000 characters—and keeps the composed stdout and stderr as the full transcript. In a session, a large transcript is spilled and the answer carries its pointer; without a session, the bounded transcript follows the answer so no output is silently lost.
 
-After a file changes, a later edit or write based on an earlier read is refused until the model reads the current version. The next request replaces superseded read text with a one-line stale notice, while the session retains the original transcript.
+After a file changes, a later edit or write based on an earlier read is refused until the model reads the current version. Superseded read text stays byte-for-byte stable in the request between projection batch points; a compaction or every `projection.batchTurns` model turns (default 4) replaces it with a one-line stale notice. The session retains the original transcript.
 
 Known credential values in tool-result text are replaced with `[redacted:<name>]` before the text reaches the model, event stream, session or spill file. Masking is exact-value only; the existing redaction at rest remains defense in depth.
 
@@ -456,15 +456,16 @@ Tools: read, write, edit, bash{extra_tools}.
 
 **Config**
 
-`~/.lunate/settings.json` holds profiles, usage assignments, approval policy, output limits and the
-write-verification mode; `~/.lunate/providers.json` holds named provider instances; and
-`~/.lunate/auth.json` holds stored keys. Provider instances select one of the twelve built-in kinds
-as a template and may override its endpoint. Credentials and optional header values are references
-(`auth:`, `env:`, or `helper:`), not literal values. Legacy stored keys migrate idempotently, without
-copying secrets; environment credentials retain precedence. Project settings may reference existing
-user providers/profiles and lower limits, but cannot define endpoints or credential references.
-Provider `region` is metadata, not a routing or residency policy. See [first run](first-run.md) for
-setup and examples.
+`~/.lunate/settings.json` holds profiles, usage assignments, approval policy, output limits and
+write-verification mode, plus `projection.batchTurns` (default 4;
+`LUNATE_PROJECTION_BATCH_TURNS` overrides it);
+`~/.lunate/providers.json` holds named provider instances; and `~/.lunate/auth.json` holds stored
+keys. Provider instances select one of the twelve built-in kinds as a template and may override its
+endpoint. Credentials and optional header values are references (`auth:`, `env:`, or `helper:`), not
+literal values. Legacy stored keys migrate idempotently, without copying secrets; environment
+credentials retain precedence. Project settings may reference existing user providers/profiles and
+lower limits, but cannot define endpoints or credential references. Provider `region` is metadata,
+not a routing or residency policy. See [first run](first-run.md) for setup and examples.
 
 Profiles bind a name to a provider and catalog model with validated reasoning, output, temperature,
 context-window, decision-threshold and capability-override settings. Capability sets are open strings

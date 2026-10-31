@@ -54,6 +54,9 @@ public sealed record AgentSettings
     /// <summary>The estimated-token threshold above which a tool result is spilled.</summary>
     public int SpillThresholdTokens { get; init; } = 2_000;
 
+    /// <summary>The number of model turns between request-time projection rewrites.</summary>
+    public int ProjectionBatchTurns { get; init; } = 4;
+
     /// <summary>The resolved subagent limits (the <c>subagents</c> section; defaults 4/100000/500000).</summary>
     public SubagentLimits Subagents { get; init; } = new();
 
@@ -117,7 +120,7 @@ public sealed record RoslynSettings
 /// favourites). A missing file yields defaults; a present file is validated with every problem
 /// collected into one error, and no partial settings are applied. The environment
 /// (<c>LUNATE_MODEL</c>, <c>LUNATE_APPROVAL</c>, <c>LUNATE_TOOL_DETAILS</c>,
-/// <c>LUNATE_TOOL_OUTPUT_LIMIT</c>, <c>LUNATE_TOOL_SPILL_THRESHOLD</c>, <c>LUNATE_STARTUP_HEADER</c>, <c>LUNATE_UPDATE_CHECK</c>,
+/// <c>LUNATE_TOOL_OUTPUT_LIMIT</c>, <c>LUNATE_TOOL_SPILL_THRESHOLD</c>, <c>LUNATE_PROJECTION_BATCH_TURNS</c>, <c>LUNATE_STARTUP_HEADER</c>, <c>LUNATE_UPDATE_CHECK</c>,
 /// <c>LUNATE_SUBAGENTS_CONCURRENCY</c>, <c>LUNATE_SUBAGENTS_TOKEN_BUDGET</c>,
 /// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file values. <c>verify</c> is a file-only
 /// setting. Both
@@ -138,6 +141,7 @@ public static partial class SettingsStore
     private const string ToolDetailsVariable = "LUNATE_TOOL_DETAILS";
     private const string ToolOutputLimitVariable = "LUNATE_TOOL_OUTPUT_LIMIT";
     private const string ToolSpillThresholdVariable = "LUNATE_TOOL_SPILL_THRESHOLD";
+    private const string ProjectionBatchTurnsVariable = "LUNATE_PROJECTION_BATCH_TURNS";
     private const string StartupHeaderVariable = "LUNATE_STARTUP_HEADER";
     private const string UpdateCheckVariable = "LUNATE_UPDATE_CHECK";
     private const string SubagentConcurrencyVariable = "LUNATE_SUBAGENTS_CONCURRENCY";
@@ -401,6 +405,15 @@ public static partial class SettingsStore
                             SpillThresholdTokens = spillThresholdTokens,
                         };
                         break;
+                    case "projection":
+                        settings = settings with
+                        {
+                            ProjectionBatchTurns = ReadProjectionBatchTurns(
+                                property.Value,
+                                problems
+                            ),
+                        };
+                        break;
                     case "subagents":
                         settings = settings with
                         {
@@ -609,6 +622,39 @@ public static partial class SettingsStore
         }
 
         return (limit, spillThresholdTokens);
+    }
+
+    private static int ReadProjectionBatchTurns(JsonElement value, List<string> problems)
+    {
+        if (value.ValueKind != JsonValueKind.Object)
+        {
+            problems.Add("'projection' must be an object");
+            return 4;
+        }
+
+        int batchTurns = 4;
+        foreach (JsonProperty property in value.EnumerateObject())
+        {
+            if (property.Name != "batchTurns")
+            {
+                problems.Add($"unknown key 'projection.{property.Name}'");
+                continue;
+            }
+
+            if (
+                property.Value.ValueKind != JsonValueKind.Number
+                || !property.Value.TryGetInt32(out int parsed)
+                || parsed < 1
+            )
+            {
+                problems.Add("'projection.batchTurns' must be a positive integer");
+                continue;
+            }
+
+            batchTurns = parsed;
+        }
+
+        return batchTurns;
     }
 
     /// <summary>
@@ -999,6 +1045,29 @@ public static partial class SettingsStore
             {
                 problems.Add(
                     $"{ToolSpillThresholdVariable} must be a positive integer, but was '{spillThreshold}'"
+                );
+            }
+        }
+
+        string? projectionBatchTurns = environment(ProjectionBatchTurnsVariable);
+        if (!string.IsNullOrEmpty(projectionBatchTurns))
+        {
+            if (
+                int.TryParse(
+                    projectionBatchTurns,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out int parsed
+                )
+                && parsed >= 1
+            )
+            {
+                settings = settings with { ProjectionBatchTurns = parsed };
+            }
+            else
+            {
+                problems.Add(
+                    $"{ProjectionBatchTurnsVariable} must be a positive integer, but was '{projectionBatchTurns}'"
                 );
             }
         }
