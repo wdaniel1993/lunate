@@ -26,7 +26,8 @@ internal static class HarnessFactory
         WriteVerificationMode verificationMode = WriteVerificationMode.Block,
         WriteVerificationRefusalTracker? refusalTracker = null,
         TimeSpan? bashChangeScanTimeout = null,
-        bool bashGuardEnabled = true
+        bool bashGuardEnabled = true,
+        BashGuard? bashGuard = null
     )
     {
         refusalTracker ??= new WriteVerificationRefusalTracker();
@@ -60,7 +61,7 @@ internal static class HarnessFactory
                 null,
                 null,
                 log,
-                new BashGuard(),
+                bashGuard ?? new BashGuard(),
                 bashChangeScanTimeout,
                 bashGuardEnabled
             )

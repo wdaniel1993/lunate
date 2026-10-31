@@ -29,7 +29,7 @@ internal sealed record WelcomeHeaderState
     /// </summary>
     public string? Home { get; init; }
 
-    public bool BashGuardEnabled { get; init; } = true;
+    public BashGuardStatus? GuardStatus { get; init; }
 
     public WelcomeHeaderCounts? Counts { get; init; }
 
@@ -177,9 +177,9 @@ internal static class WelcomeHeaderRenderer
             head.Append(unicode ? " · " : " - ").Append(home);
         }
 
-        if (!state.BashGuardEnabled)
+        if (state.GuardStatus is { } guardStatus)
         {
-            head.Append(unicode ? " · " : " - ").Append("bash guard disabled");
+            head.Append(unicode ? " · " : " - ").Append(guardStatus.HeaderText(unicode));
         }
 
         string action = state.Fix is { Length: > 0 } fix ? fix : HelpHint;
@@ -249,9 +249,9 @@ internal static class WelcomeHeaderRenderer
         bool colored
     )
     {
-        if (!state.BashGuardEnabled)
+        if (state.GuardStatus is { } guardStatus)
         {
-            lines.Add(Line(colored, ("bash guard disabled", SpanStyle.Dim)));
+            lines.Add(Line(colored, (guardStatus.HeaderText(unicode: true), SpanStyle.Dim)));
         }
     }
 

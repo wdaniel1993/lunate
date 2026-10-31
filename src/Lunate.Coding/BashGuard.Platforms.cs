@@ -38,7 +38,31 @@ internal sealed partial class BashGuard
             shell.ExecutablePath,
             .. shell.ArgumentsPrefix,
         ];
-        return new GuardCommand(SandboxExecutable, prefix, MacOsMechanism, Wrapped: true, null);
+        (int exitCode, string output) = _probe.Run(
+            SandboxExecutable,
+            ["-p", MacProfile(), "/usr/bin/true"]
+        );
+        if (exitCode != 0)
+        {
+            string reason = output.Length > 0
+                ? output
+                : string.Create(CultureInfo.InvariantCulture, $"exit code {exitCode}");
+            return Unwrapped(
+                shell,
+                "none",
+                $"the bash guard could not start: sandbox-exec probe failed ({reason}); this command runs unconfined",
+                probeState: "failure"
+            );
+        }
+
+        return new GuardCommand(
+            SandboxExecutable,
+            prefix,
+            MacOsMechanism,
+            Wrapped: true,
+            Notice: null,
+            ProbeState: "success"
+        );
     }
 
     /// <summary>
@@ -88,7 +112,14 @@ internal sealed partial class BashGuard
                     shell.ExecutablePath,
                     .. shell.ArgumentsPrefix,
                 ];
-                return new GuardCommand(found, prefix, LinuxBwrapMechanism, Wrapped: true, null);
+                return new GuardCommand(
+                    found,
+                    prefix,
+                    LinuxBwrapMechanism,
+                    Wrapped: true,
+                    Notice: null,
+                    ProbeState: "success"
+                );
             }
 
             reasons.Add($"bubblewrap could not start ({probeOutput})");
@@ -102,7 +133,12 @@ internal sealed partial class BashGuard
         if (setpriv is null)
         {
             reasons.Add("setpriv (Landlock) was not found");
-            return Unwrapped(shell, "unavailable", Notice(reasons));
+            return Unwrapped(
+                shell,
+                "unavailable",
+                Notice(reasons),
+                probeState: bwrap is null ? "not run" : "failure"
+            );
         }
 
         List<string>? rules = LandlockBase(workspace, out int ruleCount);
@@ -111,7 +147,12 @@ internal sealed partial class BashGuard
             reasons.Add(
                 $"the Landlock fallback would need {ruleCount} allow rules and stopped itself"
             );
-            return Unwrapped(shell, "unavailable", Notice(reasons));
+            return Unwrapped(
+                shell,
+                "unavailable",
+                Notice(reasons),
+                probeState: bwrap is null ? "not run" : "failure"
+            );
         }
 
         (int landlockExit, string landlockOutput) = _probe.Run(setpriv, [.. rules, "/bin/true"]);
@@ -123,11 +164,18 @@ internal sealed partial class BashGuard
                 shell.ExecutablePath,
                 .. shell.ArgumentsPrefix,
             ];
-            return new GuardCommand(setpriv, prefix, LinuxLandlockMechanism, Wrapped: true, null);
+            return new GuardCommand(
+                setpriv,
+                prefix,
+                LinuxLandlockMechanism,
+                Wrapped: true,
+                Notice: null,
+                ProbeState: "success"
+            );
         }
 
         reasons.Add($"setpriv's Landlock probe failed ({landlockOutput})");
-        return Unwrapped(shell, "unavailable", Notice(reasons));
+        return Unwrapped(shell, "unavailable", Notice(reasons), probeState: "failure");
     }
 
     /// <summary>

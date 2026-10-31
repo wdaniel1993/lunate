@@ -137,6 +137,32 @@ public sealed class WelcomeHeaderRendererTests
         Assert.Contains("home /tmp/state (LUNATE_HOME)", text[0], StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void The_header_shows_the_normalized_guard_and_probe_state()
+    {
+        WelcomeHeaderState guarded = Full with
+        {
+            GuardStatus = new BashGuardStatus("bwrap", "success", Enabled: true),
+        };
+
+        string[] text = Text(guarded, width: 80, Capabilities(unicode: true, colored: false));
+
+        Assert.Equal("bash guard bwrap · probe success", text[5]);
+    }
+
+    [Fact]
+    public void The_first_run_header_names_the_disabled_guard_and_unrun_probe()
+    {
+        WelcomeHeaderState disabled = FirstRun with
+        {
+            GuardStatus = BashGuardStatus.Disabled,
+        };
+
+        string[] text = Text(disabled, width: 80, Capabilities(unicode: true, colored: false));
+
+        Assert.Equal("bash guard disabled · none · probe not run", text[4]);
+    }
+
     [Theory]
     [MemberData(nameof(Matrix))]
     public void The_header_matches_the_snapshot_matrix_cell(

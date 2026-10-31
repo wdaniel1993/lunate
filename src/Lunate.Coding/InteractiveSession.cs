@@ -472,7 +472,12 @@ internal sealed partial class InteractiveSession : IDisposable
             _options.Environment
         );
         _settings = SettingsStore.ApplyLaunch(_settings, _options.Launch);
-        WarnAboutStateRootHardlinks();
+        if (_settings.BashGuard)
+        {
+            WarnAboutStateRootHardlinks();
+        }
+
+        ResolveBashGuard();
         ApplyTuiPresentation();
         _thinkingLevel = _settings.Thinking;
         _catalog = HarnessFactory.LoadCatalog(_settings, _options.ModelsPath);
@@ -554,7 +559,8 @@ internal sealed partial class InteractiveSession : IDisposable
             writeVerifiers: _extensions?.WriteVerifiers,
             verificationMode: _settings.Verify,
             refusalTracker: _writeVerificationRefusals,
-            bashGuardEnabled: _settings.BashGuard
+            bashGuardEnabled: _settings.BashGuard,
+            bashGuard: _bashGuard
         );
         _tools.Add(new AskUserTool());
         await ComposeMcpConfigAsync(ct);

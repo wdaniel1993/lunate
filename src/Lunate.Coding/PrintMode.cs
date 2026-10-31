@@ -107,11 +107,14 @@ internal static class PrintMode
         {
             settings = SettingsStore.Resolve(options.SettingsPath, options.Environment);
             settings = SettingsStore.ApplyLaunch(settings, options.Launch);
-            StateRootHardlinkScan.Report(
-                options.HardlinkScanRoot,
-                options.HardlinkScanFileSystem,
-                warning => interaction.Notify(new UserNotice(NoticeLevel.Warning, warning))
-            );
+            if (settings.BashGuard)
+            {
+                StateRootHardlinkScan.Report(
+                    options.HardlinkScanRoot,
+                    options.HardlinkScanFileSystem,
+                    warning => interaction.Notify(new UserNotice(NoticeLevel.Warning, warning))
+                );
+            }
 
             catalog = HarnessFactory.LoadCatalog(settings, options.ModelsPath);
             model = HarnessFactory.ResolveModel(settings.Model, catalog);

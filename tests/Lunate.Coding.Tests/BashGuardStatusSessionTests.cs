@@ -4,6 +4,70 @@ namespace Lunate.Coding.Tests;
 
 public sealed class BashGuardStatusSessionTests
 {
+    [Fact]
+    public async Task A_disabled_guard_skips_the_startup_hardlink_scan()
+    {
+        using var scanRoot = new TempDirectory();
+        string stateRoot = scanRoot.File("state");
+        using var host = new InteractiveSessionHost(
+            environment: EnvironmentWithKey(),
+            hardlinkScanRoot: stateRoot,
+            hardlinkScanFileSystem: new ExternalLinkFixture(stateRoot)
+        );
+        File.WriteAllText(
+            host.Temp.File("settings.json"),
+            """{"schemaVersion":2,"bashGuard":false}"""
+        );
+        Task run = host.RunAsync();
+
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        string header = await host.WaitForScrollbackAsync(
+            $"lunate  v{ProductVersion.Build}"
+        );
+
+        Assert.DoesNotContain("pre-existing hardlink", header, StringComparison.Ordinal);
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task The_bash_tool_reuses_the_guard_resolved_for_the_header()
+    {
+        GuardProbe fixtureProbe = ProbeFor("none-failure");
+        int probeCalls = 0;
+        GuardProbe probe = fixtureProbe with
+        {
+            Run = (fileName, arguments) =>
+            {
+                probeCalls++;
+                return fixtureProbe.Run(fileName, arguments);
+            },
+        };
+        using var host = new InteractiveSessionHost(
+            environment: EnvironmentWithKey(),
+            bashGuardProbe: probe
+        );
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("!echo guard-status-reuse");
+        await host.WaitUntilAsync(() => host.Session.IsBashMode);
+        host.Console.SendEnter();
+        await host.WaitForApprovalAsync();
+        host.Console.SendText("y");
+        string scrollback = await host.WaitForScrollbackAsync(
+            text => text.Contains("exit 0", StringComparison.Ordinal) && !host.Session.IsBashRunning,
+            "the guarded bash result"
+        );
+
+        Assert.Contains("guard-status-reuse", scrollback, StringComparison.Ordinal);
+        Assert.Equal(2, probeCalls);
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
     [Theory]
     [InlineData("sandbox-success", "sandbox-exec", "success", true, 1)]
     [InlineData("sandbox-failure", "none", "failure", true, 1)]
@@ -64,7 +128,7 @@ public sealed class BashGuardStatusSessionTests
 
     private static GuardProbe ProbeFor(string fixture)
     {
-        return fixture switch
+        GuardProbe probe = fixture switch
         {
             "sandbox-success" => Fake.Unix(macOs: true, sandboxExec: true),
             "sandbox-failure" => Fake.Unix(macOs: true, sandboxExec: true) with
@@ -83,6 +147,8 @@ public sealed class BashGuardStatusSessionTests
             "disabled" => Fake.Unix(macOs: false, bwrap: "/usr/bin/bwrap"),
             _ => throw new ArgumentOutOfRangeException(nameof(fixture), fixture, "unknown fixture"),
         };
+
+        return probe with { FileExists = _ => true };
     }
 
     private static Func<string, string?> EnvironmentWithKey()
@@ -94,5 +160,20 @@ public sealed class BashGuardStatusSessionTests
             "OPENAI_API_KEY" => "test-key",
             _ => baseline(name),
         };
+    }
+
+    private sealed class ExternalLinkFixture(string stateRoot) : IHardlinkScanFileSystem
+    {
+        public bool DirectoryExists(string path) => path == stateRoot;
+
+        public IReadOnlyList<string> EnumerateDirectories(string path) => [];
+
+        public IReadOnlyList<string> EnumerateFiles(string path) =>
+            path == stateRoot ? [Path.Combine(path, "linked.json")] : [];
+
+        public bool IsDirectoryLink(string path) => false;
+
+        public HardlinkFileMetadata? GetFileMetadata(string path) =>
+            new(new HardlinkFileIdentity(1, 11), LinkCount: 2);
     }
 }
