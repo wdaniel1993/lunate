@@ -52,6 +52,7 @@
     <Project Path="src/Lunate.Agent/Lunate.Agent.csproj" />
     <Project Path="src/Lunate.Ai/Lunate.Ai.csproj" />
     <Project Path="src/Lunate.Coding/Lunate.Coding.csproj" />
+    <Project Path="src/Lunate.Contracts/Lunate.Contracts.csproj" />
     <Project Path="src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
     <Project Path="src/Lunate.Extensibility.Compile/Lunate.Extensibility.Compile.csproj" />
     <Project Path="src/Lunate.Extensibility.Remote/Lunate.Extensibility.Remote.csproj" />

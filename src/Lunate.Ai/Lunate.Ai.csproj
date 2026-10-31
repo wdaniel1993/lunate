@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
+        <ProjectReference Include="../Lunate.Contracts/Lunate.Contracts.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
         <!-- Official Anthropic SDK (ADR-0010, option A). PrivateAssets=compile keeps the provider
          compile surface out of consumers while runtime assets still flow to the app output. -->
         <PackageReference Include="Anthropic" Version="12.53.0" PrivateAssets="compile" />

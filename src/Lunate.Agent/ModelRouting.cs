@@ -18,20 +18,6 @@ public interface IModelRegistry
 }
 
 /// <summary>
-/// Run-bound model access: <see cref="For"/> returns the client for a model id wired into the
-/// owning run, so nested calls charge that run's usage. Stamped into <c>ToolContext.Models</c> by
-/// the harness; null outside a run or without a registry.
-/// </summary>
-public interface IModelAccess
-{
-    /// <summary>
-    /// The client for the model id, bound to the owning run. An unresolvable id throws the
-    /// registry's teaching error.
-    /// </summary>
-    IChatClient For(string modelId);
-}
-
-/// <summary>
 /// The route-observer ambient: a run-bound call wrapper scopes it around each model call and a
 /// router client reports every resolution into it, so routed calls can be attributed (events,
 /// usage, display) without the router knowing about runs.
