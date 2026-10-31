@@ -65,13 +65,7 @@ public static partial class SettingsStore
                     };
                     break;
                 case "tool":
-                    if (property.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)
-                    {
-                        decisions = decisions with { Tool = property.Value.GetBoolean() };
-                        break;
-                    }
-
-                    problems.Add("'decisions.tool' must be true or false");
+                    decisions = decisions with { Tool = ReadToolMode(property.Value, problems) };
                     break;
                 case "questions":
                     decisions = decisions with
@@ -153,6 +147,23 @@ public static partial class SettingsStore
 
         problems.Add("'decisions.questions' must be 'off' or 'suggest'");
         return DecisionQuestionsMode.Off;
+    }
+
+    private static bool ReadToolMode(JsonElement value, List<string> problems)
+    {
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            switch (value.GetString())
+            {
+                case "off":
+                    return false;
+                case "on":
+                    return true;
+            }
+        }
+
+        problems.Add("'decisions.tool' must be 'off' or 'on'");
+        return false;
     }
 
     private static IReadOnlyList<string> ReadRoutingProfiles(
