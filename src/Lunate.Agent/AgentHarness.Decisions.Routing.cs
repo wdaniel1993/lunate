@@ -80,22 +80,23 @@ public sealed partial class AgentHarness
                     )
             );
             DecisionAnswer answer = response.Results[questionId];
+            DecisionProbability mostProbable = answer.Distribution.MaxBy(item => item.Probability)!;
             channel.Emit(
                 new DecisionEvaluated(
                     runId,
                     answer.ModelId,
                     answer.Method,
-                    answer.Answer,
-                    answer.Probability
+                    mostProbable.Answer,
+                    mostProbable.Probability
                 )
                 {
                     QuestionId = questionId,
-                    Answer = answer.Answer,
+                    Answer = mostProbable.Answer,
                 }
             );
             return _options.RoutingMode == DecisionMode.Shadow
                 ? configuredModel
-                : _options.RoutingProfiles[answer.Answer];
+                : _options.RoutingProfiles[mostProbable.Answer];
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

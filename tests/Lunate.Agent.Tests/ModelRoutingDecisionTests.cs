@@ -41,7 +41,7 @@ public sealed class ModelRoutingDecisionTests
 
         Assert.Empty(run.Configured.Requests);
         Assert.Single(run.Fast.Requests);
-        Assert.Equal("default", Assert.Single(run.Events.OfType<DecisionEvaluated>()).Answer);
+        Assert.Equal("fast", Assert.Single(run.Events.OfType<DecisionEvaluated>()).Answer);
     }
 
     [Fact]
