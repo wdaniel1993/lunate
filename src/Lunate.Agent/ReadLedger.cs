@@ -30,7 +30,10 @@ internal sealed class ReadLedger : IReadLedger
         {
             if (_live.Remove(canonical, out ReadVersion? previous))
             {
-                _staleReadNotices[previous.CallId] = SupersededNotice(previous.DisplayPath);
+                if (previous.CallId is { } callId)
+                {
+                    _staleReadNotices[callId] = SupersededNotice(previous.DisplayPath);
+                }
             }
 
             _invalidated.Remove(canonical);
@@ -45,7 +48,10 @@ internal sealed class ReadLedger : IReadLedger
         {
             if (_live.Remove(canonical, out ReadVersion? previous))
             {
-                _staleReadNotices[previous.CallId] = SupersededNotice(previous.DisplayPath);
+                if (previous.CallId is { } callId)
+                {
+                    _staleReadNotices[callId] = SupersededNotice(previous.DisplayPath);
+                }
             }
 
             _live[canonical] = new ReadVersion(null, callId, displayPath);
@@ -93,11 +99,38 @@ internal sealed class ReadLedger : IReadLedger
         }
     }
 
+    public void Refresh(string path, string text, string displayPath)
+    {
+        string canonical = Canonical(path);
+        string digest = Digest(text);
+        lock (_gate)
+        {
+            _invalidated.Remove(canonical);
+            string? callId = null;
+            if (_live.Remove(canonical, out ReadVersion? previous))
+            {
+                callId = previous.CallId;
+                if (
+                    previous.CallId is { } previousCallId
+                    && !string.Equals(previous.Digest, digest, StringComparison.Ordinal)
+                )
+                {
+                    _staleReadNotices[previousCallId] = ChangedNotice(previous.DisplayPath);
+                }
+            }
+
+            _live[canonical] = new ReadVersion(digest, callId, displayPath);
+        }
+    }
+
     private void Invalidate(string canonical, ReadVersion version)
     {
         _live.Remove(canonical);
         _invalidated[canonical] = version.DisplayPath;
-        _staleReadNotices[version.CallId] = ChangedNotice(version.DisplayPath);
+        if (version.CallId is { } callId)
+        {
+            _staleReadNotices[callId] = ChangedNotice(version.DisplayPath);
+        }
     }
 
     private static string Canonical(string path) => GitIdentity.Canonicalize(path);
@@ -117,5 +150,5 @@ internal sealed class ReadLedger : IReadLedger
     private static StringComparer PathComparer =>
         OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
 
-    private sealed record ReadVersion(string? Digest, string CallId, string DisplayPath);
+    private sealed record ReadVersion(string? Digest, string? CallId, string DisplayPath);
 }
