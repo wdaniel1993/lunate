@@ -27,8 +27,6 @@ using System.Runtime.CompilerServices;
 [assembly: TypeForwardedTo(typeof(Lunate.Agent.SteeringInjected))]
 [assembly: TypeForwardedTo(typeof(Lunate.Agent.SubagentRequest))]
 [assembly: TypeForwardedTo(typeof(Lunate.Agent.SubagentResult))]
-[assembly: TypeForwardedTo(typeof(Lunate.Agent.SubagentLimits))]
-[assembly: TypeForwardedTo(typeof(Lunate.Agent.SubagentUsage))]
 [assembly: TypeForwardedTo(typeof(Lunate.Agent.TextMessageContent))]
 [assembly: TypeForwardedTo(typeof(Lunate.Agent.TextMessageEnd))]
 [assembly: TypeForwardedTo(typeof(Lunate.Agent.TextMessageStart))]

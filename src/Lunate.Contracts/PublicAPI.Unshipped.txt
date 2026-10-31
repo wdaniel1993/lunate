@@ -202,17 +202,6 @@ Lunate.Agent.StepLimitReached.Equals(Lunate.Agent.StepLimitReached? other) -> bo
 Lunate.Agent.StepLimitReached.MaxSteps.get -> int
 Lunate.Agent.StepLimitReached.MaxSteps.init -> void
 Lunate.Agent.StepLimitReached.StepLimitReached(string! RunId, int MaxSteps) -> void
-Lunate.Agent.SubagentLimits
-Lunate.Agent.SubagentLimits.<Clone>$() -> Lunate.Agent.SubagentLimits!
-Lunate.Agent.SubagentLimits.Concurrency.get -> int?
-Lunate.Agent.SubagentLimits.Concurrency.init -> void
-Lunate.Agent.SubagentLimits.Deconstruct(out int? Concurrency, out long? TokenBudget, out long? TreeTokenBudget) -> void
-Lunate.Agent.SubagentLimits.Equals(Lunate.Agent.SubagentLimits? other) -> bool
-Lunate.Agent.SubagentLimits.SubagentLimits(int? Concurrency = 4, long? TokenBudget = 100000, long? TreeTokenBudget = 500000) -> void
-Lunate.Agent.SubagentLimits.TokenBudget.get -> long?
-Lunate.Agent.SubagentLimits.TokenBudget.init -> void
-Lunate.Agent.SubagentLimits.TreeTokenBudget.get -> long?
-Lunate.Agent.SubagentLimits.TreeTokenBudget.init -> void
 Lunate.Agent.SubagentRequest
 Lunate.Agent.SubagentRequest.<Clone>$() -> Lunate.Agent.SubagentRequest!
 Lunate.Agent.SubagentRequest.AllowedTools.get -> System.Collections.Generic.IReadOnlyList<string!>?
@@ -243,15 +232,6 @@ Lunate.Agent.SubagentResult.StopReason.init -> void
 Lunate.Agent.SubagentResult.SubagentResult(string? ChildSessionId, string? RunId, string! Output, string! StopReason, bool IsError, long TokensUsed) -> void
 Lunate.Agent.SubagentResult.TokensUsed.get -> long
 Lunate.Agent.SubagentResult.TokensUsed.init -> void
-Lunate.Agent.SubagentUsage
-Lunate.Agent.SubagentUsage.Deconstruct(out long TokensUsed, out int LiveChildren) -> void
-Lunate.Agent.SubagentUsage.Equals(Lunate.Agent.SubagentUsage other) -> bool
-Lunate.Agent.SubagentUsage.LiveChildren.get -> int
-Lunate.Agent.SubagentUsage.LiveChildren.init -> void
-Lunate.Agent.SubagentUsage.SubagentUsage() -> void
-Lunate.Agent.SubagentUsage.SubagentUsage(long TokensUsed, int LiveChildren) -> void
-Lunate.Agent.SubagentUsage.TokensUsed.get -> long
-Lunate.Agent.SubagentUsage.TokensUsed.init -> void
 Lunate.Agent.TextMessageContent
 Lunate.Agent.TextMessageContent.Deconstruct(out string! RunId, out string! MessageId, out string! Text) -> void
 Lunate.Agent.TextMessageContent.Equals(Lunate.Agent.TextMessageContent? other) -> bool
@@ -608,16 +588,12 @@ override Lunate.Agent.StepLimitReached.<Clone>$() -> Lunate.Agent.StepLimitReach
 override Lunate.Agent.StepLimitReached.Equals(object? obj) -> bool
 override Lunate.Agent.StepLimitReached.GetHashCode() -> int
 override Lunate.Agent.StepLimitReached.ToString() -> string!
-override Lunate.Agent.SubagentLimits.Equals(object? obj) -> bool
-override Lunate.Agent.SubagentLimits.GetHashCode() -> int
-override Lunate.Agent.SubagentLimits.ToString() -> string!
 override Lunate.Agent.SubagentRequest.Equals(object? obj) -> bool
 override Lunate.Agent.SubagentRequest.GetHashCode() -> int
 override Lunate.Agent.SubagentRequest.ToString() -> string!
 override Lunate.Agent.SubagentResult.Equals(object? obj) -> bool
 override Lunate.Agent.SubagentResult.GetHashCode() -> int
 override Lunate.Agent.SubagentResult.ToString() -> string!
-override Lunate.Agent.SubagentUsage.GetHashCode() -> int
 override Lunate.Agent.TextMessageContent.<Clone>$() -> Lunate.Agent.TextMessageContent!
 override Lunate.Agent.TextMessageContent.Equals(object? obj) -> bool
 override Lunate.Agent.TextMessageContent.GetHashCode() -> int
@@ -754,14 +730,10 @@ static Lunate.Agent.SteeringInjected.operator !=(Lunate.Agent.SteeringInjected? 
 static Lunate.Agent.SteeringInjected.operator ==(Lunate.Agent.SteeringInjected? left, Lunate.Agent.SteeringInjected? right) -> bool
 static Lunate.Agent.StepLimitReached.operator !=(Lunate.Agent.StepLimitReached? left, Lunate.Agent.StepLimitReached? right) -> bool
 static Lunate.Agent.StepLimitReached.operator ==(Lunate.Agent.StepLimitReached? left, Lunate.Agent.StepLimitReached? right) -> bool
-static Lunate.Agent.SubagentLimits.operator !=(Lunate.Agent.SubagentLimits? left, Lunate.Agent.SubagentLimits? right) -> bool
-static Lunate.Agent.SubagentLimits.operator ==(Lunate.Agent.SubagentLimits? left, Lunate.Agent.SubagentLimits? right) -> bool
 static Lunate.Agent.SubagentRequest.operator !=(Lunate.Agent.SubagentRequest? left, Lunate.Agent.SubagentRequest? right) -> bool
 static Lunate.Agent.SubagentRequest.operator ==(Lunate.Agent.SubagentRequest? left, Lunate.Agent.SubagentRequest? right) -> bool
 static Lunate.Agent.SubagentResult.operator !=(Lunate.Agent.SubagentResult? left, Lunate.Agent.SubagentResult? right) -> bool
 static Lunate.Agent.SubagentResult.operator ==(Lunate.Agent.SubagentResult? left, Lunate.Agent.SubagentResult? right) -> bool
-static Lunate.Agent.SubagentUsage.operator !=(Lunate.Agent.SubagentUsage left, Lunate.Agent.SubagentUsage right) -> bool
-static Lunate.Agent.SubagentUsage.operator ==(Lunate.Agent.SubagentUsage left, Lunate.Agent.SubagentUsage right) -> bool
 static Lunate.Agent.TextMessageContent.operator !=(Lunate.Agent.TextMessageContent? left, Lunate.Agent.TextMessageContent? right) -> bool
 static Lunate.Agent.TextMessageContent.operator ==(Lunate.Agent.TextMessageContent? left, Lunate.Agent.TextMessageContent? right) -> bool
 static Lunate.Agent.TextMessageEnd.operator !=(Lunate.Agent.TextMessageEnd? left, Lunate.Agent.TextMessageEnd? right) -> bool
@@ -807,5 +779,3 @@ virtual Lunate.Agent.AgentEvent.EqualityContract.get -> System.Type!
 virtual Lunate.Agent.AgentEvent.Equals(Lunate.Agent.AgentEvent? other) -> bool
 virtual Lunate.Agent.AgentEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
 virtual Lunate.Agent.ExtensionEvent.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
-~override Lunate.Agent.SubagentUsage.Equals(object obj) -> bool
-~override Lunate.Agent.SubagentUsage.ToString() -> string
