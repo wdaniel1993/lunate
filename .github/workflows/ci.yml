@@ -15,12 +15,17 @@ on:
     # ready_for_review is not in GitHub's default set: without it, a draft that
     # is marked ready would keep the statuses of the run it had as a draft.
     types: [opened, synchronize, reopened, ready_for_review]
+  # The merge queue runs the required check on the combined head of a batch. Without this trigger
+  # `ci-ok` never reports for a merge group and the queue stalls.
+  merge_group:
   workflow_dispatch:
 
 # Supersede in-flight runs for the same ref instead of queueing duplicates.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # A merge group's gate must run to completion: cancelling it fails the batch. Pull requests and
+  # pushes still supersede their own older runs.
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 permissions:
   contents: read
@@ -69,8 +74,19 @@ jobs:
         shell: bash
         env:
           BASE_REF: ${{ github.base_ref }}
+          BASE_SHA: ${{ github.event.merge_group.base_sha }}
         run: |
           set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "merge_group" ]; then
+            # The batch is judged by what it changes against the branch it will land on, exactly as
+            # a pull request is: a batch of prose-only pull requests gets the docs profile.
+            git diff --name-status -M "${BASE_SHA}...HEAD" >changed.txt
+            echo "changed paths (merge group):"
+            cat changed.txt
+            bash scripts/ci-plan.sh --paths-file changed.txt >>"${GITHUB_OUTPUT}"
+            cat "${GITHUB_OUTPUT}"
+            exit 0
+          fi
           if [ "${GITHUB_EVENT_NAME}" != "pull_request" ]; then
             # A push to main already filters prose-only changes (paths-ignore above), so whatever
             # arrives here gets the whole gate.
