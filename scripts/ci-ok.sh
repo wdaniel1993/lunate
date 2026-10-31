@@ -75,11 +75,23 @@ decide() {
 
 # One job's block from the workflow, at the two-space indent of a job key under `jobs:`.
 _job_block() {
-    awk -v job="$1" '
-        $0 == "  " job ":" { inside = 1; next }
-        inside && /^  [A-Za-z0-9_-]+:$/ { inside = 0 }
-        inside { print }
-    ' "$WORKFLOW"
+    python3 - "$WORKFLOW" "$1" <<'PY'
+import re
+import sys
+
+workflow_path, job = sys.argv[1:]
+inside = False
+with open(workflow_path, encoding="utf-8") as workflow:
+    for line in workflow:
+        line = line.rstrip("\r\n")
+        if line == f"  {job}:":
+            inside = True
+            continue
+        if inside and re.fullmatch(r"  [A-Za-z0-9_-]+:", line):
+            break
+        if inside:
+            print(line)
+PY
 }
 
 _run_from_env() {
