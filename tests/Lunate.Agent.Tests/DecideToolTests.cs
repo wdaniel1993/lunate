@@ -111,7 +111,8 @@ public sealed class DecideToolTests
         Assert.Equal(0, writes);
 
         ToolCallResult decideResult = Assert.Single(
-            events.OfType<ToolCallResult>().Where(result => result.CallId == "decide-call")
+            events.OfType<ToolCallResult>(),
+            result => result.CallId == "decide-call"
         );
         using JsonDocument response = JsonDocument.Parse(decideResult.Output);
         JsonElement results = response.RootElement.GetProperty("results");
