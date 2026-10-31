@@ -172,12 +172,26 @@ public sealed class UsageCostTests
         session.AppendModelUsage(
             "fixture-other",
             new SessionUsage(1_000, 0),
-            new ModelUsageAttribution("decision", "decision-profile", "router", "openrouter", "native", 0.8d)
+            new ModelUsageAttribution(
+                "decision",
+                "decision-profile",
+                "router",
+                "openrouter",
+                "native",
+                0.8d
+            )
         );
         session.AppendModelUsage(
             "fixture-other",
             new SessionUsage(2_000, 0),
-            new ModelUsageAttribution("decision", "decision-profile", "router", "openrouter", "adapter", 0.7d)
+            new ModelUsageAttribution(
+                "decision",
+                "decision-profile",
+                "router",
+                "openrouter",
+                "adapter",
+                0.7d
+            )
         );
 
         UsageCostReport report = Assert.IsType<UsageCostReport>(

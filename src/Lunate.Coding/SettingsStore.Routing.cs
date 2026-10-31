@@ -61,7 +61,10 @@ public static partial class SettingsStore
         HashSet<string> seen = new(StringComparer.Ordinal);
         foreach (JsonElement item in value.EnumerateArray())
         {
-            if (item.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(item.GetString()))
+            if (
+                item.ValueKind != JsonValueKind.String
+                || string.IsNullOrWhiteSpace(item.GetString())
+            )
             {
                 problems.Add("'routingProfiles' entries must be non-empty profile names");
                 continue;

@@ -652,9 +652,8 @@ public sealed partial class AgentHarness
             );
             // Style `inline` models embed their reasoning in the text stream (design D4); every
             // other model's text flows straight through.
-            inlineSplitter = usageModel?.Model.Reasoning == "inline"
-                ? new InlineThinkingSplitter()
-                : null;
+            inlineSplitter =
+                usageModel?.Model.Reasoning == "inline" ? new InlineThinkingSplitter() : null;
 
             using (
                 ModelRouteObserver.Scope(
