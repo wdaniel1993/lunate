@@ -68,12 +68,22 @@ public sealed class ExtensionTemplateTests
                     ) == true
             );
             Assert.True(
-                string.Equals("all", (string?)package.Attribute("PrivateAssets"), StringComparison.Ordinal),
-                $"the template's {assembly} package reference must carry PrivateAssets=\"all\": the " + "references must not flow to consumers of a packaged extension"
+                string.Equals(
+                    "all",
+                    (string?)package.Attribute("PrivateAssets"),
+                    StringComparison.Ordinal
+                ),
+                $"the template's {assembly} package reference must carry PrivateAssets=\"all\": the "
+                    + "references must not flow to consumers of a packaged extension"
             );
             Assert.True(
-                string.Equals("runtime", (string?)package.Attribute("ExcludeAssets"), StringComparison.Ordinal),
-                $"the template's {assembly} package reference must carry ExcludeAssets=\"runtime\": " + "the host loads it, so it is not a runtime asset of the extension"
+                string.Equals(
+                    "runtime",
+                    (string?)package.Attribute("ExcludeAssets"),
+                    StringComparison.Ordinal
+                ),
+                $"the template's {assembly} package reference must carry ExcludeAssets=\"runtime\": "
+                    + "the host loads it, so it is not a runtime asset of the extension"
             );
 
             XElement project = Assert.Single(
@@ -85,12 +95,22 @@ public sealed class ExtensionTemplateTests
                     ) == true
             );
             Assert.True(
-                string.Equals("false", (string?)project.Attribute("Private"), StringComparison.Ordinal),
-                $"the template's {assembly} reference must carry Private=\"false\": a copy in the " + "output directory is ignored at load, so shipping one is a warning for nothing"
+                string.Equals(
+                    "false",
+                    (string?)project.Attribute("Private"),
+                    StringComparison.Ordinal
+                ),
+                $"the template's {assembly} reference must carry Private=\"false\": a copy in the "
+                    + "output directory is ignored at load, so shipping one is a warning for nothing"
             );
             Assert.True(
-                string.Equals("runtime", (string?)project.Attribute("ExcludeAssets"), StringComparison.Ordinal),
-                $"the template's {assembly} reference must carry ExcludeAssets=\"runtime\": the host " + "loads it, so it is not a runtime asset of the extension"
+                string.Equals(
+                    "runtime",
+                    (string?)project.Attribute("ExcludeAssets"),
+                    StringComparison.Ordinal
+                ),
+                $"the template's {assembly} reference must carry ExcludeAssets=\"runtime\": the host "
+                    + "loads it, so it is not a runtime asset of the extension"
             );
             Assert.Equal("all", (string?)project.Attribute("PrivateAssets"));
         }

@@ -8,10 +8,10 @@
     <PropertyGroup Condition="'$(LunateUseNuGetContracts)' == ''">
         <LunateUseNuGetContracts
             Condition="!Exists('../../../src/Lunate.Contracts/Lunate.Contracts.csproj')"
-        >true</LunateUseNuGetContracts>
+            >true</LunateUseNuGetContracts>
         <LunateUseNuGetContracts
             Condition="Exists('../../../src/Lunate.Contracts/Lunate.Contracts.csproj')"
-        >false</LunateUseNuGetContracts>
+            >false</LunateUseNuGetContracts>
     </PropertyGroup>
 
     <PropertyGroup>

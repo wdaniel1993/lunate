@@ -72,7 +72,10 @@ public sealed class ExtensionContractPackages
             Assert.Equal("MIT", Metadata(id, "PackageLicenseExpression"));
             Assert.Equal("README.md", Metadata(id, "PackageReadmeFile"));
             Assert.Equal("lunate-logo-dark.png", Metadata(id, "PackageIcon"));
-            Assert.Equal("https://github.com/wdaniel1993/lunate", Metadata(id, "PackageProjectUrl"));
+            Assert.Equal(
+                "https://github.com/wdaniel1993/lunate",
+                Metadata(id, "PackageProjectUrl")
+            );
             Assert.True(File.Exists(ReadmePath(id)), $"{id} packs a README.md that is missing.");
             Assert.True(
                 File.Exists(IconPath()),
@@ -108,7 +111,10 @@ public sealed class ExtensionContractPackages
             string include = (string?)reference.Attribute("Include") ?? string.Empty;
             bool published =
                 include.Contains("Lunate.Agent.csproj", StringComparison.Ordinal)
-                || include.Contains("Lunate.Extensibility.Abstractions.csproj", StringComparison.Ordinal);
+                || include.Contains(
+                    "Lunate.Extensibility.Abstractions.csproj",
+                    StringComparison.Ordinal
+                );
             Assert.True(
                 published || string.Equals("All", (string?)reference.Attribute("PrivateAssets")),
                 $"a project reference to '{include}' has no PrivateAssets: pack would name a "
@@ -153,7 +159,10 @@ public sealed class ExtensionContractPackages
             element => (string?)element.Attribute("Name") == "PackOwnAssemblies"
         );
 
-        string include = Assert.Single(target.Descendants("TfmSpecificPackageFile")).Attribute("Include")!.Value!;
+        string include = Assert
+            .Single(target.Descendants("TfmSpecificPackageFile"))
+            .Attribute("Include")!
+            .Value!;
         foreach (string file in expected)
         {
             Assert.Contains(file, include, StringComparison.Ordinal);
@@ -173,14 +182,12 @@ public sealed class ExtensionContractPackages
         "Lunate.Extensibility.Testing",
     ];
 
-    private static string VersionOf(string id) => Load(id).Root!.Element("PropertyGroup")!.Element("Version")!.Value!;
+    private static string VersionOf(string id) =>
+        Load(id).Root!.Element("PropertyGroup")!.Element("Version")!.Value!;
 
     private static string Metadata(string id, string elementName)
     {
-        XElement? element = Load(id)
-            .Root!
-            .Element("PropertyGroup")!
-            .Element(elementName);
+        XElement? element = Load(id).Root!.Element("PropertyGroup")!.Element(elementName);
         Assert.NotNull(element);
         return element.Value.Trim();
     }
@@ -196,13 +203,15 @@ public sealed class ExtensionContractPackages
     private static XElement SingleReference(XDocument document, string name, string includeMatch) =>
         Assert.Single(
             document.Descendants(name),
-            element => ((string?)element.Attribute("Include"))?.Contains(
-                includeMatch,
-                StringComparison.Ordinal
-            ) == true
+            element =>
+                ((string?)element.Attribute("Include"))?.Contains(
+                    includeMatch,
+                    StringComparison.Ordinal
+                ) == true
         );
 
-    private static XDocument Load(string id) => XDocument.Load(Path.Combine(ProjectDirectory(id), $"{id}.csproj"));
+    private static XDocument Load(string id) =>
+        XDocument.Load(Path.Combine(ProjectDirectory(id), $"{id}.csproj"));
 
     private static string ProjectDirectory(string id) =>
         Path.Combine(RepositoryRoot.Find(), "src", id);
