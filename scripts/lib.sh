@@ -19,6 +19,31 @@ detect_rid() {
   echo "${os}-${arch}"
 }
 
+# Parses a shard spec "i/n" and prints "<i> <n>" (both integers, 1 <= i <= n).
+# Exits 2 on anything else, including an out-of-range shard: an unreachable
+# shard (i > n, or n = 0) must fail loudly rather than silently run nothing.
+# The gate scripts source this and call it with the value of --shard.
+shard_spec_parse() {
+  local spec="${1:-}" i n
+  i="${spec%%/*}"
+  n="${spec#*/}"
+  if [ "$i" = "$spec" ] || [ "$n" = "$spec" ]; then
+    echo "shard spec must be <i>/<n>, got '$spec'" >&2
+    return 2
+  fi
+  case "$i" in
+    "" | *[!0-9]* | 0) echo "shard index must be an integer 1..n, got '$i'" >&2; return 2 ;;
+  esac
+  case "$n" in
+    "" | *[!0-9]* | 0) echo "shard count must be a positive integer, got '$n'" >&2; return 2 ;;
+  esac
+  if [ "$i" -gt "$n" ]; then
+    echo "shard index $i is out of range (1..$n)" >&2
+    return 2
+  fi
+  printf '%s\n' "$i" "$n"
+}
+
 # Fails when any existing PublicAPI.Shipped.txt is edited or deleted relative
 # to the merge base with main; a newly added tracking file is the bootstrap
 # path for a project that starts tracking its surface and does not trip the gate.
