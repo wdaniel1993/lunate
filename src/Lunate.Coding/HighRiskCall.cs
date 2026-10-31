@@ -17,7 +17,7 @@ namespace Lunate.Coding;
 /// showing these calls after the tool itself was granted for the session.
 /// </para>
 /// </summary>
-internal static class HighRiskCall
+internal static partial class HighRiskCall
 {
     private static readonly string[] StateCommands = ["trust", "install", "uninstall"];
 
@@ -55,7 +55,8 @@ internal static class HighRiskCall
         return toolName switch
         {
             BashTool.ToolName => RunsStateCommand(args)
-                || NamesStateRoot(args, workspaceRoot, storeRoot, homeRoot),
+                || NamesStateRoot(args, workspaceRoot, storeRoot, homeRoot)
+                || MountsStateRoot(args, workspaceRoot, storeRoot, homeRoot),
             WriteTool.ToolName or EditTool.ToolName => WritesStateRoot(
                 args,
                 workspaceRoot,
