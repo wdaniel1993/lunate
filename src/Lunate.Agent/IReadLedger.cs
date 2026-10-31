@@ -15,6 +15,9 @@ internal interface IReadLedger
     /// <summary>Invalidates a live read after a published file change.</summary>
     void Invalidate(string path);
 
+    /// <summary>Refreshes the live version after an agent file mutation succeeds.</summary>
+    void Refresh(string path, string text, string displayPath);
+
     /// <summary>Call ids of read results that should be replaced in the in-memory request history.</summary>
     IReadOnlyDictionary<string, string> StaleReadNotices { get; }
 }

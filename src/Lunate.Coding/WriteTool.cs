@@ -180,6 +180,7 @@ public sealed class WriteTool(
                         created ? FileChangeKind.Created : FileChangeKind.Modified
                     )
                 );
+                ctx.Reads?.Refresh(target, written, relative);
 
                 var lines = CountLines(written);
                 var details = new WriteDetails(

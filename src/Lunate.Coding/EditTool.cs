@@ -286,6 +286,7 @@ public sealed class EditTool(
                         FileChangeKind.Modified
                     )
                 );
+                ctx.Reads?.Refresh(resolved.AbsolutePath, newFileText, resolved.RelativePath);
 
                 var firstLine = start + 1;
                 var lastLine = start + newLines.Length;
