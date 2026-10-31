@@ -2,6 +2,7 @@
 
 - Status: accepted — 2026-10-30 (maintainer amendments for `provider-store`, #253)
 - Date: 2026-10-30
+- Duplicate removed: `adr/0027-provider-store-and-model-profiles.md` was an earlier draft of this same decision and claimed the same number; deleted as a duplicate in commit `28dc4440` so the ADR numbers stay unique and dense.
 - Relates to: ADR-0002 (layering and MEAI model types), ADR-0003 (loop ownership), ADR-0015 (pinned session format), ADR-0022 (model catalog and provider auth)
 
 ## Context
