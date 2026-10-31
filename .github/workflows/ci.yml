@@ -367,6 +367,10 @@ jobs:
             Directory.Build.props
             **/*.csproj
 
+      - name: PowerShell test-runner self-tests
+        shell: pwsh
+        run: ./scripts/verify-test-runner.tests.ps1
+
       - name: Install hyperfine (Windows)
         shell: pwsh
         run: |
@@ -394,7 +398,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: verify-win-x64-powershell
-          path: artifacts/
+          path: |
+            artifacts/
+            .artifacts/
           if-no-files-found: warn
 
   # The dedicated cold-startup leg (#240). The floor measured inside verify is still noisy on

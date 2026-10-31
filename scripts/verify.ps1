@@ -5,6 +5,7 @@ Set-StrictMode -Version Latest
 
 Push-Location (Join-Path $PSScriptRoot '..')
 try {
+    . (Join-Path $PSScriptRoot 'verify-test-runner.ps1')
     $budgetMs = if ($env:BUDGET_MS) { [int]$env:BUDGET_MS } else { 150 }
     $configuration = if ($env:CONFIGURATION) { $env:CONFIGURATION } else { 'Release' }
     $publishDir = 'artifacts/publish'
@@ -59,38 +60,6 @@ try {
         return [pscustomobject]@{
             Floor  = [math]::Round($floor * 1000)
             Median = [math]::Round($median * 1000)
-        }
-    }
-
-    function Invoke-Tests {
-        param([string]$Label, [string[]]$TestArgs)
-        # Output goes to files via Start-Process (raw handle redirection), not
-        # through a PowerShell pipeline: a pipeline ends only at EOF, and EOF
-        # needs every writer of the pipe to close; build workers inherit the
-        # pipe and can outlive the command by design, stalling the step for
-        # minutes on Windows CI (probe-verified; parity with scripts/verify.sh).
-        # File handles have no such dependency: the step ends when the command
-        # ends. The trade-off is that the pass prints after it runs.
-        $outFile = [System.IO.Path]::GetTempFileName()
-        $errFile = [System.IO.Path]::GetTempFileName()
-        $proc = Start-Process -FilePath 'dotnet' -ArgumentList $TestArgs -NoNewWindow -PassThru `
-            -RedirectStandardOutput $outFile -RedirectStandardError $errFile
-        $proc.WaitForExit()
-        $exit = $proc.ExitCode
-        $lines = @(Get-Content $outFile) + @(Get-Content $errFile)
-        $lines | ForEach-Object { Write-Host $_ }
-        Remove-Item $outFile, $errFile -ErrorAction SilentlyContinue
-        if ($exit -ne 0) {
-            throw "verify: $Label failed (exit $exit)"
-        }
-        # A discovery regression (runner or argument drift) must never look
-        # green: the MTP summary line is "total: N"; missing or zero fails.
-        $total = $null
-        foreach ($line in $lines) {
-            if ([string]$line -match 'total: (\d+)') { $total = [int]$Matches[1] }
-        }
-        if ($null -eq $total -or $total -eq 0) {
-            throw "verify: $Label executed zero tests - test discovery regression?"
         }
     }
 
