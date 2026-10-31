@@ -47,11 +47,9 @@ public sealed class ProjectionBatchSettingsTests
         AgentSettings settings = SettingsStore.Resolve(
             temp.File("settings.json"),
             name =>
-                name == MaskTurnsVariable
-                    ? "12"
-                    : name == MaskErrorTurnsVariable
-                        ? "48"
-                        : null
+                name == MaskTurnsVariable ? "12"
+                : name == MaskErrorTurnsVariable ? "48"
+                : null
         );
 
         Assert.Equal(12, settings.ProjectionMaskTurns);
@@ -87,11 +85,7 @@ public sealed class ProjectionBatchSettingsTests
             SettingsStore.Resolve(temp.File("settings.json"), _ => null)
         );
 
-        Assert.Contains(
-            "projection.maskErrorTurns",
-            exception.Message,
-            StringComparison.Ordinal
-        );
+        Assert.Contains("projection.maskErrorTurns", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

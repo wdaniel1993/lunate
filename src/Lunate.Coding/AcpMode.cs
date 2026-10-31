@@ -298,6 +298,8 @@ internal static class AcpMode
             ToolOutputLimit = effective.ToolOutputLimit,
             SpillThresholdTokens = effective.SpillThresholdTokens,
             ProjectionBatchTurns = effective.ProjectionBatchTurns,
+            ProjectionMaskTurns = effective.ProjectionMaskTurns,
+            ProjectionMaskErrorTurns = effective.ProjectionMaskErrorTurns,
             // The same redactor masks the model-facing text for ACP runs, which always have a session.
             ToolOutputMask = redaction.Redact,
             SubagentLimits = effective.Subagents,

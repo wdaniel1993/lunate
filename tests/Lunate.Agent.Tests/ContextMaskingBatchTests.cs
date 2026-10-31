@@ -24,11 +24,7 @@ public sealed class ContextMaskingBatchTests
 
         // Request 2 is already past the first batch point; the turn-1 result is one turn old, and
         // the success window is masked at an age strictly greater than one turn.
-        Assert.Equal(
-            new string('x', 6_000),
-            ToolResultText(client, 1, "call-1"),
-            StringComparison.Ordinal
-        );
+        Assert.Equal(new string('x', 6_000), ToolResultText(client, 1, "call-1"));
     }
 
     [Fact]
@@ -47,7 +43,7 @@ public sealed class ContextMaskingBatchTests
         Assert.StartsWith("[masked:", text, StringComparison.Ordinal);
         Assert.Contains("turns old", text, StringComparison.Ordinal);
         Assert.Contains("re-run the tool", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("\n", text, StringComparison.Ordinal);
+        Assert.False(text.Contains("\n", StringComparison.Ordinal));
         Assert.DoesNotContain("xxxxx", text, StringComparison.Ordinal);
     }
 
@@ -69,15 +65,16 @@ public sealed class ContextMaskingBatchTests
         await harness.RunAsync("Continue", ct).ToListAsync(ct);
 
         ToolCallResult pointer = Assert.Single(
-            admitted.OfType<ToolCallResult>().Where(result => result.CallId == "call-1")
+            admitted.OfType<ToolCallResult>(),
+            result => result.CallId == "call-1"
         );
         string spillPath = ToolOutputSpillTests.PathFromMarker(pointer.Output);
-        Assert.Equal(full, File.ReadAllText(spillPath), StringComparison.Ordinal);
+        Assert.Equal(full, File.ReadAllText(spillPath));
 
         string text = ToolResultText(client, 2, "call-1");
         Assert.StartsWith("[masked:", text, StringComparison.Ordinal);
         Assert.Contains("full output at " + spillPath + "]", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("\n", text, StringComparison.Ordinal);
+        Assert.False(text.Contains("\n", StringComparison.Ordinal));
 
         // The projection is request-time: the session entry keeps the admitted pointer text.
         Assert.Contains(
@@ -117,11 +114,7 @@ public sealed class ContextMaskingBatchTests
             ToolResultText(client, 2, "call-ok"),
             StringComparison.Ordinal
         );
-        Assert.Equal(
-            "boom: the file is locked",
-            ToolResultText(client, 2, "call-err"),
-            StringComparison.Ordinal
-        );
+        Assert.Equal("boom: the file is locked", ToolResultText(client, 2, "call-err"));
 
         // Request 4 (turn 4): the error is three turns old, past its own window. Its stub stays an
         // error stub; nothing reports a success that did not happen.
@@ -129,7 +122,7 @@ public sealed class ContextMaskingBatchTests
         Assert.StartsWith("[masked:", errorStub, StringComparison.Ordinal);
         Assert.Contains("error result", errorStub, StringComparison.Ordinal);
         Assert.Contains("re-run the tool", errorStub, StringComparison.Ordinal);
-        Assert.DoesNotContain("\n", errorStub, StringComparison.Ordinal);
+        Assert.False(errorStub.Contains("\n", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -172,7 +165,7 @@ public sealed class ContextMaskingBatchTests
         string text = ToolResultText(client, 1, "call-old");
         Assert.StartsWith("[masked:", text, StringComparison.Ordinal);
         Assert.Contains("full output at " + spillPath + "]", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("\n", text, StringComparison.Ordinal);
+        Assert.False(text.Contains("\n", StringComparison.Ordinal));
         Assert.DoesNotContain("zzzzz", text, StringComparison.Ordinal);
     }
 
@@ -278,7 +271,8 @@ public sealed class ContextMaskingBatchTests
 
     private static string ToolResultText(ScriptedChatClient client, int request, string callId) =>
         client
-            .Requests[request].Messages.SelectMany(message => message.Contents)
+            .Requests[request]
+            .Messages.SelectMany(message => message.Contents)
             .OfType<FunctionResultContent>()
             .Single(result => result.CallId == callId)
             .Result!.ToString()!;

@@ -94,9 +94,25 @@ internal sealed partial class InteractiveSession
         }
 
         tail.Add(SkillsContextSegment());
+        tail.Add(SavingsContextSegment());
         return FormattableString.Invariant(
             $"context: {context}; subagents: concurrency {Limit(limits.Concurrency)}, {Limit(limits.TokenBudget)} tokens per child, {Limit(limits.TreeTokenBudget)} tokens per tree, depth 1 (fixed); tree usage: {treeTokens} tokens, {tree.LiveChildren} running; {string.Join("; ", tail)}"
         );
+    }
+
+    /// <summary>
+    /// The <c>/context</c> context-savings segment: tokens kept out of the window by the three
+    /// admission mechanisms, reported separately (sign-off condition (f) of ADR-0012's addendum).
+    /// </summary>
+    private string SavingsContextSegment()
+    {
+        ContextSavings savings = _harness?.ContextSavings ?? new ContextSavings(0, 0, 0);
+        return "saved tokens: spills "
+            + Lunate.Tui.StatusFooterRenderer.FormatTokens(savings.Spills)
+            + ", masking "
+            + Lunate.Tui.StatusFooterRenderer.FormatTokens(savings.Masking)
+            + ", read stubs "
+            + Lunate.Tui.StatusFooterRenderer.FormatTokens(savings.ReadStubs);
     }
 
     /// <summary>
