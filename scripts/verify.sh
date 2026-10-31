@@ -570,6 +570,16 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 npx --yes markdownlint-cli2@0.23.3
 
+# Both checks run in the full profile too: the bypass they close (#241/#313) landed through a *code*
+# pull request, which never runs the docs profile.
+step "agent scratch paths"
+python3 "${SCRIPT_DIR}/../tests/scripts/test_scratch_paths.py"
+python3 "${SCRIPT_DIR}/check-scratch-paths.py" --base "${GITHUB_BASE_SHA:-origin/main}"
+
+step "spec changes are archived"
+python3 "${SCRIPT_DIR}/../tests/scripts/test_spec_archive.py"
+python3 "${SCRIPT_DIR}/check-spec-archive.py" --base "${GITHUB_BASE_SHA:-origin/main}"
+
 step "public API"
 if ! check_shipped_api_unchanged; then
   exit 1
