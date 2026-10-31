@@ -1,8 +1,8 @@
 ## 1. Container state-root mounts are high-risk
 
 - [x] 1.1 Add host-path-based `HighRiskCallTests` for Docker `run -v` and Podman `run --mount type=bind,source=…`, including configured `LUNATE_HOME` expansion, a source below the state root, and a normal mount outside it; construct paths with `Path.Combine` so the tests are platform-neutral.
-- [ ] 1.2 Extend the existing high-risk call classifier so the specified Docker/Podman state-root mounts always require approval, without changing the guard's claim about daemon containment or adding a public API.
-- [ ] 1.3 Build `Lunate.Coding` and run the filtered `Lunate.Coding.Tests` cases for `HighRiskCallTests`; confirm the allowlist/remembered-approval protections still apply.
+- [x] 1.2 Extend the existing high-risk call classifier so the specified Docker/Podman state-root mounts always require approval, without changing the guard's claim about daemon containment or adding a public API.
+- [x] 1.3 Build `Lunate.Coding` and run the filtered `Lunate.Coding.Tests` cases for `HighRiskCallTests`; confirm the allowlist/remembered-approval protections still apply.
 
 ## 2. Warn about pre-existing external hardlinks
 
