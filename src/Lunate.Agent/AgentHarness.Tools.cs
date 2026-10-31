@@ -470,65 +470,72 @@ public sealed partial class AgentHarness
 
         try
         {
-            if (
-                _options.Approver is not null
-                && _options.DecisionMode is DecisionMode.Shadow or DecisionMode.Enforce
-            )
+            ApprovalRequest approvalRequest = new(
+                tool,
+                approvedArgs,
+                runId,
+                ParentRunId,
+                SpawnDepth,
+                WorkspaceRoot: _options.WorkingDirectory
+            );
+            if (_options.Approver is { } decisionApprover)
             {
-                ApprovalDecisionResult decision = await EvaluateApprovalDecisionAsync(
-                    runId,
-                    new ApprovalRequest(
-                        tool,
-                        approvedArgs,
-                        runId,
-                        ParentRunId,
-                        SpawnDepth,
-                        WorkspaceRoot: _options.WorkingDirectory
-                    ),
-                    channel,
-                    ct
-                );
+                bool promptResolved = false;
                 if (
-                    _options.DecisionMode == DecisionMode.Enforce
-                    && decision.Failure is { } failure
+                    tool is not AskUserTool
+                    && _options.DecisionMode is DecisionMode.Shadow or DecisionMode.Enforce
                 )
                 {
-                    return new ToolResult(failure + " The call was not run.", IsError: true);
+                    ApprovalDecisionResult decision = await EvaluateApprovalDecisionAsync(
+                        runId,
+                        approvalRequest,
+                        channel,
+                        ct
+                    );
+                    if (
+                        _options.DecisionMode == DecisionMode.Enforce
+                        && decision.Evaluation is { Answer: "deny" } evaluation
+                    )
+                    {
+                        if (decisionApprover is not IUserPromptToolApprover promptApprover)
+                        {
+                            return new ToolResult(
+                                "Decision escalated, but no user was present; the call was denied.",
+                                IsError: true
+                            );
+                        }
+
+                        approvalRequest = approvalRequest with
+                        {
+                            EscalationRequested = true,
+                            DecisionRecommendation = evaluation.Answer,
+                            DecisionProbability = evaluation.Probability,
+                            DecisionModelId = evaluation.ModelId,
+                            DecisionMethod = evaluation.Method,
+                        };
+                        if (!await promptApprover.PromptAsync(approvalRequest, ct))
+                        {
+                            return new ToolResult(
+                                $"Denied: '{tool.Name}' was not run. Explain why the call is needed and ask before retrying.",
+                                IsError: true
+                            );
+                        }
+
+                        promptResolved = true;
+                    }
                 }
 
                 if (
-                    _options.DecisionMode == DecisionMode.Enforce
-                    && decision.Evaluation is not null
-                    && !decision.Approve
+                    tool is not AskUserTool
+                    && !promptResolved
+                    && !await decisionApprover.ApproveAsync(approvalRequest, ct)
                 )
                 {
                     return new ToolResult(
-                        $"Denied: the decision model did not approve '{tool.Name}'. The call was not run.",
+                        $"Denied: '{tool.Name}' was not run. Explain why the call is needed and ask before retrying.",
                         IsError: true
                     );
                 }
-            }
-
-            if (
-                _options.Approver is { } approver
-                && tool is not AskUserTool
-                && !await approver.ApproveAsync(
-                    new ApprovalRequest(
-                        tool,
-                        approvedArgs,
-                        runId,
-                        ParentRunId,
-                        SpawnDepth,
-                        WorkspaceRoot: _options.WorkingDirectory
-                    ),
-                    ct
-                )
-            )
-            {
-                return new ToolResult(
-                    $"Denied: '{tool.Name}' was not run. Explain why the call is needed and ask before retrying.",
-                    IsError: true
-                );
             }
         }
         catch (Exception exception)

@@ -12,7 +12,7 @@ namespace Lunate.Protocols.Acp;
 /// are remembered per tool name for the session; a cancelled request or a request error resolves as
 /// a decline (the safe default).
 /// </summary>
-internal sealed class ClientApprover : IToolApprover
+internal sealed class ClientApprover : IUserPromptToolApprover
 {
     internal const int DefaultPermissionTimeoutSeconds = 600;
 
@@ -73,7 +73,6 @@ internal sealed class ClientApprover : IToolApprover
     {
         ArgumentNullException.ThrowIfNull(request);
         ITool tool = request.Tool;
-        JsonElement args = request.Args;
 
         lock (_gate)
         {
@@ -87,6 +86,16 @@ internal sealed class ClientApprover : IToolApprover
                 return false;
             }
         }
+
+        return await PromptAsync(request, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Always requests a decision from the editor, bypassing remembered outcomes.</summary>
+    public async ValueTask<bool> PromptAsync(ApprovalRequest request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ITool tool = request.Tool;
+        JsonElement args = request.Args;
 
         var permission = new RequestPermissionRequest
         {
@@ -189,6 +198,22 @@ internal sealed class ClientApprover : IToolApprover
             summary.Length == 0
                 ? tool.Name
                 : string.Create(CultureInfo.InvariantCulture, $"{tool.Name}: {summary}");
+        if (
+            request is
+            {
+                EscalationRequested: true,
+                DecisionRecommendation: { } recommendation,
+                DecisionProbability: { } probability,
+                DecisionModelId: { } modelId,
+            }
+        )
+        {
+            title = string.Create(
+                CultureInfo.InvariantCulture,
+                $"{title} — decision model recommends {recommendation} ({probability:0.00}, {modelId})"
+            );
+        }
+
         return request is { Depth: > 0, WorkspaceRoot: { Length: > 0 } root }
             ? string.Create(
                 CultureInfo.InvariantCulture,

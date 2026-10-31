@@ -34,7 +34,12 @@ public sealed class UsageCostRendererTests
         {
             CultureInfo.CurrentCulture = new CultureInfo("de-AT");
             var report = new CostReportView(
-                [new CostGroupView("decision", null, ["model-b"], 1500, 0, 0, 0, null)],
+                [
+                    new CostGroupView("decision", null, ["model-b"], 1500, 0, 0, 0, null)
+                    {
+                        DecisionMethod = "adapter",
+                    },
+                ],
                 [new CostGroupView("router", "openrouter", ["model-b"], 1500, 0, 0, 0, null)],
                 null,
                 HasUnpriced: true
@@ -43,7 +48,7 @@ public sealed class UsageCostRendererTests
             Assert.Equal(
                 [
                     "cost by usage:",
-                    "  decision: 1,500 in / 0 out / 0 cache read / 0 cache write = unpriced; models: model-b",
+                    "  decision (adapter): 1,500 in / 0 out / 0 cache read / 0 cache write = unpriced; models: model-b",
                     "cost by provider:",
                     "  router (openrouter): 1,500 in / 0 out / 0 cache read / 0 cache write = unpriced; models: model-b",
                     "total: unpriced",

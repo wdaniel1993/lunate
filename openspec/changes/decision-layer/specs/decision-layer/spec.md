@@ -172,11 +172,21 @@ available for each acting consumer and SHALL record what it would have done with
 
 ### Requirement: Approval gate escalates, never blocks
 
-The approval-gate consumer SHALL act only by escalation. A `deny` recommendation on a call the user's
-allow envelope would permit SHALL turn that call into a user ask that shows the decision and its
-probability; it SHALL NOT silently refuse the call. In an unattended run escalation SHALL be treated
-as a denial, fail-closed, with a notice that no user was present. An `approve` recommendation SHALL
-NOT skip a prompt, waive a denial, or authorize a call the tool rules exclude from any decision model.
+The approval-gate consumer SHALL act only by escalation, enforced by the agent harness at the single
+approval seam. For a `deny` recommendation on a call the user's allow envelope would permit, the
+harness SHALL call an approver capable of prompting a person with an `ApprovalRequest` that carries
+the escalation flag, recommendation, probability, model id and `native`/`adapter` method. This SHALL
+force the ordinary user prompt even when the approver ignores the flag; the TUI prompt SHALL show
+`decision model recommends deny (<probability>, <model>)`. If the active approver cannot prompt a
+person, the harness SHALL deny the call, fail-closed, and report that the decision escalated and no
+user was present. This rule includes print mode, unattended queue runs, ACP without a client prompt
+and `--yolo`: when the opt-in decision gate is enabled with `--yolo`, calls are auto-approved except
+that a decision `deny` is denied because no user is present. Plain `--yolo` SHALL remain unchanged.
+Calls that do not enter the approval seam, including `ask_user`, SHALL NOT be evaluated by the
+approval-gate consumer.
+An `approve` recommendation SHALL NOT skip a prompt, waive a denial, or authorize a call the tool
+rules exclude from any decision model. Failed or unavailable decisions SHALL leave the ordinary
+approval flow unchanged.
 
 #### Scenario: A deny recommendation becomes a user ask
 
@@ -190,6 +200,19 @@ NOT skip a prompt, waive a denial, or authorize a call the tool rules exclude fr
 - **WHEN** the seam resolves the call
 - **THEN** the call is denied, the session continues, and a notice records that the decision escalated
   with no user present
+
+#### Scenario: An approver that ignores the flag still prompts
+
+- **GIVEN** a prompt-capable approver that does not inspect the escalation flag
+- **WHEN** the harness passes it an escalation request
+- **THEN** the approver is called and its ordinary user decision determines whether the call runs
+
+#### Scenario: `--yolo` with the decision gate fails closed on deny
+
+- **GIVEN** `--yolo` and the opt-in decision gate are both active
+- **WHEN** the decision recommends `deny`
+- **THEN** the call is denied with a notice that no user was present; without the decision gate,
+  `--yolo` keeps its existing behavior
 
 #### Scenario: An approve recommendation grants nothing
 

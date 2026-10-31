@@ -60,8 +60,10 @@ internal static partial class UsageCost
         }
 
         IReadOnlyList<UsageCostLine> byUsage = records
-            .GroupBy(record => record.Usage, StringComparer.Ordinal)
-            .Select(group => SummarizeGroup(group.Key, providerKind: null, group))
+            .GroupBy(record => (record.Usage, record.DecisionMethod))
+            .Select(group =>
+                SummarizeGroup(group.Key.Usage, providerKind: null, group, group.Key.DecisionMethod)
+            )
             .ToArray();
         IReadOnlyList<UsageCostLine> byProvider = records
             .GroupBy(record => (record.ProviderName, record.ProviderKind))
@@ -85,7 +87,8 @@ internal static partial class UsageCost
     private static UsageCostLine SummarizeGroup(
         string name,
         string? providerKind,
-        IEnumerable<AttributedRecord> records
+        IEnumerable<AttributedRecord> records,
+        string? decisionMethod = null
     )
     {
         AttributedRecord[] items = [.. records];
@@ -102,7 +105,8 @@ internal static partial class UsageCost
             items
                 .Select(item => item.Lanes)
                 .Aggregate(default(UsageLanes), (sum, lanes) => sum.Add(lanes)),
-            cost
+            cost,
+            decisionMethod
         );
     }
 
@@ -118,6 +122,7 @@ internal static partial class UsageCost
             attribution?.Usage ?? "unknown",
             attribution?.ProviderName ?? "unknown",
             attribution?.ProviderKind,
+            attribution?.Usage == "decision" ? attribution.DecisionMethod : null,
             modelId,
             lanes,
             ForRecord(catalog, modelId, lanes)
@@ -128,6 +133,7 @@ internal static partial class UsageCost
         string Usage,
         string ProviderName,
         string? ProviderKind,
+        string? DecisionMethod,
         string? ModelId,
         UsageLanes Lanes,
         decimal? Cost

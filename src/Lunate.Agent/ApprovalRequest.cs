@@ -22,4 +22,20 @@ public sealed record ApprovalRequest(
     string? ParentRunId,
     int Depth,
     string? WorkspaceRoot = null
-);
+)
+{
+    /// <summary>Whether a decision recommendation escalated this call to a user prompt.</summary>
+    public bool EscalationRequested { get; init; }
+
+    /// <summary>The decision recommendation that caused escalation, when present.</summary>
+    public string? DecisionRecommendation { get; init; }
+
+    /// <summary>The probability assigned to the decision recommendation, when present.</summary>
+    public double? DecisionProbability { get; init; }
+
+    /// <summary>The resolved model id that made the decision, when present.</summary>
+    public string? DecisionModelId { get; init; }
+
+    /// <summary>The method used to make the decision: <c>native</c> or <c>adapter</c>.</summary>
+    public string? DecisionMethod { get; init; }
+}

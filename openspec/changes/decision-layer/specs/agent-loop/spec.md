@@ -5,10 +5,14 @@
 The agent loop SHALL consult the decision layer only at the approval seam, between a proposed tool
 call and its execution, and SHALL apply the tighten-only invariant there rather than in any consumer
 or tool. When the decision recommends `deny` for a call the allow envelope would permit, the loop
-SHALL turn that call into a user ask that shows the decision and its probability; when no user is
-present it SHALL deny the call, fail-closed, with a notice. An `approve` recommendation SHALL NOT
-change the outcome. Decision events emitted while the loop resolves an ask SHALL belong to the asking
-run's event stream.
+SHALL call a prompt-capable approver with escalation details, forcing the ordinary prompt even if
+the approver ignores the escalation flag. The prompt SHALL show the recommendation, probability and
+model id. When no user is present, including print mode, unattended queue runs, ACP without a client
+prompt and `--yolo`, the loop SHALL deny the call, fail-closed, with a notice. With the opt-in gate,
+`--yolo` SHALL auto-approve other calls and deny escalated calls; plain `--yolo` SHALL be unchanged.
+An `approve` recommendation SHALL NOT change the outcome. Failed or unavailable decisions SHALL
+leave the ordinary approval flow unchanged. Decision events emitted while the loop resolves an ask
+SHALL belong to the asking run's event stream.
 
 #### Scenario: An ask resolves through the single seam
 

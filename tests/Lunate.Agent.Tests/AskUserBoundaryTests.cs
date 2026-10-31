@@ -1,9 +1,58 @@
+using Lunate.Ai;
 using static Lunate.Agent.Tests.AgentTestSupport;
 
 namespace Lunate.Agent.Tests;
 
 public sealed class AskUserBoundaryTests
 {
+    [Fact]
+    public async Task Decision_gate_does_not_intercept_a_question_tool()
+    {
+        var decision = new ScriptedChatClient().Enqueue(
+            LoopScripts.Text(
+                """{"results":{"approval":{"answer":"deny","probabilities":{"approve":0.1,"deny":0.9}}}}"""
+            ),
+            LoopScripts.Stop()
+        );
+        var approver = new RecordingApprover(decision: true);
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("question_1", "ask_user", QuestionArguments()),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(
+            client,
+            Registry(new AskUserTool()),
+            new AgentHarnessOptions
+            {
+                DecisionMode = DecisionMode.Enforce,
+                Approver = approver,
+                UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+                {
+                    ["chat"] = new(
+                        client,
+                        "chat-profile",
+                        "openai",
+                        new ModelInfo("chat-model", "openai", null, 64000, SupportsTools: true)
+                    ),
+                    ["decision"] = new(
+                        decision,
+                        "decision-profile",
+                        "openai",
+                        new ModelInfo("decision-model", "openai", null, 64000, SupportsTools: false)
+                    ),
+                },
+            }
+        );
+
+        List<AgentEvent> events = await Run(harness);
+
+        Assert.Empty(decision.Requests);
+        Assert.Empty(approver.Requests);
+        Assert.Empty(events.OfType<DecisionEvaluated>());
+    }
+
     [Fact]
     public async Task Question_call_does_not_suppress_approval_of_the_next_bash_call()
     {

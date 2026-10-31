@@ -308,6 +308,16 @@ Lunate.Agent.ApprovalRequest.Args.init -> void
 Lunate.Agent.ApprovalRequest.Deconstruct(out Lunate.Agent.ITool! Tool, out System.Text.Json.JsonElement Args, out string? RunId, out string? ParentRunId, out int Depth, out string? WorkspaceRoot) -> void
 Lunate.Agent.ApprovalRequest.Depth.get -> int
 Lunate.Agent.ApprovalRequest.Depth.init -> void
+Lunate.Agent.ApprovalRequest.DecisionMethod.get -> string?
+Lunate.Agent.ApprovalRequest.DecisionMethod.init -> void
+Lunate.Agent.ApprovalRequest.DecisionModelId.get -> string?
+Lunate.Agent.ApprovalRequest.DecisionModelId.init -> void
+Lunate.Agent.ApprovalRequest.DecisionProbability.get -> double?
+Lunate.Agent.ApprovalRequest.DecisionProbability.init -> void
+Lunate.Agent.ApprovalRequest.DecisionRecommendation.get -> string?
+Lunate.Agent.ApprovalRequest.DecisionRecommendation.init -> void
+Lunate.Agent.ApprovalRequest.EscalationRequested.get -> bool
+Lunate.Agent.ApprovalRequest.EscalationRequested.init -> void
 Lunate.Agent.ApprovalRequest.Equals(Lunate.Agent.ApprovalRequest? other) -> bool
 Lunate.Agent.ApprovalRequest.ParentRunId.get -> string?
 Lunate.Agent.ApprovalRequest.ParentRunId.init -> void
@@ -436,6 +446,8 @@ Lunate.Agent.ITool.ParametersSchema.get -> System.Text.Json.JsonElement (forward
 Lunate.Agent.ITool.Risk.get -> Lunate.Agent.ToolRisk (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.IToolApprover
 Lunate.Agent.IToolApprover.ApproveAsync(Lunate.Agent.ApprovalRequest! request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<bool>
+Lunate.Agent.IUserPromptToolApprover
+Lunate.Agent.IUserPromptToolApprover.PromptAsync(Lunate.Agent.ApprovalRequest! request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<bool>
 Lunate.Agent.ImageAttachment (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.ImageAttachment.<Clone>$() -> Lunate.Agent.ImageAttachment! (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.ImageAttachment.Data.get -> System.ReadOnlyMemory<byte> (forwarded, contained in Lunate.Contracts)

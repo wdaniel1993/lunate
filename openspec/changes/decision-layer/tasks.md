@@ -37,10 +37,15 @@
 
 - [ ] 4.1 **Model routing** (acting): decide among the routing options through the shared validator,
       with a shadow setting that records the choice it would have made.
-- [ ] 4.2 **Approval gate** (acting, escalate-only): redefine `DecisionMode.Enforce` so a `deny`
-      recommendation turns an allowed call into a user ask showing the decision, unattended runs fail
-      closed with a notice, and an `approve` recommendation changes nothing. Move
-      `DecisionApprovalTests` to these semantics rather than deleting them.
+- [x] 4.2 **Approval gate** (acting, escalate-only): redefine `DecisionMode.Enforce` so a `deny`
+      recommendation turns an allowed call into a user ask showing the decision and probability. Add
+      additive escalation metadata to `ApprovalRequest` and a prompt-capability method without
+      changing `IToolApprover`; the harness invokes that method directly, and denies with a no-user
+      notice when no prompt capability exists. Keep `--yolo` unchanged without the gate and deny an
+      escalated call when the gate is active. An `approve` recommendation changes nothing, and calls
+      outside the approval seam (such as `ask_user`) are not evaluated. Move `DecisionApprovalTests`
+      to these semantics, and test a prompt-capable approver that ignores the metadata,
+      non-interactive fail-closed behavior and call-local escalation.
 - [ ] 4.3 **Question suggestions** (#344, display only): show a suggested answer beside a question the
       user is answering. Add the test that an answer — suggested, chosen or auto-filled with no user
       present — grants no tool approval and never answers a skipped question while a user is present.
@@ -51,10 +56,10 @@
 
 ## 5. Recording and surfaces
 
-- [ ] 5.1 Verify attribution: a `decision` usage records usage, profile, provider, resolved model id,
+- [x] 5.1 Verify attribution: a `decision` usage records usage, profile, provider, resolved model id,
       method and probability exactly as schema 4 requires; nothing about the decision (state,
       questions, answers, path, provider configuration or secrets) is persisted beyond that contract.
-- [ ] 5.2 `/cost` shows decision spend under the `decision` usage, with the method label visible so an
+- [x] 5.2 `/cost` shows decision spend under the `decision` usage, with the method label visible so an
       adapter decision cannot pass for a native one.
 
 ## 6. Validate and hand over

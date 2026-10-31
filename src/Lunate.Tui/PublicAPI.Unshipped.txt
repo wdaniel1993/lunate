@@ -453,6 +453,8 @@ Lunate.Tui.CostGroupView.CacheWrite.get -> long
 Lunate.Tui.CostGroupView.CacheWrite.init -> void
 Lunate.Tui.CostGroupView.Cost.get -> string?
 Lunate.Tui.CostGroupView.Cost.init -> void
+Lunate.Tui.CostGroupView.DecisionMethod.get -> string?
+Lunate.Tui.CostGroupView.DecisionMethod.init -> void
 Lunate.Tui.CostGroupView.CostGroupView(string! Name, string? ProviderKind, System.Collections.Generic.IReadOnlyList<string!>! ModelIds, long Input, long Output, long CacheRead, long CacheWrite, string? Cost) -> void
 Lunate.Tui.CostGroupView.Deconstruct(out string! Name, out string? ProviderKind, out System.Collections.Generic.IReadOnlyList<string!>! ModelIds, out long Input, out long Output, out long CacheRead, out long CacheWrite, out string? Cost) -> void
 Lunate.Tui.CostGroupView.Equals(Lunate.Tui.CostGroupView? other) -> bool

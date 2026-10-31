@@ -253,7 +253,7 @@ internal sealed partial class InteractiveSession
         }
 
         static CostGroupView View(UsageCostLine line) =>
-            new(
+            new CostGroupView(
                 line.Name,
                 line.ProviderKind,
                 line.ModelIds,
@@ -262,7 +262,10 @@ internal sealed partial class InteractiveSession
                 line.Lanes.CacheRead,
                 line.Lanes.CacheWrite,
                 line.Cost is decimal cost ? CostCalculator.Format(cost) : null
-            );
+            )
+            {
+                DecisionMethod = line.DecisionMethod,
+            };
 
         var view = new CostReportView(
             [.. report.ByUsage.Select(View)],
