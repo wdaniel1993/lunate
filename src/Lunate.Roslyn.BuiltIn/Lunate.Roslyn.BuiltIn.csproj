@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <AssemblyName>Lunate.Roslyn.BuiltIn</AssemblyName>
+        <RootNamespace>Lunate.Roslyn.BuiltIn</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+        <ProjectReference Include="../Lunate.Roslyn/Lunate.Roslyn.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="lunate" />
+        <InternalsVisibleTo Include="Lunate.Coding.Tests" />
+    </ItemGroup>
+</Project>

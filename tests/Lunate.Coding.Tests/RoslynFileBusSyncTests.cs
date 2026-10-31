@@ -26,7 +26,7 @@ public sealed class RoslynFileBusSyncTests
         using var services = new WorkspaceServices(1, root => backend);
         var bus = new FileChangeBus(fixture.Root);
         services.Connect(bus);
-        ToolRegistry tools = HarnessFactory.CreateTools(
+        ToolRegistry tools = RoslynTestHarness.CreateTools(
             new Workspace(fixture.Root),
             services: services
         );
@@ -72,7 +72,7 @@ public sealed class RoslynFileBusSyncTests
         using var services = new WorkspaceServices(1, root => backend);
         var bus = new FileChangeBus(fixture.Root);
         services.Connect(bus);
-        ToolRegistry tools = HarnessFactory.CreateTools(
+        ToolRegistry tools = RoslynTestHarness.CreateTools(
             new Workspace(fixture.Root),
             services: services
         );
@@ -111,7 +111,7 @@ public sealed class RoslynFileBusSyncTests
         using var services = new WorkspaceServices(1, root => backend);
         var bus = new FileChangeBus(fixture.Root);
         services.Connect(bus);
-        ToolRegistry tools = HarnessFactory.CreateTools(
+        ToolRegistry tools = RoslynTestHarness.CreateTools(
             new Workspace(fixture.Root),
             services: services
         );
@@ -146,7 +146,7 @@ public sealed class RoslynFileBusSyncTests
         using var services = new WorkspaceServices(1, root => backend);
         var bus = new FileChangeBus(fixture.Root);
         services.Connect(bus);
-        ToolRegistry tools = HarnessFactory.CreateTools(
+        ToolRegistry tools = RoslynTestHarness.CreateTools(
             new Workspace(fixture.Root),
             services: services
         );
@@ -192,7 +192,7 @@ public sealed class RoslynFileBusSyncTests
         using var services = new WorkspaceServices(1, root => backend);
         var bus = new FileChangeBus(fixture.Root);
         services.Connect(bus);
-        ToolRegistry tools = HarnessFactory.CreateTools(
+        ToolRegistry tools = RoslynTestHarness.CreateTools(
             new Workspace(fixture.Root),
             services: services
         );
@@ -237,7 +237,7 @@ public sealed class RoslynFileBusSyncTests
         using var services = new WorkspaceServices(1, root => backend);
         var bus = new FileChangeBus(fixture.Root);
         services.Connect(bus);
-        ToolRegistry tools = HarnessFactory.CreateTools(
+        ToolRegistry tools = RoslynTestHarness.CreateTools(
             new Workspace(fixture.Root),
             services: services
         );
@@ -279,7 +279,7 @@ public sealed class RoslynFileBusSyncTests
             Ct
         );
         services.Connect(host.FileChanges);
-        ToolRegistry tools = HarnessFactory.CreateTools(workspace, services: services);
+        ToolRegistry tools = RoslynTestHarness.CreateTools(workspace, services: services);
         var context = new ToolContext(fixture.Root, new NullAgentEvents())
         {
             FileChanges = host.FileChanges,
@@ -332,7 +332,7 @@ public sealed class RoslynFileBusSyncTests
             Ct
         );
         services.Connect(host.FileChanges);
-        ToolRegistry tools = HarnessFactory.CreateTools(workspace, services: services);
+        ToolRegistry tools = RoslynTestHarness.CreateTools(workspace, services: services);
         var context = new ToolContext(fixture.Root, new NullAgentEvents())
         {
             FileChanges = host.FileChanges,
@@ -436,7 +436,7 @@ public sealed class RoslynFileBusSyncTests
             Ct
         );
         services.Connect(host.FileChanges);
-        ToolRegistry tools = HarnessFactory.CreateTools(workspace, services: services);
+        ToolRegistry tools = RoslynTestHarness.CreateTools(workspace, services: services);
         var context = new ToolContext(fixture.Root, new NullAgentEvents())
         {
             FileChanges = host.FileChanges,

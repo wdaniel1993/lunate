@@ -70,7 +70,8 @@ public sealed class InteractiveSessionRemoteTests
 
         host.Console.SendText("/extensions");
         host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "extensions: none");
+        // The empty store still composes the builtin, so the listing starts with roslyn.
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "extensions: roslyn");
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();

@@ -15,6 +15,14 @@ runs and `lunate mcp roslyn`. The manifest rule SHALL replace the `HarnessFactor
 second C#-specific scan or gate SHALL NOT be composed. The MCP server SHALL evaluate the same rule
 through that evaluator for its selected root, as required by *Conditional tool availability*.
 
+`Lunate.Roslyn` and `Lunate.Roslyn.BuiltIn` SHALL reference only `Lunate.Extensibility.Abstractions`,
+Roslyn/MSBuild packages and the BCL; neither project SHALL reference `Lunate.Agent`, `Lunate.Coding`
+or `Lunate.Extensibility`. The dependency-closure layering test SHALL cover both projects.
+
+`Lunate.Coding` SHALL reference `Lunate.Roslyn.BuiltIn` solely to supply the host's list of built-in
+factories. It SHALL use no other type from the adapter, and a test SHALL enforce that single-edge
+rule. The separate adapter SHALL keep Roslyn types out of `Lunate.Coding`'s compile and load closure.
+
 #### Scenario: The Roslyn built-in registers and leases its workspace service
 
 - **GIVEN** the host composes its built-in extensions
@@ -30,12 +38,27 @@ through that evaluator for its selected root, as required by *Conditional tool a
 - **THEN** the shared host evaluator applies the built-in manifest rule and offers the C# tools; a
   root with none of those files offers none, without a second `HarnessFactory` gate
 
+#### Scenario: Roslyn projects stay within the extension contract dependency closure
+
+- **GIVEN** the `Lunate.Roslyn` and `Lunate.Roslyn.BuiltIn` project references
+- **WHEN** the dependency-closure layering test inspects both projects
+- **THEN** each references only `Lunate.Extensibility.Abstractions`, Roslyn/MSBuild packages and the
+  BCL, with no reference to `Lunate.Agent`, `Lunate.Coding` or `Lunate.Extensibility`
+
+#### Scenario: Coding uses only the built-in factory-list seam
+
+- **GIVEN** the `Lunate.Coding` to `Lunate.Roslyn.BuiltIn` project reference
+- **WHEN** the single-edge test inspects Coding's adapter type usage
+- **THEN** Coding uses adapter types only to provide the host's list of built-in factories
+
 ### Requirement: The Roslyn built-in preserves the recorded C# tool contract and budgets
 
 Migration SHALL preserve exactly the model-facing tool names `cs_diagnostics`, `cs_find_symbol`,
 `cs_find_references`, `cs_outline` and `cs_rename`. For the same committed fixtures and inputs, each
 tool's `ToolResult.Output` and `IsError` SHALL match the recorded pre-migration baseline, and every
 behavior already specified by the C# tool requirements in `agent-tools` SHALL remain true.
+The existing golden-session and end-to-end tests SHALL run unchanged as proof; a golden SHALL NOT be
+rewritten to make a diff pass.
 
 The migration SHALL record the baseline in `docs/eval/roslyn-built-in-migration-baseline.md` before
 changing composition and compare the migrated build against it using the same fixture, runtime and
@@ -43,7 +66,8 @@ measurement method. The evidence SHALL include the startup floor and median, too
 flags for all five tools, idle process-tree memory, and Roslyn process-tree peak memory after loading
 the reference solution and after ten edit-to-diagnostics cycles. The startup floor SHALL remain
 within the existing platform gate and shall not load Roslyn or MSBuild assemblies before the first
-`cs_*` call. Idle memory SHALL remain within the existing ADR-0009 gate, and the measured Roslyn
+`cs_*` call. A startup test SHALL assert that no `Microsoft.CodeAnalysis.*` or `Microsoft.Build.*`
+assembly is loaded before first C# use. Idle memory SHALL remain within the existing ADR-0009 gate, and the measured Roslyn
 peak SHALL remain within its existing reference-workspace gate of 750 MB; the built-in workspace
 cap SHALL remain two. The evidence record SHALL identify the baseline and migrated commits,
 runtime, OS/RID, fixture and measurement commands; deterministic result fixtures SHALL be committed
@@ -60,8 +84,9 @@ under `tests/fixtures/`.
 
 - **GIVEN** a published migrated binary that has not called a C# tool
 - **WHEN** the existing startup-floor measurement and lazy-loading check run
-- **THEN** the floor remains within the platform budget, no Roslyn or MSBuild assembly is loaded,
-  and the measured floor and median are recorded beside the pre-migration baseline
+- **THEN** the floor remains within the platform budget, no `Microsoft.CodeAnalysis.*` or
+  `Microsoft.Build.*` assembly is loaded before first C# use, and the measured floor and median are
+  recorded beside the pre-migration baseline
 
 #### Scenario: Roslyn memory stays within its recorded gate
 

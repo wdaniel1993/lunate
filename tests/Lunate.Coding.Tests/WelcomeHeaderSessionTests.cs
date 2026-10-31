@@ -205,6 +205,31 @@ public sealed class WelcomeHeaderSessionTests
     }
 
     [Fact]
+    public async Task A_builtin_does_not_count_as_an_installed_extension()
+    {
+        using var temp = new TempDirectory();
+        using var host = new InteractiveSessionHost(
+            environment: KeyedEnvironment(),
+            extensions: new ExtensionSeams
+            {
+                StorePath = temp.File("store"),
+                Log = new RecordingExtensionLog(),
+            }
+        );
+        Task run = host.RunAsync();
+
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        string scrollback = await host.WaitForScrollbackAsync("skills 0");
+        // roslyn composes; it is host-owned code, so the count of installed extensions stays 0.
+        Assert.Contains("extensions 0 · MCP 0 · skills 0", scrollback, StringComparison.Ordinal);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
     public async Task A_first_run_names_auth_as_the_one_fix_and_no_counts_or_hint()
     {
         using var host = new InteractiveSessionHost();

@@ -2,15 +2,15 @@ using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
+using Lunate.Roslyn.BuiltIn;
 
 namespace Lunate.Coding.Tests;
 
 /// <summary>
-/// The core C# gate now expresses the flagship activation rule through the evaluator (tasks 5.3):
+/// The Roslyn built-in manifest expresses activation through the shared evaluator:
 /// <c>workspace-root-has-file</c> over <c>*.sln</c>, <c>*.slnx</c> and <c>*.csproj</c>. These pins
-/// hold <see cref="HarnessFactory.LooksLikeCSharpWorkspace"/> to the same matching the flagship
-/// scan always had, and pin one agreement: the gate and the shared composition filter answer the
-/// same verdict at every reported condition.
+/// hold the manifest rule to the same matching the former flagship scan had and verify that its
+/// verdict agrees with the shared composition filter.
 /// </summary>
 public sealed class CSharpWorkspaceGateTests
 {
@@ -20,7 +20,7 @@ public sealed class CSharpWorkspaceGateTests
         using var temp = new TempDirectory();
         File.WriteAllText(temp.File("App.x.sln"), "solution");
 
-        Assert.True(HarnessFactory.LooksLikeCSharpWorkspace(temp.Root));
+        Assert.True(RoslynIsActive(temp.Root));
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public sealed class CSharpWorkspaceGateTests
 
         // The flagship rule names *.slnx separately, so a solution file with it activates; but a
         // rule naming only *.sln cannot treat .slnx as its extension.
-        Assert.True(HarnessFactory.LooksLikeCSharpWorkspace(temp.Root));
+        Assert.True(RoslynIsActive(temp.Root));
         Assert.False(
             ToolActivationEvaluator.Evaluate(
                 new ExtensionToolActivationRule(
@@ -49,7 +49,7 @@ public sealed class CSharpWorkspaceGateTests
         using var temp = new TempDirectory();
         File.WriteAllText(temp.File("App.SLN"), "solution");
 
-        Assert.False(HarnessFactory.LooksLikeCSharpWorkspace(temp.Root));
+        Assert.False(RoslynIsActive(temp.Root));
     }
 
     [Fact]
@@ -104,9 +104,15 @@ public sealed class CSharpWorkspaceGateTests
             .ActiveOnly([flagshipAdapter], workspace)
             .Any(tool => tool.Name == flagshipAdapter.Name);
 
-        Assert.Equal(expectedLooksLike, HarnessFactory.LooksLikeCSharpWorkspace(root));
+        Assert.Equal(expectedLooksLike, RoslynIsActive(root));
         Assert.Equal(expectedLooksLike, kept);
     }
+
+    private static bool RoslynIsActive(string workspaceRoot) =>
+        ToolActivationEvaluator.Evaluate(
+            RoslynBuiltInFactory.Manifest.ToolActivation["*"],
+            workspaceRoot
+        );
 
     /// <summary>An adapter stamped with the flagship rule through the loader's registration seam.</summary>
     private static ITool FlagshipRuleAdapter()

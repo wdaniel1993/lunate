@@ -137,8 +137,9 @@ public sealed partial class ExtensionLoader
         FoldBuiltIns();
         if (_options.BuiltInsOnly)
         {
-            // The --no-extensions composition: no store scan, no single-file candidates, so no
-            // third-party extension is ever discovered, trusted or loaded (design §1).
+            // The built-ins-only composition (mcp roslyn, and --no-extensions with no built-ins):
+            // no store scan, no single-file candidates, so no third-party extension is ever
+            // discovered, trusted or loaded (design §1).
             return Descriptors;
         }
 

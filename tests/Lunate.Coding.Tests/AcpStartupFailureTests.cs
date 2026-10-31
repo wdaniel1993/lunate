@@ -101,7 +101,6 @@ public sealed class AcpStartupFailureTests
             host,
             [],
             [],
-            new WorkspaceServices(1),
             launch: null,
             factory: new FakeChatClientFactory(new FakeChatClient()),
             settings: new AgentSettings { Model = "acp-test" },

@@ -107,12 +107,14 @@ public sealed class RemoteCommandNoticeTests
         Assert.Equal("unknown command: /ghost", result.Message);
 
         // And the extensions view reports the declaration as not provided.
+        // The builtin also composes; this test is about the remote extension's row.
         string segment = Assert.Single(
             ExtensionsView.Segments(
                 host.Descriptors,
                 host.LoadResults,
                 id => host.RegisteredCounts(id, registry.Shadowed)
-            )
+            ),
+            candidate => candidate.StartsWith("e2e ", StringComparison.Ordinal)
         );
         Assert.Contains("not provided: ghost", segment, StringComparison.Ordinal);
     }

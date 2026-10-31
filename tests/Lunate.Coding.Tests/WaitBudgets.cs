@@ -180,6 +180,16 @@ internal static class WaitBudgets
     public static readonly TimeSpan Diagnostics = TimeSpan.FromMinutes(2);
 
     /// <summary>
+    /// The settle window of the reference-workspace memory probe: after the last diagnostics call,
+    /// the analyzers' worker threads and the runtime's finalizers are still releasing what the call
+    /// allocated, and the probe samples the process tree's peak RSS. Waiting the cycle's tail out
+    /// makes the recorded peak the work's peak rather than whichever moment the sampler happened to
+    /// read. It bounds no external work — there is no event to await, which is why it is named here
+    /// instead of sitting at the call site.
+    /// </summary>
+    public static readonly TimeSpan MemoryProbeSettle = TimeSpan.FromSeconds(4);
+
+    /// <summary>
     /// The lazily built file index publishing: the background walk of the worktree, which on the
     /// large-repository budget test is twenty thousand files. Every cursor-nudge wait in the
     /// autocomplete and path-completion tests watches this same publication, so they share the one

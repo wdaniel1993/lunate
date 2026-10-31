@@ -89,7 +89,7 @@ public sealed class SkillReadAllowanceTests
         Assert.Contains(Workspace.Canonicalize(userSkill), roots.Select(Workspace.Canonicalize));
         Assert.Contains(Workspace.Canonicalize(childSkill), roots.Select(Workspace.Canonicalize));
 
-        Func<string, ToolRegistry> factory = HarnessFactory.CreateWorkspaceTools(
+        Func<string, ToolRegistry> factory = RoslynTestHarness.CreateWorkspaceTools(
             new WorkspaceServices(1),
             [],
             root => catalog.ReadRootsFor(root)

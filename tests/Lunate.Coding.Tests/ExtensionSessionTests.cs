@@ -14,7 +14,7 @@ public sealed class ExtensionSessionTests
     private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task An_empty_store_composes_a_quiet_host()
+    public async Task An_empty_store_composes_only_the_inactive_roslyn_builtin()
     {
         using var temp = new TempDirectory();
         string worktree = temp.File("worktree");
@@ -27,12 +27,21 @@ public sealed class ExtensionSessionTests
             Ct
         );
 
-        Assert.Empty(host.Descriptors);
+        // An empty store no longer composes an empty host: the builtin is folded in before
+        // discovery, so it is the one descriptor an untouched store gets.
+        ExtensionDescriptor builtIn = Assert.Single(host.Descriptors);
+        Assert.Equal("roslyn", builtIn.Id);
+        Assert.Equal(ExtensionScope.Builtin, builtIn.Scope);
         Assert.Empty(host.Errors);
         Assert.Null(host.McpServers);
         ExtensionMcpServers servers = host.ComposeMcpServers(configuredServers: null);
         Assert.Empty(await servers.ListToolsAsync(Ct));
         Assert.Empty(log.Messages);
+
+        // It registers five tools, but a root with no project file matches none of its
+        // activation patterns, so the composition offers nothing and records why.
+        Assert.Empty(host.ComposeTools(new Workspace(worktree)));
+        Assert.Equal(5, host.InactiveTools("roslyn").Count);
     }
 
     [Fact]
@@ -50,7 +59,9 @@ public sealed class ExtensionSessionTests
             Ct
         );
 
-        ITool tool = Assert.Single(host.Tools);
+        // The builtin's five tools register before the store's, so the composed list is six.
+        Assert.Equal(6, host.Tools.Count);
+        ITool tool = Assert.Single(host.Tools, candidate => candidate.Name == "tools__echo");
         Assert.Equal("tools__echo", tool.Name);
         Assert.Equal("tools", tool.Namespace?.Name);
     }
@@ -215,7 +226,8 @@ public sealed class ExtensionSessionTests
         );
         try
         {
-            Assert.Single(host.Descriptors);
+            // hello plus the composed builtin.
+            Assert.Single(host.Descriptors, descriptor => descriptor.Id == "hello");
             Assert.Empty(host.Errors);
             Assert.True(log.Contains("created hello"));
             Assert.True(log.Contains("hello session started"));
@@ -354,7 +366,8 @@ public sealed class ExtensionSessionTests
             Ct
         );
 
-        Assert.Equal(2, host.Descriptors.Count);
+        // broken, hello and the composed builtin.
+        Assert.Equal(3, host.Descriptors.Count);
         ExtensionSessionError error = Assert.Single(host.Errors);
         Assert.Equal("broken", error.ExtensionId);
         Assert.Contains("Broken.dll", error.Message, StringComparison.Ordinal);
@@ -387,7 +400,9 @@ public sealed class ExtensionSessionTests
             Ct
         );
 
-        Assert.Single(host.Descriptors);
+        // hello plus the composed builtin; only hello failed trust.
+        Assert.Equal(2, host.Descriptors.Count);
+        Assert.Single(host.Descriptors, descriptor => descriptor.Id == "hello");
         ExtensionSessionError error = Assert.Single(host.Errors);
         Assert.Equal("hello", error.ExtensionId);
         Assert.Contains("was not trusted", error.Message, StringComparison.Ordinal);
@@ -523,12 +538,18 @@ public sealed class ExtensionSessionTests
             Ct
         );
 
-        Assert.Equal(["broken", "hello", "hello-project"], host.LoadResults.Select(r => r.Id));
-        Assert.Equal(ExtensionLoadState.Failed, host.LoadResults[0].State);
-        Assert.Contains("Broken.dll", host.LoadResults[0].Message, StringComparison.Ordinal);
-        Assert.Equal(ExtensionLoadState.Loaded, host.LoadResults[1].State);
-        Assert.Null(host.LoadResults[1].Message);
-        Assert.Equal(ExtensionLoadState.TrustDenied, host.LoadResults[2].State);
+        // The builtin is folded in before discovery, so it is the first load result.
+        Assert.Equal(
+            ["roslyn", "broken", "hello", "hello-project"],
+            host.LoadResults.Select(r => r.Id)
+        );
+        Assert.Equal(ExtensionLoadState.Loaded, host.LoadResults[0].State);
+        Assert.Null(host.LoadResults[0].Message);
+        Assert.Equal(ExtensionLoadState.Failed, host.LoadResults[1].State);
+        Assert.Contains("Broken.dll", host.LoadResults[1].Message, StringComparison.Ordinal);
+        Assert.Equal(ExtensionLoadState.Loaded, host.LoadResults[2].State);
+        Assert.Null(host.LoadResults[2].Message);
+        Assert.Equal(ExtensionLoadState.TrustDenied, host.LoadResults[3].State);
         Assert.All(
             host.LoadResults,
             result =>
@@ -565,7 +586,12 @@ public sealed class ExtensionSessionTests
         try
         {
             Assert.True(log.Contains("created hello"));
-            Assert.Equal(ExtensionLoadState.Loaded, Assert.Single(host.LoadResults).State);
+            // hello plus the composed builtin; both load, and inspect mode starts neither.
+            Assert.Equal(2, host.LoadResults.Count);
+            Assert.Equal(
+                ExtensionLoadState.Loaded,
+                Assert.Single(host.LoadResults, result => result.Id == "hello").State
+            );
             Assert.False(log.Contains("hello service started"), "no background service may start");
             Assert.False(log.Contains("hello session started"), "no session-start hook may run");
             Assert.Equal(new ExtensionCounts(0, 0, 3, 1), host.RegisteredCounts("hello"));
