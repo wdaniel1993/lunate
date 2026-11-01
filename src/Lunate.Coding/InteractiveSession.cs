@@ -814,7 +814,8 @@ internal sealed partial class InteractiveSession : IDisposable
                 }
 
                 ExtensionMcpServers servers = extensions.ComposeMcpServers(
-                    McpNameCollisions.ConfiguredServers(_mcp)
+                    McpNameCollisions.ConfiguredServers(_mcp),
+                    withheldCredentialValues: [.. _redaction.Values.Select(pair => pair.Value)]
                 );
                 servers.OnServerExited(status => Notify(McpComposition.ServerExitedNotice(status)));
                 ToolComposition.AddSkippingTaken(

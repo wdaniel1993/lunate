@@ -248,7 +248,11 @@ internal static class PrintMode
                     // The configured names are the collision baseline: a same-named registration
                     // is skipped before listing (the configured server wins); nothing starts yet.
                     ExtensionMcpServers servers = extensions.ComposeMcpServers(
-                        McpNameCollisions.ConfiguredServers(mcp)
+                        McpNameCollisions.ConfiguredServers(mcp),
+                        withheldCredentialValues:
+                        [
+                            .. composeRedaction.Values.Select(pair => pair.Value),
+                        ]
                     );
                     ToolComposition.AddSkippingTaken(
                         tools,

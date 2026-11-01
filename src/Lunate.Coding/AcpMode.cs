@@ -106,7 +106,8 @@ internal static class AcpMode
                 // The configured names are the collision baseline: a same-named registration is
                 // skipped before listing (the configured server wins); nothing starts before.
                 ExtensionMcpServers servers = host.ComposeMcpServers(
-                    McpNameCollisions.ConfiguredServers(mcp)
+                    McpNameCollisions.ConfiguredServers(mcp),
+                    withheldCredentialValues: [.. redaction.Values.Select(pair => pair.Value)]
                 );
                 ToolComposition.AddSkippingTaken(
                     mcpTools,

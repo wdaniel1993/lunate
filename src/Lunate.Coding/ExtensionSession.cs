@@ -526,7 +526,8 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// Idempotent; the mapping starts nothing until its first listing.
     /// </summary>
     internal ExtensionMcpServers ComposeMcpServers(
-        IReadOnlyDictionary<string, string?>? configuredServers
+        IReadOnlyDictionary<string, string?>? configuredServers,
+        IReadOnlyList<string>? withheldCredentialValues = null
     )
     {
         if (_mcpServers is { } existing)
@@ -544,7 +545,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
         }
 
         ShadowedMcpServers = shadowed;
-        _mcpServers = new ExtensionMcpServers(_log, kept);
+        _mcpServers = new ExtensionMcpServers(_log, kept, withheldCredentialValues);
         return _mcpServers;
     }
 

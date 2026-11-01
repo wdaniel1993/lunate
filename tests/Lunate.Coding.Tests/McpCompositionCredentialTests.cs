@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility;
+using Lunate.Extensibility.Abstractions;
 using Lunate.Protocols;
 using Lunate.TestSupport;
 
@@ -146,6 +147,52 @@ public sealed class McpCompositionCredentialTests
     private static string[] WithheldValuesOf(CredentialRedactor redaction) =>
         [.. redaction.Values.Select(pair => pair.Value)];
 
+    [Fact]
+    public async Task Known_credential_values_do_not_reach_extension_registered_children()
+    {
+        using var temp = new TempDirectory();
+        IDisposable restore = SetTestEnvironment(
+            (AnthropicVariable, AnthropKeyValue),
+            (ProviderVariable, ProviderKeyValue),
+            (ParentFlagVariable, ParentFlagValue)
+        );
+        try
+        {
+            await using var servers = new ExtensionMcpServers(
+                new RecordingExtensionLog(),
+                [
+                    new RegisteredMcpServer(
+                        "ext",
+                        new McpServerRegistration(
+                            "server",
+                            new McpServerConfig(
+                                TestMcpServer.DotnetPath,
+                                ["exec", TestMcpServer.ServerDll],
+                                new Dictionary<string, string>
+                                {
+                                    ["LUNATE_TEST_MCP_MARKER"] = temp.File("marker.txt"),
+                                    ["LUNATE_TEST_MCP_ENV_TOOL"] = "1",
+                                }
+                            )
+                        )
+                    ),
+                ],
+                withheldCredentialValues: [AnthropKeyValue, ProviderKeyValue]
+            );
+
+            string[] names = await NamesAsync(servers);
+
+            Assert.DoesNotContain(AnthropicVariable, names);
+            Assert.DoesNotContain(ProviderVariable, names);
+            // What Lunate does not know stays inherited, exactly as for configured servers.
+            Assert.Contains(ParentFlagVariable, names);
+        }
+        finally
+        {
+            restore.Dispose();
+        }
+    }
+
     private static IDisposable SetTestEnvironment(params (string Name, string? Value)[] variables)
     {
         (string Name, string? Previous)[] original = variables
@@ -262,6 +309,28 @@ public sealed class McpCompositionCredentialTests
 
     private static async Task<string> ValueAsync(McpToolSet set, string name) =>
         (await ExecuteAsync(set, "env_value", name)).Output;
+
+    private static async Task<string[]> NamesAsync(ExtensionMcpServers servers)
+    {
+        ToolResult result = await ExecuteAsync(servers, "env_names");
+        Assert.False(result.IsError);
+        return JsonSerializer.Deserialize<JsonElement>(result.Output).Deserialize<string[]>() ?? [];
+    }
+
+    private static async Task<ToolResult> ExecuteAsync(
+        ExtensionMcpServers servers,
+        string tool,
+        string? argument = null
+    )
+    {
+        IReadOnlyList<ITool> tools = await servers.ListToolsAsync(Ct);
+        JsonElement arguments = argument is null
+            ? JsonSerializer.SerializeToElement(new { })
+            : JsonSerializer.SerializeToElement(new { name = argument });
+        return await tools
+            .Single(candidate => candidate.Name == "server__" + tool)
+            .ExecuteAsync(arguments, new ToolContext("run", new NullAgentEvents()), Ct);
+    }
 
     private static async Task<ToolResult> ExecuteAsync(
         McpToolSet set,
