@@ -163,6 +163,19 @@ internal static class PrintMode
 
                 session = selected;
                 IExtensionLog log = options.Extensions?.Log ?? new StderrExtensionLog(errors);
+                // The redaction set exists before the MCP composition: composing with it withholds
+                // the values Lunate knows from every configured server's child environment
+                // (#449/#455). The harness later collects the same set again for its own redactor
+                // (CreateHarness) — same arguments, same values.
+                CredentialRedactor composeRedaction = HarnessFactory.CollectRedaction(
+                    options.AuthPath,
+                    options.Environment,
+                    options.Extensions?.StorePath,
+                    workspace.WorktreeRoot,
+                    options.McpConfigPath,
+                    options.McpAgentsConfigPath,
+                    AuthStore.ProviderStoreFilePath(options.AuthPath)
+                );
                 // The host composes in every mode: with --no-extensions it composes nothing at
                 // all — built-ins included — so no store scan, trust question or third-party
                 // load runs (design §1).
@@ -211,7 +224,11 @@ internal static class PrintMode
                         new NonInteractiveMcpServerApprovalPrompt(),
                         log,
                         notice => interaction.Notify(notice),
-                        ct
+                        ct,
+                        withheldCredentialValues:
+                        [
+                            .. composeRedaction.Values.Select(pair => pair.Value),
+                        ]
                     )
                     .ConfigureAwait(false);
 

@@ -771,7 +771,8 @@ internal sealed partial class InteractiveSession : IDisposable
                     Notify,
                     ct,
                     skippedServerQuestions: skipped =>
-                        _trustTotal = Math.Max(_trustAsked, _trustTotal - skipped)
+                        _trustTotal = Math.Max(_trustAsked, _trustTotal - skipped),
+                    withheldCredentialValues: [.. _redaction.Values.Select(pair => pair.Value)]
                 )
                 .ConfigureAwait(false);
         }
