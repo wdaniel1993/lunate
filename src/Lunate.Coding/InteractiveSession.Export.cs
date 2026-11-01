@@ -55,7 +55,8 @@ internal sealed partial class InteractiveSession
                 _auth,
                 _environment,
                 _options.Extensions?.StorePath ?? ExtensionHostOptions.Default.StorePath,
-                McpConfigPaths()
+                McpConfigPaths(),
+                AuthStore.ProviderStoreFilePath(_options.AuthPath)
             );
             ExportOutcome outcome = SessionExporter.Write(
                 session,

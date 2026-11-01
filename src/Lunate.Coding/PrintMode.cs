@@ -632,7 +632,8 @@ internal static class PrintMode
             options.Extensions?.StorePath,
             workspace.WorktreeRoot,
             options.McpConfigPath,
-            options.McpAgentsConfigPath
+            options.McpAgentsConfigPath,
+            AuthStore.ProviderStoreFilePath(options.AuthPath)
         );
         ToolRegistry tools = HarnessFactory.CreateTools(
             workspace,

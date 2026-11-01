@@ -260,7 +260,8 @@ internal static class AcpMode
             authPath: null,
             environment: null,
             storePath: null,
-            workspace.WorktreeRoot
+            workspace.WorktreeRoot,
+            providerStorePath: AuthStore.ProviderStoreFilePath(null)
         );
         var refusalTracker = new WriteVerificationRefusalTracker();
         ToolRegistry tools = HarnessFactory.CreateTools(
