@@ -771,7 +771,8 @@ internal sealed partial class InteractiveSession : IDisposable
                     Notify,
                     ct,
                     skippedServerQuestions: skipped =>
-                        _trustTotal = Math.Max(_trustAsked, _trustTotal - skipped)
+                        _trustTotal = Math.Max(_trustAsked, _trustTotal - skipped),
+                    withheldCredentialValues: [.. _redaction.Values.Select(pair => pair.Value)]
                 )
                 .ConfigureAwait(false);
         }
@@ -813,7 +814,8 @@ internal sealed partial class InteractiveSession : IDisposable
                 }
 
                 ExtensionMcpServers servers = extensions.ComposeMcpServers(
-                    McpNameCollisions.ConfiguredServers(_mcp)
+                    McpNameCollisions.ConfiguredServers(_mcp),
+                    withheldCredentialValues: [.. _redaction.Values.Select(pair => pair.Value)]
                 );
                 servers.OnServerExited(status => Notify(McpComposition.ServerExitedNotice(status)));
                 ToolComposition.AddSkippingTaken(

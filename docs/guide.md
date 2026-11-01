@@ -724,6 +724,11 @@ MCP and ACP live in `Lunate.Protocols` and use existing SDKs; without AOT there 
 **MCP client (official MCP C# SDK)**
 
 - Servers are configured in `~/.lunate/mcp.json` (command, args, env) and start on first use.
+- A stdio child inherits the session environment minus the credential values Lunate itself knows:
+  the auth-store keys, the provider keys the presets and the provider store's `env:` references
+  name, the extension secrets and the configured servers' own `env` values. A variable is removed
+  from the child (never emptied) unless the server's declared `env` names it — the opt-in — and
+  `${VAR}` in the declared map still resolves from Lunate's environment when the file loads.
 - Their tools arrive from the SDK as Microsoft.Extensions.AI functions and are wrapped as `ITool`s with risk `Execute`, so the approval policy applies. Names are prefixed `server__tool` to avoid collisions.
 - Refresh on tool list changes; cancel calls when a turn is cancelled; time out hanging servers. A crashing server becomes a tool error, never a crash of Lunate.
 - v1 uses stdio servers; remote servers over HTTP follow when needed, using the SDK's transports.

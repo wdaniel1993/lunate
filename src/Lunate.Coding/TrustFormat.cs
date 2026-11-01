@@ -129,6 +129,14 @@ internal static class TrustFormat
     internal static string McpServerQuestion(McpServerOptions server) =>
         $"Run project MCP server '{server.Name}' from '{RealPath(server.Source ?? string.Empty)}'";
 
+    /// <summary>
+    /// The environment statement the per-server approval carries with the command: the server sees
+    /// the session environment except the credentials Lunate itself holds — those are withheld from
+    /// the child unless the server's own <c>env</c> map names the variable.
+    /// </summary>
+    internal static string McpServerEnvironmentLine =>
+        "The server sees the session environment except the credentials Lunate holds — those are withheld unless the server's own env names them.";
+
     internal static string Command(McpServerOptions server) =>
         server.Arguments.Count == 0
             ? server.Command

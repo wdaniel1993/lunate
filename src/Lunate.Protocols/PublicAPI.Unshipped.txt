@@ -32,6 +32,8 @@ Lunate.Protocols.McpServerOptions.WorkingDirectory.get -> string?
 Lunate.Protocols.McpServerOptions.WorkingDirectory.init -> void
 Lunate.Protocols.McpServerOptions.WorkspaceIndependent.get -> bool
 Lunate.Protocols.McpServerOptions.WorkspaceIndependent.init -> void
+Lunate.Protocols.McpServerOptions.WithheldCredentialValues.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Lunate.Protocols.McpServerOptions.WithheldCredentialValues.init -> void
 Lunate.Protocols.McpToolAdapter
 Lunate.Protocols.McpToolAdapter.Annotations.get -> Lunate.Agent.ToolAnnotations?
 Lunate.Protocols.McpToolAdapter.Description.get -> string!

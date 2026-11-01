@@ -29,7 +29,7 @@ internal sealed class TuiMcpServerApprovalPrompt(TrustQuestion ask) : IMcpServer
 
         return ask(
             TrustFormat.McpServerQuestion(server),
-            [TrustFormat.Command(server)],
+            [TrustFormat.Command(server), TrustFormat.McpServerEnvironmentLine],
             cancellationToken
         );
     }

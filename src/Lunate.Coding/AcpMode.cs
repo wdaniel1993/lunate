@@ -44,6 +44,16 @@ internal static class AcpMode
             LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot);
             IExtensionLog log = extensions?.Log ?? new StderrExtensionLog(errors);
             AgentSettings settings = SettingsStore.Resolve(null, null);
+            // The redaction set exists before the MCP composition: composing with it withholds the
+            // values Lunate knows at serve time from every configured server's child environment
+            // (#449/#455). The per-session harness later collects its own set with the session's
+            // cwd (CreateHarness), which is a different workspace's project configs.
+            CredentialRedactor redaction = HarnessFactory.CollectRedaction(
+                authPath: null,
+                environment: null,
+                storePath: null,
+                workspace.WorktreeRoot
+            );
             if (settings.BashGuard)
             {
                 StateRootHardlinkScan.Report(
@@ -76,7 +86,8 @@ internal static class AcpMode
                     new NonInteractiveMcpServerApprovalPrompt(),
                     log,
                     notice => interaction.Notify(notice),
-                    ct
+                    ct,
+                    withheldCredentialValues: [.. redaction.Values.Select(pair => pair.Value)]
                 )
                 .GetAwaiter()
                 .GetResult();
@@ -95,7 +106,8 @@ internal static class AcpMode
                 // The configured names are the collision baseline: a same-named registration is
                 // skipped before listing (the configured server wins); nothing starts before.
                 ExtensionMcpServers servers = host.ComposeMcpServers(
-                    McpNameCollisions.ConfiguredServers(mcp)
+                    McpNameCollisions.ConfiguredServers(mcp),
+                    withheldCredentialValues: [.. redaction.Values.Select(pair => pair.Value)]
                 );
                 ToolComposition.AddSkippingTaken(
                     mcpTools,
