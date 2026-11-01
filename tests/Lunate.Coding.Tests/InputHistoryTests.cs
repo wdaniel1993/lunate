@@ -102,7 +102,7 @@ public sealed class InputHistoryTests
         }
 
         using var temp = new TempDirectory();
-        string path = temp.File("store/history");
+        string path = temp.File(Path.Combine("store", "history"));
         var history = new InputHistory(path);
 
         history.Add("prompt");

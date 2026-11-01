@@ -9,7 +9,7 @@ public sealed class RecordingChatClientTests
     public async Task Streaming_passes_updates_through_and_records_the_exchange()
     {
         using var temp = new TempDirectory();
-        string path = temp.File("recordings/stream.jsonl");
+        string path = temp.File(Path.Combine("recordings", "stream.jsonl"));
         List<ChatResponseUpdate> script =
         [
             new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("Hello")])
@@ -168,7 +168,7 @@ public sealed class RecordingChatClientTests
         }
 
         using var temp = new TempDirectory();
-        string path = temp.File("recordings/stream.jsonl");
+        string path = temp.File(Path.Combine("recordings", "stream.jsonl"));
         var inner = new ScriptedChatClient().Enqueue(
             new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("one")])
         );
