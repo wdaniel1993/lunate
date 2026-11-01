@@ -39,7 +39,7 @@ The reference extension is published as a real package on the same tag as the to
 
 ```bash
 lunate install Lunate.Extensions.Subagents     # the subagents extension: one tool, subagents__spawn
-lunate install Lunate.Extensions.Subagents@0.1.0   # pinned, for a tag that publishes prereleases
+lunate install Lunate.Extensions.Subagents@0.2.0   # pinned, for a tag that publishes prereleases
 ```
 
 It installs the extension from [`extensions/subagents`](../../extensions/subagents/README.md) exactly as it would install yours, and `lunate uninstall Lunate.Extensions.Subagents` takes it back. `lunate packages --verify` recomputes the record afterwards.
@@ -126,7 +126,7 @@ The decision binds the package identity, the canonical lock graph and the direct
 
 Only a person answers the extension question, and only at the prompt. No tool, slash command or protocol path answers it; print, ACP and any other run without a terminal refuse a pending extension and name it instead of guessing, so it does not load there. `lunate trust` is the CLI path for recording a decision outside a session: a bare `--yes` needs a terminal at stdin, while `--yes --digest <sha>` is the scripted path that names the exact decision being approved. `lunate trust --clear` works everywhere, because revoking escalates nothing.
 
-None of that is a security boundary. `LUNATE_SESSION` is a visibility guard: `env -u LUNATE_SESSION …` removes it, and `--yolo` shows no panel at all. `trust.json` is a record of your decisions, and a command running with your shell can write it — including `lunate trust --yes --digest <sha>`. In default mode the approval panel is what stands between the model and those commands, and under `--yolo` nothing does; 0.1.0 has no OS sandbox on any platform, Windows included (the guard profile is 0.2). What holds is the rule above — an installed extension is pending until the question is answered — not a promise that only you can answer it.
+None of that is a security boundary. `LUNATE_SESSION` is a visibility guard: `env -u LUNATE_SESSION …` removes it, and `--yolo` shows no panel at all. `trust.json` is a record of your decisions, and a command running with your shell can write it — including `lunate trust --yes --digest <sha>`. In default mode the approval panel is what stands between the model and those commands, and under `--yolo` nothing does. The bash guard narrows what a command can reach — writes under the state root and the install prefix, reads of `auth.json` — on macOS and Linux only, and it is not a boundary for an extension that runs in-process: Windows has no mechanism, and nothing here stops a command from writing `trust.json` or reaching a Docker socket. What holds is the rule above — an installed extension is pending until the question is answered — not a promise that only you can answer it.
 
 ## What a package cannot do
 

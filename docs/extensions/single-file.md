@@ -259,9 +259,10 @@ The marker is a **visibility guard, not a boundary**. A bash command runs with y
 `env -u LUNATE_SESSION …` removes the marker; `trust.json` is a record of your decisions and a command
 with your shell can write it. Neither stops code the model chose. In default mode the approval panel
 is the boundary: `lunate install`, `lunate trust` and a write into `<root>` always appear in it, even
-after "always" was answered for that tool, and `--yolo` removes it. Nothing here is an OS sandbox:
-0.1.0 runs commands with your user's rights on every platform, Windows included; the guard profile is
-scheduled for 0.2.
+after "always" was answered for that tool, and `--yolo` removes it. The bash guard narrows what a
+command started by the agent can reach — writes under the state root and the install prefix, reads of
+`auth.json` — on macOS and Linux only; it is not an OS sandbox for the whole process, and Windows has
+no mechanism.
 
 If `LUNATE_HOME` resolves inside the workspace a session starts in — or the repository that worktree
 belongs to — Lunate refuses it: `LUNATE_HOME points inside the workspace; trust records there could

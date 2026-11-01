@@ -54,14 +54,14 @@ cannot drift from the file:
 <PackageReference
     Condition="'$(LunateUseNuGetContracts)' == 'true'"
     Include="Lunate.Contracts"
-    Version="1.15.0"
+    Version="$(LunateContractsVersion)"
     PrivateAssets="all"
     ExcludeAssets="runtime"
 />
 <PackageReference
     Condition="'$(LunateUseNuGetContracts)' == 'true'"
     Include="Lunate.Extensibility.Abstractions"
-    Version="1.15.0"
+    Version="$(LunateContractsVersion)"
     PrivateAssets="all"
     ExcludeAssets="runtime"
 />
