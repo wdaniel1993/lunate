@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Lunate.Tui;
 
 namespace Lunate.Coding.Tests;
@@ -145,14 +146,16 @@ public sealed class WelcomeHeaderSessionTests
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
+        // The header is one line at 40 columns, but the scrollback records the terminal's own wrap:
+        // a version string long enough to cross that width arrives split between two words, so the
+        // phrase is matched across the wrap instead of as one contiguous substring.
+        string header =
+            $"lunate v{ProductVersion.Build} · bash guard none · probe not run — /help for commands";
         string scrollback = await host.WaitForScrollbackAsync(
-            $"lunate v{ProductVersion.Build} · bash guard none · probe not run — /help for commands"
+            text => ShowsPhrase(text, header),
+            $"the header \"{header}\" (a wrap between words is fine)"
         );
-        Assert.Contains(
-            $"lunate v{ProductVersion.Build} · bash guard none · probe not run — /help for commands",
-            scrollback,
-            StringComparison.Ordinal
-        );
+        Assert.True(ShowsPhrase(scrollback, header), "the header must be present: " + scrollback);
         Assert.DoesNotContain(Mark, scrollback, StringComparison.Ordinal);
         Assert.DoesNotContain("extensions …", scrollback, StringComparison.Ordinal);
 
@@ -171,14 +174,13 @@ public sealed class WelcomeHeaderSessionTests
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
+        string header =
+            $"lunate v{ProductVersion.Build} - bash guard none - probe not run - /help for commands";
         string scrollback = await host.WaitForScrollbackAsync(
-            $"lunate v{ProductVersion.Build} - bash guard none - probe not run - /help for commands"
+            text => ShowsPhrase(text, header),
+            $"the ascii header \"{header}\" (a wrap between words is fine)"
         );
-        Assert.Contains(
-            $"lunate v{ProductVersion.Build} - bash guard none - probe not run - /help for commands",
-            scrollback,
-            StringComparison.Ordinal
-        );
+        Assert.True(ShowsPhrase(scrollback, header), "the header must be present: " + scrollback);
         Assert.True(
             scrollback.All(character => character <= 0x7F),
             "the ASCII form must be printable on a legacy console: " + scrollback
@@ -476,6 +478,19 @@ public sealed class WelcomeHeaderSessionTests
 
     private static int Occurrences(string text, string value) =>
         text.Split(value, StringSplitOptions.None).Length - 1;
+
+    /// <summary>
+    /// Whether the scrollback shows <paramref name="phrase"/> as a run of words, allowing the
+    /// terminal's wrap between any two of them. A header longer than the scrollback width is one
+    /// line in the application and two rows in the recording; asserting it as one substring makes
+    /// a test fail the day the version string grows, which is not a product defect.
+    /// </summary>
+    private static bool ShowsPhrase(string scrollback, string phrase) =>
+        Regex.IsMatch(
+            scrollback,
+            string.Join("\\s+", phrase.Split(' ').Select(Regex.Escape)),
+            RegexOptions.CultureInvariant
+        );
 
     /// <summary>A skill at <c>&lt;root&gt;/.agents/skills/&lt;name&gt;</c>: the user scope under a
     /// session's home, the project scope under the worktree.</summary>
