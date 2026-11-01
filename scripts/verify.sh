@@ -11,7 +11,14 @@ cd "${SCRIPT_DIR}/.."
 # roundtrips, formatting, public API); `docs` is the prose profile, and it deliberately runs no
 # build and no test. The two are a closed set: a typo must fail here rather than quietly run the
 # longest gate or, worse, the shortest one.
+#
+# --shard i/n (default 1/1) partitions the test projects of lunate.slnx across n legs by
+# position (see scripts/test-parallel.sh): shard 1 also runs the non-test steps, shards > 1
+# run the build they need plus their slice of both test passes only. CI sharding: the `verify`
+# matrix jobs in .github/workflows/ci.yml pass one --shard each, and every shard must be green.
 PROFILE="full"
+SHARD_I=1
+SHARD_N=1
 while [ $# -gt 0 ]; do
   case "$1" in
     --profile)
@@ -22,8 +29,24 @@ while [ $# -gt 0 ]; do
       PROFILE="${1#*=}"
       shift
       ;;
+    --shard)
+      if [ $# -lt 2 ]; then
+        echo "verify: --shard requires a value (usage: --shard <i>/<n>)" >&2
+        exit 2
+      fi
+      shard_parsed="$(shard_spec_parse "$2")" || exit 2
+      SHARD_I="${shard_parsed%% *}"
+      SHARD_N="${shard_parsed#* }"
+      shift 2
+      ;;
+    --shard=*)
+      shard_parsed="$(shard_spec_parse "${1#--shard=}")" || exit 2
+      SHARD_I="${shard_parsed%% *}"
+      SHARD_N="${shard_parsed#* }"
+      shift
+      ;;
     *)
-      echo "verify: unknown argument '$1' (usage: verify.sh [--profile docs|full])" >&2
+      echo "verify: unknown argument '$1' (usage: verify.sh [--profile docs|full] [--shard <i>/<n>])" >&2
       exit 2
       ;;
   esac
@@ -284,292 +307,332 @@ sha256_file() {
   fi
 }
 
-step "tools"
-# CSharpier is pinned in .config/dotnet-tools.json; restore makes it available locally.
-if ! dotnet tool restore; then
-  echo "verify: dotnet tool restore failed; run it from the repository root to install CSharpier (pinned in .config/dotnet-tools.json)" >&2
-  exit 1
-fi
-if ! dotnet csharpier --version >/dev/null 2>&1; then
-  echo "verify: csharpier not found; install it with: dotnet tool restore" >&2
-  exit 1
-fi
-
-step "build"
-dotnet build lunate.slnx -c "$CONFIGURATION" --nologo
-
-step "provider runtime assets"
-# Providers are compile-private to Lunate.Ai, but their runtime assets must reach
-# the app output or provider construction fails at run time.
-for assembly in Anthropic OpenAI Microsoft.Extensions.AI; do
-  if [ ! -f "src/Lunate.Coding/bin/${CONFIGURATION}/net10.0/${assembly}.dll" ]; then
-    echo "verify: ${assembly}.dll is missing from the Lunate.Coding build output" >&2
+# The steps every non-test gate duty belongs to: tools, build, publish and the startup
+# budget. Shard 1 owns them; shards > 1 skip them (they run only the build they need plus
+# their slice of the test phase), because publishing, budget measuring and the install/tool
+# roundtrips are lane work, and a second copy of each proof is noise, not depth.
+verify_primary_before_tests() {
+  step "tools"
+  # CSharpier is pinned in .config/dotnet-tools.json; restore makes it available locally.
+  if ! dotnet tool restore; then
+    echo "verify: dotnet tool restore failed; run it from the repository root to install CSharpier (pinned in .config/dotnet-tools.json)" >&2
     exit 1
   fi
-done
-
-# Publish and measure the startup budget BEFORE the test suite: the same gate, taken on a
-# quiet machine. Measured after fifteen minutes of tests, the 300 ms median is reading the
-# runner's thermal and scheduler state, not the product (ADR-0005 keeps the budget itself).
-step "publish (${RID})"
-dotnet publish src/Lunate.Coding/Lunate.Coding.csproj \
-  -c "$CONFIGURATION" \
-  -r "$RID" \
-  --self-contained true \
-  -p:PublishSingleFile=true \
-  -p:PublishReadyToRun=true \
-  -o "${PUBLISH_DIR}/${RID}" \
-  --nologo
-
-step "startup budget"
-if ! BUDGET_MS="$BUDGET_MS" "${SCRIPT_DIR}/perf.sh" "$BINARY"; then
-  if [ "$STARTUP_BUDGET_ENFORCE" = "1" ]; then
+  if ! dotnet csharpier --version >/dev/null 2>&1; then
+    echo "verify: csharpier not found; install it with: dotnet tool restore" >&2
     exit 1
   fi
-  echo "startup: measured but not enforced on this leg (STARTUP_BUDGET_ENFORCE=0)"
-fi
 
-step "test"
-# The Category=Perf budget check is excluded here (and from the culture pass) and
-# runs as its own step below, so the main passes stay fast and the budget is
-# still enforced by the gate.
+  step "build"
+  dotnet build lunate.slnx -c "$CONFIGURATION" --nologo
+
+  step "provider runtime assets"
+  # Providers are compile-private to Lunate.Ai, but their runtime assets must reach
+  # the app output or provider construction fails at run time.
+  for assembly in Anthropic OpenAI Microsoft.Extensions.AI; do
+    if [ ! -f "src/Lunate.Coding/bin/${CONFIGURATION}/net10.0/${assembly}.dll" ]; then
+      echo "verify: ${assembly}.dll is missing from the Lunate.Coding build output" >&2
+      exit 1
+    fi
+  done
+
+  # Publish and measure the startup budget BEFORE the test suite: the same gate, taken on a
+  # quiet machine. Measured after fifteen minutes of tests, the 300 ms median is reading the
+  # runner's thermal and scheduler state, not the product (ADR-0005 keeps the budget itself).
+  step "publish (${RID})"
+  dotnet publish src/Lunate.Coding/Lunate.Coding.csproj \
+    -c "$CONFIGURATION" \
+    -r "$RID" \
+    --self-contained true \
+    -p:PublishSingleFile=true \
+    -p:PublishReadyToRun=true \
+    -o "${PUBLISH_DIR}/${RID}" \
+    --nologo
+
+  step "startup budget"
+  if ! BUDGET_MS="$BUDGET_MS" "${SCRIPT_DIR}/perf.sh" "$BINARY"; then
+    if [ "$STARTUP_BUDGET_ENFORCE" = "1" ]; then
+      exit 1
+    fi
+    echo "startup: measured but not enforced on this leg (STARTUP_BUDGET_ENFORCE=0)"
+  fi
+}
+
+# Both test passes (machine culture and de-AT) over this shard's projects.
+# `--shard 1/1` keeps the gate the way it has always run it: the solution-wide
+# `dotnet test` builds nothing twice and needs no options.
 #
-# The two culture passes are independent processes with independent
-# environments, so they run at the same time instead of back to back. Each has
-# its own bounded pool (LUNATE_VERIFY_JOBS, default 2); a serial assembly owns
-# every slot of its pass. Output is still printed per assembly and in solution
-# order by verify_check_test_pass. `--no-build` is safe because the build step
-# above built every test project, and the missing-assembly check proves it.
-# The pooled path is opt-in (LUNATE_VERIFY_JOBS=2 or more): it overlaps the two culture
-# passes and bounds each pass's pool, which is ~2 minutes faster locally but leans on the
-# runner harder. CI keeps the solution-wide run below, which is what the gate has always
-# used; three timing-sensitive suites proved flaky under the pooled load on the Windows
-# runner (see the PR), so the default stays the proven path.
-if [ "$JOBS" -eq 0 ]; then
-  run_tests "test" dotnet test --solution lunate.slnx -c "$CONFIGURATION" --filter-not-trait Category=Perf
-  step "test (de-AT culture)"
-  LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 run_tests "test (de-AT culture)" dotnet test --solution lunate.slnx -c "$CONFIGURATION" --no-build --filter-not-trait Category=Perf
-else
-test_missing=""
-while IFS= read -r project; do
-  assembly="${project%/*}/bin/${CONFIGURATION}/net10.0/$(basename "$project" .csproj).dll"
-  if [ ! -f "$assembly" ]; then
-    test_missing="${test_missing} ${assembly}"
+# A shard > 1 cannot pass `--solution`: the MTP module mode replaces it and
+# forbids the build arguments with it, so the shard selects its own slice of
+# built assemblies through `--test-modules` instead — the same fan-out of
+# module processes a solution-wide run gets, minus the modules owned by the
+# other shards. `dotnet test --test-modules` does not build, so a shard > 1
+# runs its own build step first (a fresh CI workspace has nothing built; see
+# the dispatch at the bottom), while a local shard-2-plus run consumes the
+# build its shard-1 run left behind.
+verify_test_phase() {
+  step "test"
+  # The Category=Perf budget check is excluded here (and from the culture pass) and
+  # runs as its own step below, so the main passes stay fast and the budget is
+  # still enforced by the gate.
+  #
+  # The two culture passes are independent processes with independent
+  # environments, so they run at the same time instead of back to back. Each has
+  # its own bounded pool (LUNATE_VERIFY_JOBS, default 2); a serial assembly owns
+  # every slot of its pass. Output is still printed per assembly and in solution
+  # order by verify_check_test_pass. `--no-build` is safe because the build step
+  # above built every test project, and the missing-assembly check proves it.
+  # The pooled path is opt-in (LUNATE_VERIFY_JOBS=2 or more): it overlaps the two culture
+  # passes and bounds each pass's pool, which is ~2 minutes faster locally but leans on the
+  # runner harder. CI keeps the solution-wide run below, which is what the gate has always
+  # used; three timing-sensitive suites proved flaky under the pooled load on the Windows
+  # runner (see the PR), so the default stays the proven path.
+  if [ "$JOBS" -eq 0 ]; then
+    if [ "$SHARD_N" -gt 1 ]; then
+      shard_modules="$(verify_shard_modules)"
+      run_tests "test" dotnet test --test-modules "$shard_modules" --filter-not-trait Category=Perf --nologo
+      step "test (de-AT culture)"
+      # Non-English culture pass (S-5 finding). Effective on macOS/Linux; Windows
+      # runners keep the OS culture (LANG is not honored there).
+      LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 run_tests "test (de-AT culture)" \
+        dotnet test --test-modules "$shard_modules" --filter-not-trait Category=Perf --nologo
+    else
+      run_tests "test" dotnet test --solution lunate.slnx -c "$CONFIGURATION" --filter-not-trait Category=Perf
+      step "test (de-AT culture)"
+      LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 run_tests "test (de-AT culture)" dotnet test --solution lunate.slnx -c "$CONFIGURATION" --no-build --filter-not-trait Category=Perf
+    fi
+  else
+    test_missing=""
+    while IFS= read -r project; do
+      assembly="${project%/*}/bin/${CONFIGURATION}/net10.0/$(basename "$project" .csproj).dll"
+      if [ ! -f "$assembly" ]; then
+        test_missing="${test_missing} ${assembly}"
+      fi
+    done < <(verify_test_projects)
+    if [ -n "$test_missing" ]; then
+      echo "verify: test assemblies missing from the ${CONFIGURATION} build:${test_missing}" >&2
+      echo "verify: run the build step first (dotnet build lunate.slnx -c ${CONFIGURATION})" >&2
+      exit 1
+    fi
+
+    test_queue=()
+    while IFS= read -r item; do
+      test_queue+=("$item")
+    done < <(verify_test_queue serial-first | verify_shard_queue)
+    culture_queue=()
+    while IFS= read -r item; do
+      culture_queue+=("$item")
+    done < <(verify_test_queue serial-last | verify_shard_queue)
+    if [ "${#test_queue[@]}" -eq 0 ]; then
+      if [ "$SHARD_N" -gt 1 ]; then
+        echo "verify: shard ${SHARD_I}/${SHARD_N} owns zero test projects — reachable shards only" >&2
+      else
+        echo "verify: no test projects found in lunate.slnx — test discovery regression?" >&2
+      fi
+      exit 1
+    fi
+
+    test_root="${VERIFY_TMP_ROOT}/test-phase"
+    default_dir="${test_root}/default"
+    culture_dir="${test_root}/de-AT"
+    VERIFY_TEST_FAILURES=0
+    (verify_run_test_pass "$default_dir" "${test_queue[@]}") &
+    default_pid=$!
+    (LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 verify_run_test_pass "$culture_dir" "${culture_queue[@]}") &
+    culture_pid=$!
+
+    default_rc=0
+    culture_rc=0
+    wait "$default_pid" || default_rc=$?
+    wait "$culture_pid" || culture_rc=$?
+
+    verify_check_test_pass "$default_dir" "test"
+
+    step "test (de-AT culture)"
+    # Non-English culture pass (S-5 finding). Effective on macOS/Linux; Windows
+    # runners keep the OS culture (LANG is not honored there).
+    verify_check_test_pass "$culture_dir" "test (de-AT culture)"
+
+    if [ "$default_rc" -ne 0 ] || [ "$culture_rc" -ne 0 ]; then
+      echo "verify: the test phase runner failed (default ${default_rc}, de-AT ${culture_rc})" >&2
+      exit 1
+    fi
+    if [ "$VERIFY_TEST_FAILURES" -ne 0 ]; then
+      exit 1
+    fi
   fi
-done < <(verify_test_projects)
-if [ -n "$test_missing" ]; then
-  echo "verify: test assemblies missing from the ${CONFIGURATION} build:${test_missing}" >&2
-  echo "verify: run the build step first (dotnet build lunate.slnx -c ${CONFIGURATION})" >&2
-  exit 1
-fi
+}
 
-test_queue=()
-while IFS= read -r item; do
-  test_queue+=("$item")
-done < <(verify_test_queue serial-first)
-culture_queue=()
-while IFS= read -r item; do
-  culture_queue+=("$item")
-done < <(verify_test_queue serial-last)
-if [ "${#test_queue[@]}" -eq 0 ]; then
-  echo "verify: no test projects found in lunate.slnx — test discovery regression?" >&2
-  exit 1
-fi
+# The steps that prove the artifact and the hygiene, once per commit: the two Perf
+# trait budgets, the install/tool/extension roundtrips against the published binary,
+# packaging files, formatting, docs and public-API checks. Shard 1 owns them — they
+# are stakeholder-visible gates, not test volume, and no test is lost to the split
+# because the Category=Perf trait excludes them from the test phase of every shard.
+verify_primary_after_tests() {
+  step "path index budget"
+  run_tests "path index budget" dotnet test --project tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj -c "$CONFIGURATION" --no-build --filter-trait Category=Perf
 
-test_root="${VERIFY_TMP_ROOT}/test-phase"
-default_dir="${test_root}/default"
-culture_dir="${test_root}/de-AT"
-VERIFY_TEST_FAILURES=0
-(verify_run_test_pass "$default_dir" "${test_queue[@]}") &
-default_pid=$!
-(LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 verify_run_test_pass "$culture_dir" "${culture_queue[@]}") &
-culture_pid=$!
+  step "write verifier budget"
+  run_tests "write verifier budget" dotnet test --project tests/Lunate.Roslyn.Tests/Lunate.Roslyn.Tests.csproj -c "$CONFIGURATION" --no-build --filter-trait Category=Perf
 
-default_rc=0
-culture_rc=0
-wait "$default_pid" || default_rc=$?
-wait "$culture_pid" || culture_rc=$?
-
-verify_check_test_pass "$default_dir" "test"
-
-step "test (de-AT culture)"
-# Non-English culture pass (S-5 finding). Effective on macOS/Linux; Windows
-# runners keep the OS culture (LANG is not honored there).
-verify_check_test_pass "$culture_dir" "test (de-AT culture)"
-
-if [ "$default_rc" -ne 0 ] || [ "$culture_rc" -ne 0 ]; then
-  echo "verify: the test phase runner failed (default ${default_rc}, de-AT ${culture_rc})" >&2
-  exit 1
-fi
-if [ "$VERIFY_TEST_FAILURES" -ne 0 ]; then
-  exit 1
-fi
-fi
-
-step "path index budget"
-run_tests "path index budget" dotnet test --project tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj -c "$CONFIGURATION" --no-build --filter-trait Category=Perf
-
-step "write verifier budget"
-run_tests "write verifier budget" dotnet test --project tests/Lunate.Roslyn.Tests/Lunate.Roslyn.Tests.csproj -c "$CONFIGURATION" --no-build --filter-trait Category=Perf
-
-step "install script (fixture release)"
-version="$(product_version)"
-if [ -z "$version" ]; then
-  echo "verify: cannot read <Version> from Directory.Build.props" >&2
-  exit 1
-fi
-install_tmp="$(verify_tmp)"
-
-if [ "${RID#win}" != "$RID" ]; then
-  # The Windows bash (Git Bash) must be refused: Windows installs via install.ps1.
-  refusal_log="${install_tmp}/refusal.log"
-  if sh install.sh >"$refusal_log" 2>&1; then
-    echo "verify: install.sh must refuse Windows platforms (use install.ps1), but it exited 0" >&2
+  step "install script (fixture release)"
+  version="$(product_version)"
+  if [ -z "$version" ]; then
+    echo "verify: cannot read <Version> from Directory.Build.props" >&2
     exit 1
   fi
-  if ! grep -q 'install.ps1' "$refusal_log"; then
-    echo "verify: install.sh refusal does not point at install.ps1:" >&2
-    cat "$refusal_log" >&2
-    exit 1
-  fi
-else
-  fixture="${install_tmp}/fixture"
-  prefix="${install_tmp}/prefix"
-  prefix_flags="${install_tmp}/prefix-flags"
-  bad_fixture="${install_tmp}/bad-fixture"
-  bad_prefix="${install_tmp}/bad-prefix"
-  log="${install_tmp}/install.log"
-  mkdir -p "${fixture}/latest/download" "${fixture}/download/v${version}" \
-    "$prefix" "$prefix_flags" "${bad_fixture}/latest/download" "$bad_prefix"
+  install_tmp="$(verify_tmp)"
 
-  install_asset="lunate-${RID}.tar.gz"
-  tar -czf "${fixture}/latest/download/${install_asset}" -C "${PUBLISH_DIR}/${RID}" lunate
-  printf '%s  %s\n' "$(sha256_file "${fixture}/latest/download/${install_asset}")" "$install_asset" \
-    >"${fixture}/latest/download/SHA256SUMS"
-  cp "${fixture}/latest/download/${install_asset}" "${fixture}/download/v${version}/${install_asset}"
-  cp "${fixture}/latest/download/SHA256SUMS" "${fixture}/download/v${version}/SHA256SUMS"
+  if [ "${RID#win}" != "$RID" ]; then
+    # The Windows bash (Git Bash) must be refused: Windows installs via install.ps1.
+    refusal_log="${install_tmp}/refusal.log"
+    if sh install.sh >"$refusal_log" 2>&1; then
+      echo "verify: install.sh must refuse Windows platforms (use install.ps1), but it exited 0" >&2
+      exit 1
+    fi
+    if ! grep -q 'install.ps1' "$refusal_log"; then
+      echo "verify: install.sh refusal does not point at install.ps1:" >&2
+      cat "$refusal_log" >&2
+      exit 1
+    fi
+  else
+    fixture="${install_tmp}/fixture"
+    prefix="${install_tmp}/prefix"
+    prefix_flags="${install_tmp}/prefix-flags"
+    bad_fixture="${install_tmp}/bad-fixture"
+    bad_prefix="${install_tmp}/bad-prefix"
+    log="${install_tmp}/install.log"
+    mkdir -p "${fixture}/latest/download" "${fixture}/download/v${version}" \
+      "$prefix" "$prefix_flags" "${bad_fixture}/latest/download" "$bad_prefix"
 
-  # (a) Default install: the environment supplies only the releases base.
-  if ! LUNATE_INSTALL_BASE_URL="file://${fixture}" LUNATE_INSTALL_PREFIX="$prefix" \
-    LUNATE_INSTALL_VERSION= sh install.sh >"$log" 2>&1; then
-    echo "verify: install.sh failed against the fixture release:" >&2
-    cat "$log" >&2
-    exit 1
-  fi
-  installed="$("${prefix}/lunate" --version)"
-  published="$("${BINARY}" --version)"
-  if [ "$installed" != "$published" ]; then
-    echo "verify: installed lunate reports ${installed}, expected ${published}" >&2
-    exit 1
-  fi
-
-  # (b) --version/--prefix must drive the composed URL and the target directory.
-  if ! LUNATE_INSTALL_BASE_URL="file://${fixture}" LUNATE_INSTALL_PREFIX= \
-    sh install.sh --version "v${version}" --prefix "$prefix_flags" >"$log" 2>&1; then
-    echo "verify: install.sh failed with --version/--prefix against the fixture release:" >&2
-    cat "$log" >&2
-    exit 1
-  fi
-  installed_flags="$("${prefix_flags}/lunate" --version)"
-  if [ "$installed_flags" != "$published" ]; then
-    echo "verify: installed lunate reports ${installed_flags}, expected ${published}" >&2
-    exit 1
-  fi
-
-  # (c) A tag with no release directory must fail even though latest/ exists:
-  # the tag participates in the URL the script composes.
-  if LUNATE_INSTALL_BASE_URL="file://${fixture}" LUNATE_INSTALL_PREFIX= \
-    sh install.sh --version v9.9.9 --prefix "${install_tmp}/prefix-bad-tag" >"$log" 2>&1; then
-    echo "verify: install.sh installed a nonexistent version v9.9.9 from the fixture" >&2
-    exit 1
-  fi
-  if ! grep -q 'failed to download' "$log"; then
-    echo "verify: install.sh did not fail on the nonexistent version download:" >&2
-    cat "$log" >&2
-    exit 1
-  fi
-
-  cp -R "${fixture}/." "$bad_fixture/"
-  printf 'corrupt\n' >>"${bad_fixture}/latest/download/${install_asset}"
-  if LUNATE_INSTALL_BASE_URL="file://${bad_fixture}" LUNATE_INSTALL_PREFIX="$bad_prefix" \
-    LUNATE_INSTALL_VERSION= sh install.sh >"$log" 2>&1; then
-    echo "verify: install.sh accepted a checksum mismatch" >&2
-    exit 1
-  fi
-  if [ -e "${bad_prefix}/lunate" ]; then
-    echo "verify: install.sh left a partial install after a checksum mismatch" >&2
-    exit 1
-  fi
-  if ! grep -q 'checksum mismatch' "$log"; then
-    echo "verify: install.sh mismatch error does not mention the checksum:" >&2
-    cat "$log" >&2
-    exit 1
-  fi
-
-  # An unsupported platform must be refused before anything is downloaded.
-  fakebin="${install_tmp}/fakebin"
-  mkdir -p "$fakebin"
-  cat >"${fakebin}/uname" <<'SHIM'
+    install_asset="lunate-${RID}.tar.gz"
+    tar -czf "${fixture}/latest/download/${install_asset}" -C "${PUBLISH_DIR}/${RID}" lunate
+    printf '%s  %s\n' "$(sha256_file "${fixture}/latest/download/${install_asset}")" "$install_asset" \
+      >"${fixture}/latest/download/SHA256SUMS"
+    cp "${fixture}/latest/download/${install_asset}" "${fixture}/download/v${version}/${install_asset}"
+    cp "${fixture}/latest/download/SHA256SUMS" "${fixture}/download/v${version}/SHA256SUMS"
+  
+    # (a) Default install: the environment supplies only the releases base.
+    if ! LUNATE_INSTALL_BASE_URL="file://${fixture}" LUNATE_INSTALL_PREFIX="$prefix" \
+      LUNATE_INSTALL_VERSION= sh install.sh >"$log" 2>&1; then
+      echo "verify: install.sh failed against the fixture release:" >&2
+      cat "$log" >&2
+      exit 1
+    fi
+    installed="$("${prefix}/lunate" --version)"
+    published="$("${BINARY}" --version)"
+    if [ "$installed" != "$published" ]; then
+      echo "verify: installed lunate reports ${installed}, expected ${published}" >&2
+      exit 1
+    fi
+  
+    # (b) --version/--prefix must drive the composed URL and the target directory.
+    if ! LUNATE_INSTALL_BASE_URL="file://${fixture}" LUNATE_INSTALL_PREFIX= \
+      sh install.sh --version "v${version}" --prefix "$prefix_flags" >"$log" 2>&1; then
+      echo "verify: install.sh failed with --version/--prefix against the fixture release:" >&2
+      cat "$log" >&2
+      exit 1
+    fi
+    installed_flags="$("${prefix_flags}/lunate" --version)"
+    if [ "$installed_flags" != "$published" ]; then
+      echo "verify: installed lunate reports ${installed_flags}, expected ${published}" >&2
+      exit 1
+    fi
+  
+    # (c) A tag with no release directory must fail even though latest/ exists:
+    # the tag participates in the URL the script composes.
+    if LUNATE_INSTALL_BASE_URL="file://${fixture}" LUNATE_INSTALL_PREFIX= \
+      sh install.sh --version v9.9.9 --prefix "${install_tmp}/prefix-bad-tag" >"$log" 2>&1; then
+      echo "verify: install.sh installed a nonexistent version v9.9.9 from the fixture" >&2
+      exit 1
+    fi
+    if ! grep -q 'failed to download' "$log"; then
+      echo "verify: install.sh did not fail on the nonexistent version download:" >&2
+      cat "$log" >&2
+      exit 1
+    fi
+  
+    cp -R "${fixture}/." "$bad_fixture/"
+    printf 'corrupt\n' >>"${bad_fixture}/latest/download/${install_asset}"
+    if LUNATE_INSTALL_BASE_URL="file://${bad_fixture}" LUNATE_INSTALL_PREFIX="$bad_prefix" \
+      LUNATE_INSTALL_VERSION= sh install.sh >"$log" 2>&1; then
+      echo "verify: install.sh accepted a checksum mismatch" >&2
+      exit 1
+    fi
+    if [ -e "${bad_prefix}/lunate" ]; then
+      echo "verify: install.sh left a partial install after a checksum mismatch" >&2
+      exit 1
+    fi
+    if ! grep -q 'checksum mismatch' "$log"; then
+      echo "verify: install.sh mismatch error does not mention the checksum:" >&2
+      cat "$log" >&2
+      exit 1
+    fi
+  
+    # An unsupported platform must be refused before anything is downloaded.
+    fakebin="${install_tmp}/fakebin"
+    mkdir -p "$fakebin"
+    cat >"${fakebin}/uname" <<'SHIM'
 #!/bin/sh
 case "$1" in
   -m) printf 'x86_64\n' ;;
   *) printf 'Darwin\n' ;;
 esac
 SHIM
-  chmod +x "${fakebin}/uname"
-  if PATH="${fakebin}:${PATH}" LUNATE_INSTALL_BASE_URL="file://${fixture}" \
-    sh install.sh >"$log" 2>&1; then
-    echo "verify: install.sh accepted macOS on x86_64" >&2
+    chmod +x "${fakebin}/uname"
+    if PATH="${fakebin}:${PATH}" LUNATE_INSTALL_BASE_URL="file://${fixture}" \
+      sh install.sh >"$log" 2>&1; then
+      echo "verify: install.sh accepted macOS on x86_64" >&2
+      exit 1
+    fi
+    if ! grep -q 'install.ps1' "$log"; then
+      echo "verify: install.sh refusal does not point Windows users at install.ps1:" >&2
+      cat "$log" >&2
+      exit 1
+    fi
+  fi
+
+  step "tool package roundtrip"
+  tool_tmp="$(verify_tmp)"
+  dotnet pack src/Lunate.Coding/Lunate.Coding.csproj -c "$CONFIGURATION" -o "${tool_tmp}/feed" --nologo
+  # The feed page is a product surface: 0.1.0 shipped with "License missing" and "Readme missing",
+  # so the package `pack` just wrote has to declare a licence, carry the readme it names, and link
+  # the repository. The check reads the .nupkg, not the intermediate nuspec in obj/, because the
+  # archive is what the feed receives. Same check for the extension package below.
+  "${SCRIPT_DIR}/check-package-metadata.sh" "${tool_tmp}/feed/lunate.${version}.nupkg" --id lunate
+  dotnet tool install --tool-path "${tool_tmp}/tools" --add-source "${tool_tmp}/feed" lunate --version "$version"
+  tool_bin="${tool_tmp}/tools/lunate"
+  if [ "${RID#win}" != "$RID" ]; then
+    tool_bin="${tool_bin}.exe"
+  fi
+  tool_version="$("$tool_bin" --version)"
+  if [ "${tool_version%%+*}" != "$version" ]; then
+    echo "verify: tool roundtrip reports ${tool_version}, expected ${version}" >&2
     exit 1
   fi
-  if ! grep -q 'install.ps1' "$log"; then
-    echo "verify: install.sh refusal does not point Windows users at install.ps1:" >&2
-    cat "$log" >&2
-    exit 1
-  fi
-fi
-
-step "tool package roundtrip"
-tool_tmp="$(verify_tmp)"
-dotnet pack src/Lunate.Coding/Lunate.Coding.csproj -c "$CONFIGURATION" -o "${tool_tmp}/feed" --nologo
-# The feed page is a product surface: 0.1.0 shipped with "License missing" and "Readme missing",
-# so the package `pack` just wrote has to declare a licence, carry the readme it names, and link
-# the repository. The check reads the .nupkg, not the intermediate nuspec in obj/, because the
-# archive is what the feed receives. Same check for the extension package below.
-"${SCRIPT_DIR}/check-package-metadata.sh" "${tool_tmp}/feed/lunate.${version}.nupkg" --id lunate
-dotnet tool install --tool-path "${tool_tmp}/tools" --add-source "${tool_tmp}/feed" lunate --version "$version"
-tool_bin="${tool_tmp}/tools/lunate"
-if [ "${RID#win}" != "$RID" ]; then
-  tool_bin="${tool_bin}.exe"
-fi
-tool_version="$("$tool_bin" --version)"
-if [ "${tool_version%%+*}" != "$version" ]; then
-  echo "verify: tool roundtrip reports ${tool_version}, expected ${version}" >&2
-  exit 1
-fi
-
-step "extension package roundtrip"
-# The release ships an extension package beside the tool, so the bundle `dotnet pack` writes —
-# lunate.package.json at the root, the extension under extension/, no lib/ — is a product artifact,
-# not a test fixture. Pack the sample, then install it from a folder feed with the published binary
-# exactly as the release smoke installs it from nuget.org: version pin, record, verification,
-# uninstall. The smoke proves the feed; this proves the artifact on every commit, on every OS.
-package_tmp="$(verify_tmp)"
-package_id="Lunate.Extensions.Subagents"
-repo_root="$(pwd)"
-binary="$(cd "$(dirname "$BINARY")" && pwd)/$(basename "$BINARY")"
-# The feed and the store are read by the native binary, so both are written in its dialect:
-# Pack also gets the native feed, so bash and the CLI agree on one directory.
-feed="$(native_path "${package_tmp}/feed")"
-store="$(native_path "${package_tmp}/home")"
-dotnet pack extensions/subagents/SubagentsExtension/SubagentsExtension.csproj \
-  -c "$CONFIGURATION" -o "$feed" --nologo
-# The extension's feed page is part of the release too, and its metadata must survive changes to
-# the tool's: this is the same contract, asserted on the package the release ships.
-"${SCRIPT_DIR}/check-package-metadata.sh" \
-  "${feed}/Lunate.Extensions.Subagents.${version}.nupkg" --id Lunate.Extensions.Subagents
-mkdir -p "${package_tmp}/worktree"
-cat >"${package_tmp}/worktree/nuget.config" <<XML
+  
+  step "extension package roundtrip"
+  # The release ships an extension package beside the tool, so the bundle `dotnet pack` writes —
+  # lunate.package.json at the root, the extension under extension/, no lib/ — is a product artifact,
+  # not a test fixture. Pack the sample, then install it from a folder feed with the published binary
+  # exactly as the release smoke installs it from nuget.org: version pin, record, verification,
+  # uninstall. The smoke proves the feed; this proves the artifact on every commit, on every OS.
+  package_tmp="$(verify_tmp)"
+  package_id="Lunate.Extensions.Subagents"
+  repo_root="$(pwd)"
+  binary="$(cd "$(dirname "$BINARY")" && pwd)/$(basename "$BINARY")"
+  # The feed and the store are read by the native binary, so both are written in its dialect:
+  # Pack also gets the native feed, so bash and the CLI agree on one directory.
+  feed="$(native_path "${package_tmp}/feed")"
+  store="$(native_path "${package_tmp}/home")"
+  dotnet pack extensions/subagents/SubagentsExtension/SubagentsExtension.csproj \
+    -c "$CONFIGURATION" -o "$feed" --nologo
+  # The extension's feed page is part of the release too, and its metadata must survive changes to
+  # the tool's: this is the same contract, asserted on the package the release ships.
+  "${SCRIPT_DIR}/check-package-metadata.sh" \
+    "${feed}/Lunate.Extensions.Subagents.${version}.nupkg" --id Lunate.Extensions.Subagents
+  mkdir -p "${package_tmp}/worktree"
+  cat >"${package_tmp}/worktree/nuget.config" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
@@ -581,109 +644,135 @@ cat >"${package_tmp}/worktree/nuget.config" <<XML
   </config>
 </configuration>
 XML
-cd "${package_tmp}/worktree"
-LUNATE_HOME="$store" "$binary" install "${package_id}@${version}"
-LUNATE_HOME="$store" "$binary" packages --verify
-LUNATE_HOME="$store" "$binary" uninstall "$package_id"
-# The assertions look at the scratch directory through bash, where it is still a POSIX path.
-if [ -e "${package_tmp}/home/extensions/subagents" ]; then
-  echo "verify: the extension package roundtrip left ${package_tmp}/home/extensions/subagents behind" >&2
-  exit 1
-fi
-if [ -n "$(find "${package_tmp}/home" -name install.json 2>/dev/null)" ]; then
-  echo "verify: the extension package roundtrip left an install record behind" >&2
-  exit 1
-fi
-cd "$repo_root"
-
-step "contract package roundtrip"
-# The extension contract ships beside the tool (#237), on the same tag and no looser: the four SDK
-# packages are checked by the same metadata script (the preview pair under --prerelease), and the
-# template's NuGet shape is proven against this feed — the packages nuget.org serves after the
-# next tag, exercised on every commit where they exist only in dist/.
-contract_tmp="$(verify_tmp)"
-contract_feed="$(native_path "${contract_tmp}/feed")"
-for contract_project in \
-  src/Lunate.Contracts/Lunate.Contracts.csproj \
-  src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj \
-  src/Lunate.Agent/Lunate.Agent.csproj \
-  src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj
-do
-  dotnet pack "$contract_project" -c "$CONFIGURATION" -o "$contract_feed" --nologo -nodeReuse:false
-done
-# The stable pair is versioned with ExtensionApi, the preview pair 0.2.0-preview.<n> — neither is
-# the repository <Version>, so each is read from the csproj that owns it.
-contract_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj)"
-preview_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Lunate.Agent/Lunate.Agent.csproj)"
-"${SCRIPT_DIR}/check-package-metadata.sh" \
-  "${contract_feed}/Lunate.Contracts.${contract_version}.nupkg" --id Lunate.Contracts
-"${SCRIPT_DIR}/check-package-metadata.sh" \
-  "${contract_feed}/Lunate.Extensibility.Abstractions.${contract_version}.nupkg" --id Lunate.Extensibility.Abstractions
-"${SCRIPT_DIR}/check-package-metadata.sh" \
-  "${contract_feed}/Lunate.Agent.${preview_version}.nupkg" --id Lunate.Agent --prerelease
-"${SCRIPT_DIR}/check-package-metadata.sh" \
-  "${contract_feed}/Lunate.Extensibility.Testing.${preview_version}.nupkg" --id Lunate.Extensibility.Testing --prerelease
-# The template in NuGet mode binds the contract packages: restore pulls them from the folder feed
-# the step just packed, build compiles the extension against them, and the test project builds the
-# extension the consumer way (it carries the switch to its child itself). Restore the child as well
-# as the test project: the test's after-build target invokes a second project, whose assets file
-# would otherwise still describe the earlier in-repository ProjectReference shape.
-dotnet restore templates/extension/TemplateExtension/TemplateExtension.csproj \
-  -p:LunateUseNuGetContracts=true \
-  -p:RestoreAdditionalProjectSources="$contract_feed" --nologo -nodeReuse:false
-dotnet build templates/extension/TemplateExtension/TemplateExtension.csproj \
-  -c "$CONFIGURATION" -p:LunateUseNuGetContracts=true --nologo -nodeReuse:false
-dotnet restore templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj \
-  -p:LunateUseNuGetContracts=true \
-  -p:RestoreAdditionalProjectSources="$contract_feed" --nologo -nodeReuse:false
-dotnet build templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj \
-  -c "$CONFIGURATION" \
-  -p:LunateUseNuGetContracts=true --nologo -nodeReuse:false
-
-step "packaging files"
-for packaging_file in \
-  packaging/homebrew/lunate.rb \
-  packaging/scoop/lunate.json \
-  packaging/winget/wdaniel1993.lunate.yaml \
-  packaging/winget/wdaniel1993.lunate.locale.en-US.yaml \
-  packaging/winget/wdaniel1993.lunate.installer.yaml; do
-  if [ ! -f "$packaging_file" ]; then
-    echo "verify: missing packaging file: ${packaging_file}" >&2
+  cd "${package_tmp}/worktree"
+  LUNATE_HOME="$store" "$binary" install "${package_id}@${version}"
+  LUNATE_HOME="$store" "$binary" packages --verify
+  LUNATE_HOME="$store" "$binary" uninstall "$package_id"
+  # The assertions look at the scratch directory through bash, where it is still a POSIX path.
+  if [ -e "${package_tmp}/home/extensions/subagents" ]; then
+    echo "verify: the extension package roundtrip left ${package_tmp}/home/extensions/subagents behind" >&2
     exit 1
   fi
-  if ! grep -Fq "$version" "$packaging_file"; then
-    echo "verify: ${packaging_file} does not carry the current version ${version}" >&2
+  if [ -n "$(find "${package_tmp}/home" -name install.json 2>/dev/null)" ]; then
+    echo "verify: the extension package roundtrip left an install record behind" >&2
     exit 1
   fi
-done
+  cd "$repo_root"
 
-step "format"
-# CSharpier owns formatting; dotnet format keeps style and analyzer duties.
-dotnet csharpier check .
-dotnet format style lunate.slnx --verify-no-changes --no-restore
-dotnet format analyzers lunate.slnx --verify-no-changes --no-restore
+  step "contract package roundtrip"
+  # The extension contract ships beside the tool (#237), on the same tag and no looser: the four SDK
+  # packages are checked by the same metadata script (the preview pair under --prerelease), and the
+  # template's NuGet shape is proven against this feed — the packages nuget.org serves after the
+  # next tag, exercised on every commit where they exist only in dist/.
+  contract_tmp="$(verify_tmp)"
+  contract_feed="$(native_path "${contract_tmp}/feed")"
+  for contract_project in \
+    src/Lunate.Contracts/Lunate.Contracts.csproj \
+    src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj \
+    src/Lunate.Agent/Lunate.Agent.csproj \
+    src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj
+  do
+    dotnet pack "$contract_project" -c "$CONFIGURATION" -o "$contract_feed" --nologo -nodeReuse:false
+  done
+  # The stable pair is versioned with ExtensionApi, the preview pair 0.2.0-preview.<n> — neither is
+  # the repository <Version>, so each is read from the csproj that owns it.
+  contract_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj)"
+  preview_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Lunate.Agent/Lunate.Agent.csproj)"
+  "${SCRIPT_DIR}/check-package-metadata.sh" \
+    "${contract_feed}/Lunate.Contracts.${contract_version}.nupkg" --id Lunate.Contracts
+  "${SCRIPT_DIR}/check-package-metadata.sh" \
+    "${contract_feed}/Lunate.Extensibility.Abstractions.${contract_version}.nupkg" --id Lunate.Extensibility.Abstractions
+  "${SCRIPT_DIR}/check-package-metadata.sh" \
+    "${contract_feed}/Lunate.Agent.${preview_version}.nupkg" --id Lunate.Agent --prerelease
+  "${SCRIPT_DIR}/check-package-metadata.sh" \
+    "${contract_feed}/Lunate.Extensibility.Testing.${preview_version}.nupkg" --id Lunate.Extensibility.Testing --prerelease
+  # The template in NuGet mode binds the contract packages: restore pulls them from the folder feed
+  # the step just packed, build compiles the extension against them, and the test project builds the
+  # extension the consumer way (it carries the switch to its child itself). Restore the child as well
+  # as the test project: the test's after-build target invokes a second project, whose assets file
+  # would otherwise still describe the earlier in-repository ProjectReference shape.
+  dotnet restore templates/extension/TemplateExtension/TemplateExtension.csproj \
+    -p:LunateUseNuGetContracts=true \
+    -p:RestoreAdditionalProjectSources="$contract_feed" --nologo -nodeReuse:false
+  dotnet build templates/extension/TemplateExtension/TemplateExtension.csproj \
+    -c "$CONFIGURATION" -p:LunateUseNuGetContracts=true --nologo -nodeReuse:false
+  dotnet restore templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj \
+    -p:LunateUseNuGetContracts=true \
+    -p:RestoreAdditionalProjectSources="$contract_feed" --nologo -nodeReuse:false
+  dotnet build templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj \
+    -c "$CONFIGURATION" \
+    -p:LunateUseNuGetContracts=true --nologo -nodeReuse:false
 
-step "docs lint"
-if ! command -v node >/dev/null 2>&1; then
-  echo "verify: node is required for the documentation lint step; install Node.js (npx runs the pinned markdownlint-cli2)" >&2
-  exit 1
+  step "packaging files"
+  for packaging_file in \
+    packaging/homebrew/lunate.rb \
+    packaging/scoop/lunate.json \
+    packaging/winget/wdaniel1993.lunate.yaml \
+    packaging/winget/wdaniel1993.lunate.locale.en-US.yaml \
+    packaging/winget/wdaniel1993.lunate.installer.yaml; do
+    if [ ! -f "$packaging_file" ]; then
+      echo "verify: missing packaging file: ${packaging_file}" >&2
+      exit 1
+    fi
+    if ! grep -Fq "$version" "$packaging_file"; then
+      echo "verify: ${packaging_file} does not carry the current version ${version}" >&2
+      exit 1
+    fi
+  done
+  
+  step "format"
+  # CSharpier owns formatting; dotnet format keeps style and analyzer duties.
+  dotnet csharpier check .
+  dotnet format style lunate.slnx --verify-no-changes --no-restore
+  dotnet format analyzers lunate.slnx --verify-no-changes --no-restore
+  
+  step "docs lint"
+  if ! command -v node >/dev/null 2>&1; then
+    echo "verify: node is required for the documentation lint step; install Node.js (npx runs the pinned markdownlint-cli2)" >&2
+    exit 1
+  fi
+  npx --yes markdownlint-cli2@0.23.3
+  
+  # Both checks run in the full profile too: the bypass they close (#241/#313) landed through a *code*
+  # pull request, which never runs the docs profile.
+  step "agent scratch paths"
+  python3 "${SCRIPT_DIR}/../tests/scripts/test_scratch_paths.py"
+  python3 "${SCRIPT_DIR}/check-scratch-paths.py" --base "${GITHUB_BASE_SHA:-origin/main}"
+  
+  step "spec changes are archived"
+  python3 "${SCRIPT_DIR}/../tests/scripts/test_spec_archive.py"
+  python3 "${SCRIPT_DIR}/check-spec-archive.py" --base "${GITHUB_BASE_SHA:-origin/main}"
+  
+  step "public API"
+  if ! check_shipped_api_unchanged; then
+    exit 1
+  fi
+}
+
+# Dispatch. Shard 1 runs the whole gate over its slice of the test projects;
+# shards > 1 skip the non-test steps (see verify_primary_before_tests) and run only
+# the build they need plus their slice of the test phase. A fresh CI runner
+# workspace has nothing built, so a shard > 1 builds in place rather than
+# importing a shared build artifact: the restore cache makes that build the
+# cheapest self-contained option (a one- to three-minute rebuild against the
+# cache, versus minutes of upload and download for roughly a gigabyte of
+# binaries), and every shard stays order-independent.
+if [ "$SHARD_I" -eq 1 ]; then
+  verify_primary_before_tests
+else
+  step "build"
+  dotnet build lunate.slnx -c "$CONFIGURATION" --nologo
 fi
-npx --yes markdownlint-cli2@0.23.3
 
-# Both checks run in the full profile too: the bypass they close (#241/#313) landed through a *code*
-# pull request, which never runs the docs profile.
-step "agent scratch paths"
-python3 "${SCRIPT_DIR}/../tests/scripts/test_scratch_paths.py"
-python3 "${SCRIPT_DIR}/check-scratch-paths.py" --base "${GITHUB_BASE_SHA:-origin/main}"
+verify_test_phase
 
-step "spec changes are archived"
-python3 "${SCRIPT_DIR}/../tests/scripts/test_spec_archive.py"
-python3 "${SCRIPT_DIR}/check-spec-archive.py" --base "${GITHUB_BASE_SHA:-origin/main}"
-
-step "public API"
-if ! check_shipped_api_unchanged; then
-  exit 1
+if [ "$SHARD_I" -eq 1 ]; then
+  verify_primary_after_tests
 fi
 
 report_step
-echo "verify: OK"
+if [ "$SHARD_I" -eq 1 ]; then
+  echo "verify: OK"
+else
+  echo "verify: OK (shard ${SHARD_I}/${SHARD_N})"
+fi

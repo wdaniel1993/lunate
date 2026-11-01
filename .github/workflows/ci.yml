@@ -19,6 +19,13 @@ on:
   # `ci-ok` never reports for a merge group and the queue stalls.
   merge_group:
   workflow_dispatch:
+    inputs:
+      verify_shard_count:
+        description: "Verify shards per OS (1 for the baseline, 2 for the sharded run)."
+        required: true
+        type: choice
+        options: ["1", "2"]
+        default: "2"
 
 # Supersede in-flight runs for the same ref instead of queueing duplicates.
 concurrency:
@@ -101,13 +108,24 @@ jobs:
           cat "${GITHUB_OUTPUT}"
 
   verify:
-    name: verify (${{ matrix.os }})
+    name: verify (${{ matrix.os }}, ${{ matrix.shard }}/${{ matrix.shard_count }})
     needs: plan
     if: needs.plan.outputs.profile == 'full'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        # The test phase sharded across two jobs per OS (#390): verify.sh's
+        # --shard i/n partitions the solution's test projects by position, and
+        # each shard runs its slice of both culture passes. Shard 1 also owns
+        # every non-test step (publish, budgets, roundtrips, format, docs
+        # checks, public API); a shard > 1 runs only the build it needs plus
+        # its test slice. The ruleset requires ci-ok, and ci-ok requires the
+        # verify job, which fails on any failed shard.
+        # Manual dispatch can compare --shard 1/1 with the normal two-shard run
+        # on the same commit. Pull requests always use the fixed [1, 2] matrix.
+        shard: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_shard_count == '1' && fromJSON('[1]') || fromJSON('[1, 2]') }}
         include:
           # budget_ms: calibrated in spike S-3 (docs/spikes/S-3/report.md, ADR 0005
           # accepted 2026-10-04) — runner startup median + ~50% headroom, rounded up to 50 ms.
@@ -119,6 +137,7 @@ jobs:
             rid: linux-x64
             budget_ms: 250
             memory_gate_mb: 150
+            shard_count: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_shard_count || 2 }}
           - os: macos-latest
             rid: osx-arm64
             budget_ms: 300
@@ -127,10 +146,12 @@ jobs:
             # on a leg that runs nothing else.
             budget_enforce: 0
             memory_gate_mb: 150
+            shard_count: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_shard_count || 2 }}
           - os: windows-latest
             rid: win-x64
             budget_ms: 350
             memory_gate_mb: 150
+            shard_count: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_shard_count || 2 }}
     env:
       RID: ${{ matrix.rid }}
       # English-first CI logs: pin the dotnet CLI / test-runner UI text. The
@@ -182,7 +203,7 @@ jobs:
           bwrap --version
 
       - name: Install hyperfine (Linux)
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && matrix.shard == 1
         run: |
           set -euo pipefail
           version=1.20.0
@@ -198,14 +219,14 @@ jobs:
           hyperfine --version
 
       - name: Install hyperfine (macOS)
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && matrix.shard == 1
         run: |
           set -euo pipefail
           brew install hyperfine
           hyperfine --version
 
       - name: Install hyperfine (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.shard == 1
         shell: pwsh
         run: |
           $version = '1.20.0'
@@ -224,7 +245,7 @@ jobs:
           & $binary --version
 
       - name: Install jq (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.shard == 1
         shell: pwsh
         run: |
           if (Get-Command jq -ErrorAction SilentlyContinue) {
@@ -251,20 +272,25 @@ jobs:
         env:
           BUDGET_MS: ${{ matrix.budget_ms }}
           STARTUP_BUDGET_ENFORCE: ${{ matrix.budget_enforce }}
-        run: bash scripts/verify.sh
+        run: bash scripts/verify.sh --shard "${{ matrix.shard }}/${{ matrix.shard_count }}"
 
+      # The gate's own self-tests need the published binary (perf and the shipped-API
+      # fixture), which only shard 1 produces; the test slices of shards > 1 prove the
+      # partition, and gate-tests.sh itself runs in full here.
       - name: Gate self-tests
+        if: matrix.shard == 1
         shell: bash
         run: bash scripts/gate-tests.sh
 
       - name: Memory checks (ADR-0009)
+        if: matrix.shard == 1
         shell: bash
         env:
           MEMORY_GATE_MB: ${{ matrix.memory_gate_mb }}
         run: bash scripts/memory.sh ci
 
       - name: Upload verification artifacts
-        if: always()
+        if: always() && matrix.shard == 1
         uses: actions/upload-artifact@v7
         with:
           name: verify-${{ matrix.rid }}
@@ -341,6 +367,10 @@ jobs:
             Directory.Build.props
             **/*.csproj
 
+      - name: PowerShell test-runner self-tests
+        shell: pwsh
+        run: ./scripts/verify-test-runner.tests.ps1
+
       - name: Install hyperfine (Windows)
         shell: pwsh
         run: |
@@ -368,7 +398,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: verify-win-x64-powershell
-          path: artifacts/
+          path: |
+            artifacts/
+            .artifacts/
           if-no-files-found: warn
 
   # The dedicated cold-startup leg (#240). The floor measured inside verify is still noisy on

@@ -75,11 +75,23 @@ decide() {
 
 # One job's block from the workflow, at the two-space indent of a job key under `jobs:`.
 _job_block() {
-    awk -v job="$1" '
-        $0 == "  " job ":" { inside = 1; next }
-        inside && /^  [A-Za-z0-9_-]+:$/ { inside = 0 }
-        inside { print }
-    ' "$WORKFLOW"
+    python3 - "$WORKFLOW" "$1" <<'PY'
+import re
+import sys
+
+workflow_path, job = sys.argv[1:]
+inside = False
+with open(workflow_path, encoding="utf-8") as workflow:
+    for line in workflow:
+        line = line.rstrip("\r\n")
+        if line == f"  {job}:":
+            inside = True
+            continue
+        if inside and re.fullmatch(r"  [A-Za-z0-9_-]+:", line):
+            break
+        if inside:
+            print(line)
+PY
 }
 
 _run_from_env() {
@@ -186,6 +198,16 @@ self_test() {
         plan '^    if:.*draft' 1
     _self_workflow "ci-ok must take the perf leg as a needed job" \
         ci-ok '^    needs: \[plan, verify, verify-powershell, verify-docs, perf\]' 1
+    _self_workflow "the verify matrix must cover every OS leg" \
+        verify 'os: \[ubuntu-latest, macos-latest, windows-latest\]' 1
+    _self_workflow "Linux hyperfine must run only on Linux shard 1" \
+        verify "if: runner\.os == 'Linux' && matrix\.shard == 1" 1
+    _self_workflow "the verify matrix must run the gate per shard, so no shard can be dropped from the matrix" \
+        verify 'scripts/verify\.sh --shard' 1
+    _self_workflow "manual dispatch must support the unsharded baseline" \
+        verify 'inputs\.verify_shard_count' 1
+    _self_workflow "the verify leg must run on the full profile only" \
+        verify "^    if: needs\.plan\.outputs\.profile == 'full'" 1
     _self_workflow "the perf leg must run the dedicated startup measurement" \
         perf 'scripts/perf\.sh' 1
     _self_workflow "the perf leg must run on the full profile only" \
