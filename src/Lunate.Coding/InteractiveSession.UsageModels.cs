@@ -79,7 +79,12 @@ internal sealed partial class InteractiveSession
             { } decisionModel
         )
         {
-            usages["decision"] = decisionModel;
+            // A resolution that lands on a profile another usage already carries shares that
+            // client, the one-client-per-profile rule the composition cache keeps.
+            usages["decision"] =
+                usages.Values.FirstOrDefault(client =>
+                    client.ProfileName == decisionModel.ProfileName
+                ) ?? decisionModel;
         }
 
         return usages;
