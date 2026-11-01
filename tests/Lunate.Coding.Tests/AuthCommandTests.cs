@@ -47,6 +47,39 @@ public sealed class AuthCommandTests
     }
 
     [Fact]
+    public void List_reports_a_helper_reference_as_absent_and_unsupported()
+    {
+        using var temp = new TempDirectory();
+        ProviderStore.Save(
+            temp.File("providers.json"),
+            [
+                new ProviderEntry(
+                    "helper-store",
+                    "openai",
+                    new Uri("https://example.test/v1"),
+                    "helper:rot13"
+                ),
+            ]
+        );
+
+        (int exit, string output, _) = Run(
+            ["list"],
+            Seams(temp) with { ProviderProbeHandler = new StatusHandler() }
+        );
+
+        Assert.Equal(0, exit);
+        // Resolving a helper is not supported in 0.2: the row must report the truth instead of
+        // claiming a credential is present that no host can resolve.
+        string row = Assert.Single(
+            output.Split('\n', StringSplitOptions.RemoveEmptyEntries),
+            line => line.Contains("helper unsupported", StringComparison.Ordinal)
+        );
+        Assert.Contains("helper-store", row, StringComparison.Ordinal);
+        Assert.Contains("credential: absent", row, StringComparison.Ordinal);
+        Assert.DoesNotContain("present (helper)", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Login_with_key_stdin_stores_the_key_without_echoing_it()
     {
         using var temp = new TempDirectory();
