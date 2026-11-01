@@ -215,13 +215,25 @@ jobs:
         with:
           user: wdaniel1993
 
+      # Contracts first: Lunate.Extensibility.Abstractions declares a dependency on Lunate.Contracts,
+      # so the feed must already carry the package its nuspec names before the dependent one lands.
+      # Named files, not a glob — the six packages are the release, in the order the ADR describes.
       - name: Push the packages to nuget.org
         if: github.event_name == 'push'
-        run: >-
-          dotnet nuget push dist/*.nupkg
-          --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}"
-          --source https://www.nuget.org/api/v2/package
-          --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ steps.nuget.outputs.NUGET_API_KEY }}
+        run: |
+          set -euo pipefail
+          push() {
+            dotnet nuget push "$1" --api-key "${NUGET_API_KEY}" \
+              --source https://www.nuget.org/api/v2/package --skip-duplicate
+          }
+          push "dist/Lunate.Contracts.${CONTRACTS}.nupkg"
+          push "dist/Lunate.Extensibility.Abstractions.${CONTRACTS}.nupkg"
+          push "dist/Lunate.Agent.${PREVIEW}.nupkg"
+          push "dist/Lunate.Extensibility.Testing.${PREVIEW}.nupkg"
+          push "dist/Lunate.Extensions.Subagents.${TOOL}.nupkg"
+          push "dist/lunate.${TOOL}.nupkg"
 
       # A dry run must not publish, but it can prove the policy works: the exchange is the
       # part that fails when the repository, workflow file or environment stops matching.
