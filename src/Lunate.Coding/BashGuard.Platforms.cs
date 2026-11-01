@@ -101,6 +101,21 @@ internal sealed partial class BashGuard
     private GuardCommand ResolveLinux(ResolvedShell shell, string workspace)
     {
         var reasons = new List<string>();
+        // Both Linux mechanisms deny by target path, and a target that does not exist yet cannot be
+        // bound read-only: bubblewrap skips the mount and Landlock has no deny rule for it, so an
+        // approved command could create the state root and write trust.json into it while the guard
+        // reports success. The directories are the agent's own; create them before the probe.
+        if (!EnsureDirectory(_target.StateRoot))
+        {
+            return Unwrapped(
+                shell,
+                "unavailable",
+                Notice([$"the bash guard could not create {_target.StateRoot}, so writes under it cannot be denied"]),
+                probeState: "failure"
+            );
+        }
+
+        EnsureDirectory(_target.Prefix);
         string? bwrap = _probe.FindOnPath("bwrap");
         if (bwrap is { } found)
         {
@@ -177,6 +192,29 @@ internal sealed partial class BashGuard
 
         reasons.Add($"setpriv's Landlock probe failed ({landlockOutput})");
         return Unwrapped(shell, "unavailable", Notice(reasons), probeState: "failure");
+    }
+
+    /// <summary>
+    /// Creates a denied target if it is missing. The prefix may sit somewhere the user cannot write
+    /// (a system install), in which case there is nothing there for the guard to protect and the
+    /// state root's denial still stands; the state root is the one whose absence would leave the
+    /// guard claiming a protection it does not have.
+    /// </summary>
+    private bool EnsureDirectory(string path)
+    {
+        try
+        {
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     /// <summary>

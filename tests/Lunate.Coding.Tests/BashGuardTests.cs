@@ -99,6 +99,33 @@ public sealed class BashGuardTests
     }
 
     [Fact]
+    public void A_missing_state_root_is_created_so_bubblewrap_can_bind_it()
+    {
+        using var temp = new TempDirectory();
+        string state = Path.Combine(temp.Root, "state");
+        string prefix = Path.Combine(temp.Root, "prefix");
+        var target = new GuardTarget(state, Path.Combine(state, "auth.json"), prefix, temp.Root);
+        var guard = new BashGuard(
+            target,
+            Fake.Unix(macOs: false, bwrap: "/usr/bin/bwrap", authExists: false)
+        );
+
+        // A first run with no session leaves the store absent. bubblewrap silently skips a
+        // read-only bind whose target does not exist, so the guard would report success while the
+        // command could create the state root and write trust.json into it.
+        Assert.False(Directory.Exists(state));
+        Assert.False(Directory.Exists(prefix));
+
+        var launch = guard.Wrap(Shell, Path.Combine(temp.Root, "ws"));
+
+        Assert.True(Directory.Exists(state));
+        Assert.True(Directory.Exists(prefix));
+        var args = string.Join(' ', launch.ArgumentsPrefix);
+        Assert.Contains($"--ro-bind {state} {state}", args);
+        Assert.Contains($"--ro-bind {prefix} {prefix}", args);
+    }
+
+    [Fact]
     public void Bwrap_that_cannot_start_is_detected_and_reports_the_apparmor_restriction()
     {
         using var temp = new TempDirectory();
