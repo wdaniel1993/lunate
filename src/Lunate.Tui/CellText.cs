@@ -40,8 +40,8 @@ internal static class CellText
 
     /// <summary>
     /// One physical line from arbitrary text: whitespace runs (space, tab, CR, LF) collapse to
-    /// single spaces, any remaining C0 control characters (U+0000–U+001F, U+007F) are dropped, and
-    /// the result is trimmed. Empty output means there is nothing printable to show.
+    /// single spaces, any remaining control character (C0 including DEL, and C1 U+0080–U+009F) is
+    /// dropped, and the result is trimmed. Empty output means there is nothing printable to show.
     /// </summary>
     internal static string SingleLine(string text)
     {
@@ -55,7 +55,7 @@ internal static class CellText
                 continue;
             }
 
-            if (c <= '\u001f' || c == '\u007f')
+            if (char.IsControl(c))
             {
                 continue;
             }
@@ -72,6 +72,55 @@ internal static class CellText
         return builder.ToString();
     }
 
+    /// <summary>
+    /// The one scrubber for terminal-bound text: C0 and C1 control bytes are dropped, a tab
+    /// expands to a single space, <c>\n</c> is kept so line-splitting callers survive, and
+    /// printable text passes through unchanged. Applied at the render boundaries —
+    /// <see cref="Clip"/> and <see cref="Wrap"/> for live frames, <see cref="StyledLine.Add"/> for
+    /// committed markup — so a tool result, a diff, a repository's <c>mcp.json</c>, a crafted
+    /// <c>.git/HEAD</c> or pasted text cannot emit escape sequences (OSC 52, OSC 8, cursor or
+    /// title control, C1 bytes) to the terminal.
+    /// </summary>
+    internal static string Sanitize(string text)
+    {
+        if (!NeedsSanitizing(text))
+        {
+            return text;
+        }
+
+        var builder = new StringBuilder(text.Length);
+        foreach (char c in text)
+        {
+            if (c == '\n')
+            {
+                builder.Append(c);
+            }
+            else if (c == '\t')
+            {
+                builder.Append(' ');
+            }
+            else if (!char.IsControl(c))
+            {
+                builder.Append(c);
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    private static bool NeedsSanitizing(string text)
+    {
+        foreach (char c in text)
+        {
+            if (c != '\n' && char.IsControl(c))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     internal static string Clip(string text, int width)
     {
         if (width <= 0)
@@ -79,10 +128,17 @@ internal static class CellText
             return string.Empty;
         }
 
+        text = Sanitize(text);
         var used = 0;
         var builder = new StringBuilder();
         foreach (var rune in text.EnumerateRunes())
         {
+            // A surviving \n would split the frame line; Clip is for one physical line, so it drops.
+            if (Rune.IsControl(rune))
+            {
+                continue;
+            }
+
             int runeWidth = Width(rune);
             if (used + runeWidth > width)
             {
@@ -128,13 +184,15 @@ internal static class CellText
 
     /// <summary>
     /// Splits text into physical lines no wider than <paramref name="width"/> cells, preferring a
-    /// space, then a path separator, then a rune boundary. No character is dropped, so the
-    /// concatenation of the lines is always the input; a rune wider than the width still gets a
-    /// line of its own so the wrap can make progress. <see cref="int.MaxValue"/> returns the text
-    /// unchanged on one line.
+    /// space, then a path separator, then a rune boundary. Control bytes other than <c>\n</c> are
+    /// dropped first and a tab expands to a space (<see cref="Sanitize"/>), so from there on no
+    /// character is dropped: the concatenation of the lines is the sanitized input; a rune wider
+    /// than the width still gets a line of its own so the wrap can make progress.
+    /// <see cref="int.MaxValue"/> returns the sanitized text unchanged on one line.
     /// </summary>
     internal static IReadOnlyList<string> Wrap(string text, int width)
     {
+        text = Sanitize(text);
         if (string.IsNullOrEmpty(text) || width == int.MaxValue)
         {
             return [text];
