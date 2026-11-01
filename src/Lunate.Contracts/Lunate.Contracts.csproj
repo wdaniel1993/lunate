@@ -12,7 +12,7 @@
             versioned by ExtensionApi, not by the tool's <Version> — the two move when the ADR-0002
             addendum says they move, in lockstep with each other.
         -->
-        <Version>1.15.0</Version>
+        <Version>$(ContractVersion)</Version>
         <PackageId>Lunate.Contracts</PackageId>
         <IsPackable>true</IsPackable>
         <Description>

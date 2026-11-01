@@ -1,0 +1,50 @@
+name: pack
+
+# Packs every package the release publishes, without pushing, on every pull request and every push
+# to main. A release-time failure has no second chance — the tag is the last step — so the pack list
+# is proven on the PR that touches it. Kept as its own workflow rather than a leg of `ci.yml` so the
+# required `ci-ok` context does not change shape: this check is visible and red on a broken pack
+# today, and can be made a required context once it has a clean streak.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: pack-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pack:
+    name: pack (dry run)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            global.json
+            Directory.Build.props
+            **/*.csproj
+
+      # The same list the release packs, plus the metadata check the release runs before pushing.
+      # `scripts/pack-dry-run.sh` is the single list; `.github/workflows/release.yml`'s pack steps
+      # must mirror it.
+      - name: Pack every release package
+        run: bash scripts/pack-dry-run.sh
+
+      - name: Upload the packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: pack-dry-run
+          path: ${{ runner.temp }}/lunate-pack-dry-run/*.nupkg
+          if-no-files-found: error
+          retention-days: 7

@@ -11,6 +11,19 @@
         <Version>0.1.0</Version>
 
         <!--
+            The contract assemblies carry the API version, not the product version (ADR-0002's
+            addendum: `Lunate.Contracts` and `Lunate.Extensibility.Abstractions` publish together,
+            in lockstep, under `ExtensionApi`). The pre-release suffix follows the product version's
+            suffix, because a NuGet version cannot be deleted: releasing `v0.2.0-rc.1` must publish
+            `1.15.0-rc.1`, and only the final tag may publish the stable `1.15.0`. `ExtensionApi`
+            itself stays `1.15.0` — it compares assembly identity, and a prerelease package version
+            does not change the assembly version.
+        -->
+        <ContractApiVersion>1.15.0</ContractApiVersion>
+        <ContractVersionSuffix Condition="$(Version.Contains('-'))">$([System.Text.RegularExpressions.Regex]::Match('$(Version)', '^[0-9.]+(-.+)$').Groups[1].Value)</ContractVersionSuffix>
+        <ContractVersion>$(ContractApiVersion)$(ContractVersionSuffix)</ContractVersion>
+
+        <!--
             The in-process restore engine ships NuGet.Frameworks as a runtime asset — it parses the
             TFM and picks the nearest framework group — and MSBuild ships its own copy of the same
             assembly. Microsoft.Build.Locator's MSBL001 check cannot express the rule that actually
