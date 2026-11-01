@@ -18,6 +18,9 @@
 - [ ] Tests added or updated for every behaviour change
 - [ ] No public API change unless the change allowed it
 - [ ] No new package without an ADR
+- [ ] Anything this PR says exists outside the repository (a published package, a release asset, a
+      live install channel) is linked with the artefact itself — the feed page and version, the asset
+      URL, the smoke run. A workflow that would publish is not a published package.
 
 ## Notes
 
