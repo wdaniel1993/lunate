@@ -178,14 +178,23 @@ jobs:
       # The page a user reads on nuget.org is a release artifact: 0.1.0 shipped without a licence
       # and without a readme. The gate checks this on every commit; this checks every package the
       # push is about to publish — the .nupkg itself, which is what the feed receives. The
-      # contract versions are not the repository <Version>: the stable pair is versioned with
-      # ExtensionApi, the preview pair 0.2.0-preview.<n>, so each is read from its csproj.
+      # contract versions are not the repository <Version>: the stable pair carries the API version
+      # plus the tag's prerelease suffix (`1.15.0-rc.1` on a candidate), the preview pair the product
+      # version. `scripts/release-versions.sh` is the one derivation — the same script the pack-only
+      # job runs — so a tag cannot publish a number this workflow did not compute.
+      - name: Derive the package versions from the tag
+        run: |
+          set -euo pipefail
+          bash scripts/release-versions.sh --self-test
+          bash scripts/release-versions.sh "${GITHUB_REF_NAME}" >> "${GITHUB_ENV}"
+          sed -n 's/^/release: /p' < <(bash scripts/release-versions.sh "${GITHUB_REF_NAME}")
+
       - name: Check package metadata
         run: |
           set -euo pipefail
-          version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)"
-          contract_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj)"
-          preview_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Lunate.Agent/Lunate.Agent.csproj)"
+          version="${TOOL}"
+          contract_version="${CONTRACTS}"
+          preview_version="${PREVIEW}"
           bash scripts/check-package-metadata.sh "dist/lunate.${version}.nupkg" --id lunate
           bash scripts/check-package-metadata.sh \
             "dist/Lunate.Extensions.Subagents.${version}.nupkg" \
