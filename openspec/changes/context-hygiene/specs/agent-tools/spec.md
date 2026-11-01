@@ -112,6 +112,21 @@ Every tool result SHALL be admitted through one path before it enters the model'
 - **WHEN** it is bounded
 - **THEN** the result contains no lone surrogate halves
 
+#### Scenario: A spill read is bounded and carries its continuation
+- **GIVEN** a known spill file whose content exceeds one page
+- **WHEN** the model reads it
+- **THEN** the result contains at most the `output.spillThresholdTokens` estimated-token bound and an explicit next offset or line, and does not tell the model to find the remainder in another file
+
+#### Scenario: A spill read is exempt from spill admission
+- **GIVEN** a known spill file under the session's `tool-output/` directory
+- **WHEN** a page is returned by `read`
+- **THEN** the page is returned directly and is not replaced by a spill pointer
+
+#### Scenario: The model reads a spill to completion
+- **GIVEN** a session-owned spill file with approximately 50,000 estimated tokens
+- **WHEN** the model repeatedly calls `read` using each page's continuation until no continuation remains
+- **THEN** every byte of the file is reachable, the pages join to the original text exactly, and no `read` result is a spill pointer
+
 ## ADDED Requirements
 
 ### Requirement: Concise tool results
