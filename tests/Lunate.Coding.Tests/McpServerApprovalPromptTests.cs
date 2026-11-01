@@ -8,7 +8,13 @@ namespace Lunate.Coding.Tests;
 /// </summary>
 public sealed class McpServerApprovalPromptTests
 {
-    private const string Source = "/work/.agents/mcp.json";
+    private static readonly string Source = Path.Combine(
+        Path.GetTempPath(),
+        "lunate-mcp-prompt",
+        Guid.NewGuid().ToString("N"),
+        ".agents",
+        "mcp.json"
+    );
 
     [Fact]
     public async Task The_tui_question_names_the_server_source_and_full_command()
