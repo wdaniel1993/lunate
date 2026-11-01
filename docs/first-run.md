@@ -76,7 +76,8 @@ redirecting a user's credentials to its own server.
 ## Profiles and usages
 
 `~/.lunate/settings.json` binds a profile name to a provider entry and catalog model, then assigns
-profiles to existing usages. For example:
+profiles to existing usages; every settings key with its type, default and scope is in the
+generated [configuration reference](configuration.md). For example:
 
 ```json settings
 {
@@ -110,17 +111,8 @@ only when explicitly selected.
 Decision consumption is configured by one `decisions` block, with the same shape for every consumer.
 It is part of `settings.json` (JSON only — nothing reads YAML), shown in the example above. Without
 `profile` the layer is unavailable and nothing is offered; enabling a consumer without a profile is
-not an error — the layer stays off. These are the only names this version accepts:
-
-| Key | Values | Default | Meaning |
-| --- | --- | --- | --- |
-| `profile` | a configured profile name | none | Required for the layer; the profile it runs on |
-| `approvals` | `off`, `shadow`, `enforce` | `off` | Escalation gate for tool calls |
-| `approvalsThreshold` | `0.0`–`1.0` | `0.5` | A deny must reach this probability to escalate |
-| `routing` | `off`, `shadow`, `enforce` | `off` | Whether the router may choose a profile |
-| `routingProfiles` | 2–255 configured profile names | none | The profiles the router may choose |
-| `tool` | `off`, `on` | `off` | Offers the decide tool to the model only when `on` |
-| `questions` | `off`, `suggest` | `off` | Display-only suggestions beside a question's top option |
+not an error — the layer stays off. The generated [configuration reference](configuration.md)
+lists every accepted settings key with its type, default, scope and allowed values.
 
 `routing` records a suggested profile without changing the configured chat model in shadow, or uses
 the selected profile in enforce; routing picks the most probable profile and uses no threshold. An

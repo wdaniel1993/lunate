@@ -141,13 +141,13 @@ public static partial class SettingsStore
         foreach (JsonProperty property in output.EnumerateObject())
         {
             int value = property.Value.GetInt32();
-            if (property.Name == "toolOutputLimit")
+            if (property.Name == "toolResultLimit")
             {
                 if (value > user.ToolOutputLimit)
                 {
                     throw ProjectProblem(
                         path,
-                        "output.toolOutputLimit cannot raise the user limit"
+                        "output.toolResultLimit cannot raise the user limit"
                     );
                 }
 

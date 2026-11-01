@@ -45,6 +45,12 @@
 
     <ItemGroup>
         <EmbeddedResource Include="system-prompt.md" LogicalName="Lunate.Coding.system-prompt.md" />
+        <!-- The settings schema backs the docs-reference region scripts/docs-sync renders and
+             tests the parser against; the same on-disk file both sides read. -->
+        <EmbeddedResource
+            Include="settings-schema.json"
+            LogicalName="Lunate.Coding.settings-schema.json"
+        />
         <!-- The package page a reader lands on from the feed is the repository's README. -->
         <None Include="../../README.md" Pack="true" PackagePath="/" />
         <!-- The packages carry the same icon: one brand on every feed page. -->

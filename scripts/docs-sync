@@ -9,6 +9,12 @@ Two mechanisms, both driven by markers in a Markdown file:
       not have. docs/guide.md must carry this pair; a missing marker is a failure, not a page
       without a generated region.
 
+  <!-- docs-sync: settings --> ... <!-- /docs-sync: settings -->
+      replaced with the settings reference table built from
+      src/Lunate.Coding/settings-schema.json -- the same file the SettingsSchema table reads and
+      the tests pin to the parser's accepted keys, so docs/configuration.md cannot list a key the
+      store refuses. The page must carry the pair, like the guide's.
+
   <!-- snippet: <repo-relative path> -->
       replaced with a fenced code block holding that file's text. If the file carries a
       `snippet:start` / `snippet:end` comment pair, only the lines between them are included, so a
@@ -35,6 +41,11 @@ KEYS_PAGE = "docs/guide.md"
 KEYS_SOURCE = "src/Lunate.Tui/keys.json"
 KEYS_START = "<!-- keys:start -->"
 KEYS_END = "<!-- keys:end -->"
+
+SETTINGS_PAGE = "docs/configuration.md"
+SETTINGS_SOURCE = "src/Lunate.Coding/settings-schema.json"
+SETTINGS_START = "<!-- docs-sync: settings -->"
+SETTINGS_END = "<!-- /docs-sync: settings -->"
 
 SNIPPET_PREFIX = "<!-- snippet:"
 SNIPPET_SUFFIX = "-->"
@@ -108,20 +119,125 @@ def table_lines(root):
     return lines
 
 
-def replace_keys_region(root, path, text):
-    """Swaps the lines between the keys markers for the table built from keys.json."""
+def replace_region(root, path, text, start_marker, end_marker, end_name, body):
+    """Swaps the lines between one marker pair for the given table lines."""
     lines = lines_of(text)
-    starts = [index for index, line in enumerate(lines) if line.strip() == KEYS_START]
-    ends = [index for index, line in enumerate(lines) if line.strip() == KEYS_END]
+    starts = [index for index, line in enumerate(lines) if line.strip() == start_marker]
+    ends = [index for index, line in enumerate(lines) if line.strip() == end_marker]
     if len(starts) != 1 or len(ends) != 1:
         raise DocsSyncError(
-            f"{path}: expected exactly one '{KEYS_START}' and one '{KEYS_END}', found "
+            f"{path}: expected exactly one '{start_marker}' and one '{end_marker}', found "
             f"{len(starts)} and {len(ends)}; the markers say where the generated table goes"
         )
     if starts[0] > ends[0]:
-        raise DocsSyncError(f"{path}: '{KEYS_END}' comes before '{KEYS_START}'")
+        raise DocsSyncError(f"{path}: '{end_name}' comes before its start marker")
 
-    return "\n".join(lines[: starts[0] + 1] + table_lines(root) + lines[ends[0] :])
+    return "\n".join(lines[: starts[0] + 1] + body + lines[ends[0] :])
+
+
+def replace_keys_region(root, path, text):
+    """Swaps the lines between the keys markers for the table built from keys.json."""
+    return replace_region(
+        root, path, text, KEYS_START, KEYS_END, "'keys:end'", table_lines(root)
+    )
+
+
+def settings_table_lines(root):
+    """The settings reference's rows, built from settings-schema.json itself.
+
+    The schema file is the same artifact `SettingsSchema` reads from the assembly, and the
+    tests pin it to the parser's accepted literals both ways; this renderer fails only on a
+    structurally broken file, naming the offending entry.
+    """
+    document = json.loads(read_text(root / SETTINGS_SOURCE))
+    if document.get("version") != 1:
+        raise DocsSyncError(
+            f"{SETTINGS_SOURCE}: unsupported 'version'; docs-sync understands 1"
+        )
+
+    entries = document.get("entries")
+    if not isinstance(entries, list) or not entries:
+        raise DocsSyncError(
+            f"{SETTINGS_SOURCE}: 'entries' is empty, so the reference table would be empty; a "
+            "check that cannot fail is worse than no check"
+        )
+
+    lines = ["| Key | Type | Default | Scope | Description |"]
+    lines += ["| --- | --- | --- | --- | --- |"]
+    names = set()
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise DocsSyncError(f"{SETTINGS_SOURCE}: 'entries' carries a row that is not an object")
+        name = entry.get("name")
+        if not _is_text(name):
+            raise DocsSyncError(
+                f"{SETTINGS_SOURCE}: an entry declares no usable 'name'"
+            )
+
+        key = name.replace("*", "<id>")
+        if key in names:
+            raise DocsSyncError(f"{SETTINGS_SOURCE}: entry '{name}' appears twice")
+        names.add(key)
+        for field in ("type", "default", "scope", "description"):
+            if not _is_text(entry.get(field)):
+                raise DocsSyncError(
+                    f"{SETTINGS_SOURCE}: entry '{name}' declares no usable '{field}'"
+                )
+
+        allowed = entry.get("allowed") or []
+        if not isinstance(allowed, list) or any(
+            not _is_text(value) for value in allowed
+        ):
+            raise DocsSyncError(
+                f"{SETTINGS_SOURCE}: entry '{name}' lists an allowed value that is not a "
+                "non-empty string"
+            )
+        if len(allowed) != len(set(allowed)):
+            raise DocsSyncError(f"{SETTINGS_SOURCE}: entry '{name}' repeats an allowed value")
+        enumeration = ""
+        if allowed:
+            enumeration = " Values: " + ", ".join(f"`{value}`" for value in allowed) + "."
+        lines.append(
+            "| `{key}` | {t} | {d} | {s} | {description}{enumeration} |".format(
+                key=key,
+                t=entry["type"],
+                d=entry["default"],
+                s=entry["scope"],
+                description=entry["description"],
+                enumeration=enumeration,
+            )
+        )
+    return lines
+
+
+def _is_text(value):
+    """Whether a schema field carries usable text: a non-empty, non-blank string."""
+    return isinstance(value, str) and bool(value.strip())
+
+
+def replace_settings_region(root, path, text):
+    """Swaps the lines between the settings markers for the table built from the schema file.
+
+    Only pages that declare the start marker are rewritten, so the schema file itself is read
+    exactly when a table is actually built.
+    """
+    lines = lines_of(text)
+    if not any(line.strip() == SETTINGS_START for line in lines):
+        if any(line.strip() == SETTINGS_END for line in lines):
+            raise DocsSyncError(
+                f"{path}: '{SETTINGS_END}' without '{SETTINGS_START}'; the markers say where "
+                "the generated table goes"
+            )
+        return text
+    return replace_region(
+        root,
+        path,
+        text,
+        SETTINGS_START,
+        SETTINGS_END,
+        "'/docs-sync: settings'",
+        settings_table_lines(root),
+    )
 
 
 def dedent(lines):
@@ -203,6 +319,7 @@ def page(root, path):
     text = read_text(path)
     if relative == KEYS_PAGE or any(line.strip() == KEYS_START for line in lines_of(text)):
         text = replace_keys_region(root, relative, text)
+    text = replace_settings_region(root, relative, text)
     return "\n".join(expand_snippets(root, relative, lines_of(text))) + "\n"
 
 
@@ -212,6 +329,10 @@ def pages(root):
         raise DocsSyncError(f"no docs/ directory under {root}")
     if not (root / KEYS_PAGE).is_file():
         raise DocsSyncError(f"{KEYS_PAGE} is missing; the key table has nowhere to go")
+    if not (root / SETTINGS_PAGE).is_file():
+        raise DocsSyncError(
+            f"{SETTINGS_PAGE} is missing; the settings reference has nowhere to go"
+        )
     return sorted(path for path in docs.rglob("*.md") if path.is_file())
 
 
@@ -279,6 +400,7 @@ def self_test():
     cases = 0
     try:
         (scratch / "src" / "Lunate.Tui").mkdir(parents=True)
+        (scratch / "src" / "Lunate.Coding").mkdir(parents=True)
         (scratch / "docs" / "extensions").mkdir(parents=True)
         (scratch / "templates").mkdir()
         write_text(
@@ -295,6 +417,39 @@ def self_test():
             ),
         )
         write_text(
+            scratch / SETTINGS_SOURCE,
+            json.dumps(
+                {
+                    "version": 1,
+                    "entries": [
+                        {
+                            "name": "model",
+                            "type": "string",
+                            "default": "unset",
+                            "scope": "user",
+                            "description": "The default model id.",
+                        },
+                        {
+                            "name": "profiles.*.maxOutput",
+                            "type": "integer",
+                            "default": "unset",
+                            "scope": "user, project",
+                            "allowed": [],
+                            "description": "The profile's maximum output tokens.",
+                        },
+                        {
+                            "name": "thinking",
+                            "type": "string",
+                            "default": "off",
+                            "scope": "user",
+                            "allowed": ["off", "low"],
+                            "description": "The session thinking level.",
+                        },
+                    ],
+                }
+            ),
+        )
+        write_text(
             scratch / "templates" / "sample.csproj",
             "<Project>\n    <ItemGroup>\n        <!-- snippet:start -->\n"
             '        <ProjectReference Private="false" />\n'
@@ -305,6 +460,12 @@ def self_test():
             guide,
             "# Guide\n\n**Keys**\n\n<!-- keys:start -->\nstale row\n<!-- keys:end -->\n\n"
             "## Next\n",
+        )
+        configuration = scratch / SETTINGS_PAGE
+        write_text(
+            configuration,
+            "# Configuration\n\n<!-- docs-sync: settings -->\n"
+            "<!-- /docs-sync: settings -->\n",
         )
         page_path = scratch / "docs" / "extensions" / "README.md"
         marked_page = "# Page\n\n<!-- snippet: templates/sample.csproj -->\n\nDone.\n"
@@ -416,6 +577,58 @@ def self_test():
         status, _, err = capture(scratch, write=False)
         if status != 1 or "on a line of its own" not in err:
             raise DocsSyncError("self-test: a malformed marker must fail and show the shape")
+        write_text(
+            notes,
+            "# Notes\n\nA marker looks like `<!-- snippet: templates/sample.csproj -->` in prose.\n",
+        )
+
+        # 11. The settings region is the table built from settings-schema.json: a rendered row
+        #     carries the entry's fields, the page both ways stays a no-op, a changed schema is
+        #     stale on --check, and a lost marker fails instead of passing vacuously.
+        cases += 1
+        settings_table = read_text(configuration)
+        for cell in (
+            "`model`",
+            "`profiles.<id>.maxOutput`",
+            "| string |",
+            "| user, project |",
+            "Values: `off`, `low`.",
+        ):
+            if cell not in settings_table:
+                raise DocsSyncError(
+                    f"self-test: the settings table lost the {cell} cell from settings-schema.json"
+                )
+        second_settings = read_text(configuration)
+        status, out, _ = capture(scratch, write=True)
+        if (
+            status != 0
+            or read_text(configuration) != second_settings
+            or "up to date" not in out
+        ):
+            raise DocsSyncError(
+                "self-test: a second run must leave the settings reference unchanged"
+            )
+        write_text(
+            scratch / SETTINGS_SOURCE,
+            read_text(scratch / SETTINGS_SOURCE).replace("The default model id.", "Changed."),
+        )
+        status, _, err = capture(scratch, write=False)
+        if status != 1 or "configuration.md" not in err:
+            raise DocsSyncError(
+                "self-test: --check must notice a changed settings schema and name the page"
+            )
+        write_text(
+            scratch / SETTINGS_SOURCE,
+            read_text(scratch / SETTINGS_SOURCE).replace("Changed.", "The default model id."),
+        )
+        lost_marker = read_text(configuration).replace(SETTINGS_END + "\n", "")
+        write_text(configuration, lost_marker)
+        status, _, err = capture(scratch, write=False)
+        if status != 1 or "docs-sync: settings" not in err:
+            raise DocsSyncError(
+                "self-test: a missing settings marker must fail and name the marker"
+            )
+        write_text(configuration, second_settings)
 
         print(f"self-test: {cases}/{cases}")
         return 0

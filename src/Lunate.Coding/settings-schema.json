@@ -1,0 +1,358 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "name": "approval",
+      "type": "string",
+      "default": "ask",
+      "scope": "user",
+      "allowed": ["ask", "auto-edit"],
+      "description": "The approval policy: `ask` sends writes, edits and commands to the approval flow; `auto-edit` runs file writes and edits and still asks for commands. `LUNATE_APPROVAL` overrides it."
+    },
+    {
+      "name": "bashGuard",
+      "type": "boolean",
+      "default": "true",
+      "scope": "user",
+      "description": "Guards bash commands against edits outside the trusted working directory. There is no environment-variable override."
+    },
+    {
+      "name": "decisions.approvals",
+      "type": "string",
+      "default": "off",
+      "scope": "user",
+      "allowed": ["off", "shadow", "enforce"],
+      "description": "The approval-gate consumer; a deny recommendation reaching `approvalsThreshold` escalates the ask when `enforce`. Decision consumers are enabled by the user only."
+    },
+    {
+      "name": "decisions.approvalsThreshold",
+      "type": "number",
+      "default": "0.5",
+      "scope": "user",
+      "description": "A finite probability from 0 through 1: what a deny recommendation must reach to escalate the approval ask."
+    },
+    {
+      "name": "decisions.profile",
+      "type": "string",
+      "default": "unset",
+      "scope": "user",
+      "description": "The decision profile the layer runs on; without it the layer is unavailable and nothing is offered, never erroring."
+    },
+    {
+      "name": "decisions.questions",
+      "type": "string",
+      "default": "off",
+      "scope": "user",
+      "allowed": ["off", "suggest"],
+      "description": "Adds a probability marker beside the top option of a question; always display-only, the user still chooses."
+    },
+    {
+      "name": "decisions.routing",
+      "type": "string",
+      "default": "off",
+      "scope": "user",
+      "allowed": ["off", "shadow", "enforce"],
+      "description": "The model-routing consumer; picks the most probable profile without consulting any threshold."
+    },
+    {
+      "name": "decisions.routingProfiles",
+      "type": "string array",
+      "default": "[]",
+      "scope": "user",
+      "description": "Two to 255 unique configured profile names the router may select among; routing requires at least two."
+    },
+    {
+      "name": "decisions.tool",
+      "type": "string",
+      "default": "off",
+      "scope": "user",
+      "allowed": ["off", "on"],
+      "description": "Offers the `decide` tool, only when `decisions.profile` resolves as well."
+    },
+    {
+      "name": "favorites",
+      "type": "string array",
+      "default": "[]",
+      "scope": "user",
+      "description": "The ordered favourite model ids, at most eight unique entries; schema 2 and later."
+    },
+    {
+      "name": "model",
+      "type": "string",
+      "default": "unset",
+      "scope": "user",
+      "description": "The default model id. `LUNATE_MODEL` overrides it."
+    },
+    {
+      "name": "output.spillThresholdTokens",
+      "type": "integer",
+      "default": "2000",
+      "scope": "user, project",
+      "description": "The estimated-token threshold (UTF-8 bytes / 4) above which a tool result is spilled. A project file may lower it, never raise it. `LUNATE_TOOL_SPILL_THRESHOLD` overrides it."
+    },
+    {
+      "name": "output.toolResultLimit",
+      "type": "integer",
+      "default": "30000",
+      "scope": "user, project",
+      "description": "Characters of one tool result before truncation. A project file may lower it, never raise it. `LUNATE_TOOL_OUTPUT_LIMIT` overrides it."
+    },
+    {
+      "name": "profiles.*.capabilities.apis",
+      "type": "string array",
+      "default": "unset",
+      "scope": "user",
+      "description": "API identifiers the profile declares itself able to speak; open strings, unknown facts stay allowed. User scope only."
+    },
+    {
+      "name": "profiles.*.capabilities.features",
+      "type": "string array",
+      "default": "unset",
+      "scope": "user",
+      "description": "Feature names the profile declares supported; open strings, unknown facts stay allowed. User scope only."
+    },
+    {
+      "name": "profiles.*.capabilities.inputModalities",
+      "type": "string array",
+      "default": "unset",
+      "scope": "user",
+      "description": "Input modalities the profile declares supported, for example `text` or `image`; open strings. User scope only."
+    },
+    {
+      "name": "profiles.*.capabilities.outputModalities",
+      "type": "string array",
+      "default": "unset",
+      "scope": "user",
+      "description": "Output modalities the profile declares supported; open strings. User scope only."
+    },
+    {
+      "name": "profiles.*.contextWindow",
+      "type": "integer",
+      "default": "unset",
+      "scope": "user, project",
+      "description": "The profile's context window in tokens; a project profile may lower an already-set value, never raise it."
+    },
+    {
+      "name": "profiles.*.maxOutput",
+      "type": "integer",
+      "default": "unset",
+      "scope": "user, project",
+      "description": "The profile's maximum output tokens; a project profile may lower an already-set value, never raise it."
+    },
+    {
+      "name": "profiles.*.model",
+      "type": "string",
+      "default": "unset",
+      "scope": "user, project",
+      "description": "The catalog model id the profile selects; required."
+    },
+    {
+      "name": "profiles.*.provider",
+      "type": "string",
+      "default": "unset",
+      "scope": "user, project",
+      "description": "The provider entry the profile selects; a project profile may only reference a user provider, never define one."
+    },
+    {
+      "name": "profiles.*.reasoningBudget",
+      "type": "integer",
+      "default": "unset",
+      "scope": "user, project",
+      "description": "The profile's reasoning budget in tokens."
+    },
+    {
+      "name": "profiles.*.reasoningLevel",
+      "type": "string",
+      "default": "unset",
+      "scope": "user, project",
+      "description": "The profile's reasoning level."
+    },
+    {
+      "name": "profiles.*.temperature",
+      "type": "number",
+      "default": "unset",
+      "scope": "user, project",
+      "description": "The profile's sampling temperature; a finite number."
+    },
+    {
+      "name": "projection.batchTurns",
+      "type": "integer",
+      "default": "4",
+      "scope": "user",
+      "description": "Model turns between request-time projection rewrites. `LUNATE_PROJECTION_BATCH_TURNS` overrides it."
+    },
+    {
+      "name": "projection.maskErrorTurns",
+      "type": "integer",
+      "default": "32",
+      "scope": "user",
+      "description": "The mask window for error tool results, in model turns; must be at least the success window. `LUNATE_PROJECTION_MASK_ERROR_TURNS` overrides it."
+    },
+    {
+      "name": "projection.maskTurns",
+      "type": "integer",
+      "default": "8",
+      "scope": "user",
+      "description": "The mask window for successful tool results, in model turns. `LUNATE_PROJECTION_MASK_TURNS` overrides it."
+    },
+    {
+      "name": "providers.*.baseUrl",
+      "type": "string",
+      "default": "unset",
+      "scope": "user",
+      "description": "The endpoint's base URL: absolute and https, or http only for a loopback host. Definitions live in user settings only."
+    },
+    {
+      "name": "providers.*.catalogName",
+      "type": "string",
+      "default": "unset",
+      "scope": "user",
+      "description": "The display name the model picker shows for the endpoint."
+    },
+    {
+      "name": "providers.*.model",
+      "type": "string",
+      "default": "unset",
+      "scope": "user",
+      "description": "The model id requests use through the endpoint unless a selection overrides it."
+    },
+    {
+      "name": "roslyn.maxLoadedWorkspaces",
+      "type": "integer",
+      "default": "2",
+      "scope": "user",
+      "description": "C# workspaces kept loaded across roots; a further root's load evicts the least-recently-used one. Never `unlimited`."
+    },
+    {
+      "name": "schemaVersion",
+      "type": "integer",
+      "default": "2",
+      "scope": "user, project",
+      "description": "Required; 1 or 2 are readable, 2 is written."
+    },
+    {
+      "name": "startupHeader",
+      "type": "boolean",
+      "default": "true",
+      "scope": "user",
+      "description": "Prints the welcome header when a session starts. `LUNATE_STARTUP_HEADER` overrides it."
+    },
+    {
+      "name": "subagents.concurrency",
+      "type": "integer",
+      "default": "4",
+      "scope": "user, project",
+      "description": "Concurrent child runs in one tree, or `unlimited`. A project file may lower it, never raise it. `LUNATE_SUBAGENTS_CONCURRENCY` overrides it."
+    },
+    {
+      "name": "subagents.tokenBudget",
+      "type": "integer",
+      "default": "100000",
+      "scope": "user, project",
+      "description": "Tokens per child run, or `unlimited`. A project file may lower it, never raise it. `LUNATE_SUBAGENTS_TOKEN_BUDGET` overrides it."
+    },
+    {
+      "name": "subagents.treeTokenBudget",
+      "type": "integer",
+      "default": "500000",
+      "scope": "user, project",
+      "description": "Tokens per top-level run tree, or `unlimited`. A project file may lower it, never raise it. `LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET` overrides it."
+    },
+    {
+      "name": "thinking",
+      "type": "string",
+      "default": "off",
+      "scope": "user",
+      "allowed": ["off", "low", "medium", "high"],
+      "description": "The session thinking level; `/thinking` changes it per session."
+    },
+    {
+      "name": "thinkingFull",
+      "type": "boolean",
+      "default": "false",
+      "scope": "user",
+      "description": "Commits the full reasoning text instead of the collapsed thought line."
+    },
+    {
+      "name": "toolDetails",
+      "type": "string",
+      "default": "collapsed",
+      "scope": "user",
+      "allowed": ["collapsed", "expanded"],
+      "description": "How much of a tool call the scrollback commits: the header line only, or the header with the bounded output excerpt and diff panel. `LUNATE_TOOL_DETAILS` overrides it."
+    },
+    {
+      "name": "tools.extra",
+      "type": "string array",
+      "default": "[]",
+      "scope": "user",
+      "allowed": ["grep", "find", "ls"],
+      "description": "Optional search tools to register beside the core set; empty means none. `LUNATE_EXTRA_TOOLS` overrides it."
+    },
+    {
+      "name": "tui.fullscreen",
+      "type": "boolean",
+      "default": "false",
+      "scope": "user",
+      "description": "Starts the interactive session in the full-screen workspace."
+    },
+    {
+      "name": "tui.keys.*",
+      "type": "array of key specs",
+      "default": "unset",
+      "scope": "user",
+      "description": "A binding id (see the guide's key table) remapped to its declared keys, persisted so it survives a restart."
+    },
+    {
+      "name": "tui.theme",
+      "type": "string",
+      "default": "default",
+      "scope": "user",
+      "allowed": ["default", "ansi16", "mono"],
+      "description": "The colour-depth policy applied to the transcript and status line; a theme can only lower the depth, so `NO_COLOR` still wins."
+    },
+    {
+      "name": "updateCheck",
+      "type": "boolean",
+      "default": "true",
+      "scope": "user",
+      "description": "Checks GitHub Releases at most once a day and links a newer release's changelog. `LUNATE_UPDATE_CHECK` overrides it."
+    },
+    {
+      "name": "usages.chat",
+      "type": "string",
+      "default": "unset",
+      "scope": "user, project",
+      "description": "The chat profile; the usage every other usage falls back to when unassigned."
+    },
+    {
+      "name": "usages.compaction",
+      "type": "string",
+      "default": "unset",
+      "scope": "user, project",
+      "description": "The profile used to compact a session; used only when assigned."
+    },
+    {
+      "name": "usages.fast",
+      "type": "string",
+      "default": "unset",
+      "scope": "user, project",
+      "description": "The profile used where a fast model is wanted."
+    },
+    {
+      "name": "usages.subagents",
+      "type": "string",
+      "default": "unset",
+      "scope": "user, project",
+      "description": "The profile child runs use."
+    },
+    {
+      "name": "verify",
+      "type": "string",
+      "default": "block",
+      "scope": "user",
+      "allowed": ["block", "warn", "off"],
+      "description": "How staged writes behave when a write verifier refuses the content: refuse, write and report unverified, or skip verifier selection. File-only; no environment override."
+    }
+  ]
+}

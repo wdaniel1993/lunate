@@ -286,31 +286,14 @@ you get the defaults below.
 
 ### Settings
 
-`~/.lunate/settings.json` carries `schemaVersion: 1`. An unknown key or a bad value is one error
-naming every problem, and nothing partial is applied.
-
-| Key | Default | What it does |
-| --- | --- | --- |
-| `schemaVersion` | — | must be `1` or `2` (`2` is written) |
-| `model` | unset | the default model id |
-| `approval` | `ask` | `ask`: writes, edits and commands need approval; `auto-edit`: writes and edits run, commands still need approval |
-| `output.toolResultLimit` | `30000` | characters of one tool result before it is truncated |
-| `subagents.concurrency` | `4` | concurrent child runs in one tree, or `unlimited` |
-| `subagents.tokenBudget` | `100000` | tokens per child run, or `unlimited` |
-| `subagents.treeTokenBudget` | `500000` | tokens per top-level run tree, or `unlimited` |
-| `roslyn.maxLoadedWorkspaces` | `2` | C# workspaces kept loaded across roots |
-| `startupHeader` | `true` | print the welcome header when a session starts |
-| `updateCheck` | `true` | check GitHub Releases once a day and link a newer release's changelog |
-| `thinking` | `off` | reasoning level: `off`, `low`, `medium` or `high` (`/thinking` sets it per session) |
-| `thinkingFull` | `false` | commit the full reasoning text instead of the collapsed thought line |
-| `tools.extra` | `[]` | optional search tools to register beside the core set: `grep`, `find`, `ls` |
-
-Environment variables override the file: `LUNATE_MODEL`, `LUNATE_APPROVAL`,
-`LUNATE_TOOL_OUTPUT_LIMIT`, `LUNATE_STARTUP_HEADER` (`true`, `false`, `1` or `0`),
-`LUNATE_UPDATE_CHECK` (`true`, `false`, `1` or `0`), `LUNATE_SUBAGENTS_CONCURRENCY`,
-`LUNATE_SUBAGENTS_TOKEN_BUDGET`, `LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET` and `LUNATE_EXTRA_TOOLS`
-(`grep,find,ls`). `yolo` is not a setting: it exists only as the per-run flag
-`lunate -p --yolo`.
+`~/.lunate/settings.json` carries `schemaVersion: 2`. An unknown key or a bad value is one error
+naming every problem, and nothing partial is applied. The generated
+[settings reference](docs/configuration.md) lists every key with its type, default, scope and
+allowed values, and names the environment-variable override each key accepts (from
+`LUNATE_MODEL` and `LUNATE_APPROVAL` through `LUNATE_TOOL_OUTPUT_LIMIT`, `LUNATE_SUBAGENTS_*` and
+`LUNATE_EXTRA_TOOLS`). The reference is rendered from the settings schema the store is pinned to,
+so it cannot list a key the parser refuses. `yolo` is not a setting: it exists only as the per-run
+flag `lunate -p --yolo`.
 
 The interactive session checks GitHub Releases at most once a day, in the background after the
 welcome header, and names a newer release as one dim linked line: `v0.2.0 available · changelog`.
