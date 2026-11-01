@@ -113,6 +113,48 @@ public sealed class AcpDecisionGateTests
         );
     }
 
+    [Fact]
+    public async Task An_unresolvable_decision_profile_degrades_to_no_gate_with_a_warning()
+    {
+        using var temp = new TempDirectory();
+        string modelsPath = temp.File("models.json");
+        File.WriteAllText(modelsPath, ModelsJson());
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        // No provider store: the configured decision profile cannot resolve its provider.
+        var warnings = new List<UserNotice>();
+        AgentHarness harness = AcpMode.CreateHarness(
+            new AcpSessionContext(temp.Root, null, null),
+            null,
+            [],
+            [],
+            null,
+            new FakeChatClientFactory(client),
+            temp.File("sessions"),
+            Settings(ApprovalPolicy.AutoEdit),
+            ModelCatalog.Load(modelsPath),
+            authPath: temp.File("auth.json"),
+            warn: warnings.Add
+        );
+
+        var events = new List<AgentEvent>();
+        await foreach (
+            AgentEvent agentEvent in harness.RunAsync("Hi", TestContext.Current.CancellationToken)
+        )
+        {
+            events.Add(agentEvent);
+        }
+
+        UserNotice warning = Assert.Single(warnings);
+        Assert.Contains(
+            "decision profile 'decision-profile' is unavailable; the decision layer is off",
+            warning.Message,
+            StringComparison.Ordinal
+        );
+        // The run continues with the ordinary approval flow and its answer.
+        string? lastText = events.OfType<TextMessageContent>().LastOrDefault()?.Text ?? "";
+        Assert.Contains("ok", lastText, StringComparison.Ordinal);
+    }
+
     private static AgentSettings Settings(ApprovalPolicy approval) =>
         new()
         {

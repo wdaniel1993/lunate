@@ -147,7 +147,17 @@ internal static class AcpMode
                 .RunAsync(
                     input,
                     output,
-                    context => CreateHarness(context, host, mcpTools, inheritedTools, launch),
+                    // The decision profile degrades to no gate on resolve failure; the degrade goes
+                    // to the host log, never stdout (only protocol frames own it).
+                    context =>
+                        CreateHarness(
+                            context,
+                            host,
+                            mcpTools,
+                            inheritedTools,
+                            launch,
+                            warn: notice => interaction.Notify(notice)
+                        ),
                     ct
                 )
                 .GetAwaiter()
