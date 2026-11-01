@@ -66,5 +66,5 @@
 
 - [x] 6.1 Run `openspec validate decision-layer --type change --strict`, the touched test classes and
       the `scripts/verify.sh` profiles for the touched area; CI runs the full matrix.
-- [ ] 6.2 Sync the deltas to the main specs and archive as the final commit of the implementation PR,
+- [x] 6.2 Sync the deltas to the main specs and archive as the final commit of the implementation PR,
       after the merge — merge first, then archive.
