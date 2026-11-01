@@ -27,8 +27,10 @@
         there is no release context, so the stable API version is the only thing that can exist.
     -->
     <PropertyGroup Condition="'$(LunateContractsVersion)' == ''">
-        <LunateContractsVersion Condition="'$(ContractVersion)' != ''">$(ContractVersion)</LunateContractsVersion>
-        <LunateContractsVersion Condition="'$(ContractVersion)' == ''">1.15.0</LunateContractsVersion>
+        <LunateContractsVersion Condition="'$(ContractVersion)' != ''"
+            >$(ContractVersion)</LunateContractsVersion>
+        <LunateContractsVersion Condition="'$(ContractVersion)' == ''"
+            >1.15.0</LunateContractsVersion>
     </PropertyGroup>
 
     <ItemGroup>

@@ -20,7 +20,8 @@
             does not change the assembly version.
         -->
         <ContractApiVersion>1.15.0</ContractApiVersion>
-        <ContractVersionSuffix Condition="$(Version.Contains('-'))">$([System.Text.RegularExpressions.Regex]::Match('$(Version)', '^[0-9.]+(-.+)$').Groups[1].Value)</ContractVersionSuffix>
+        <ContractVersionSuffix Condition="$(Version.Contains('-'))"
+            >$([System.Text.RegularExpressions.Regex]::Match('$(Version)', '^[0-9.]+(-.+)$').Groups[1].Value)</ContractVersionSuffix>
         <ContractVersion>$(ContractApiVersion)$(ContractVersionSuffix)</ContractVersion>
 
         <!--
