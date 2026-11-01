@@ -78,15 +78,25 @@ public sealed class RecordingChatClient : DelegatingChatClient
             string? directory = Path.GetDirectoryName(Path.GetFullPath(_fixturePath));
             if (!string.IsNullOrEmpty(directory))
             {
-                Directory.CreateDirectory(directory);
+                SecureFiles.CreateOwnerOnlyDirectory(directory);
             }
 
-            using var writer = new StreamWriter(_fixturePath, append: true);
+            FileStream stream = SecureFiles.OpenOwnerOnly(
+                _fixturePath,
+                FileMode.Append,
+                FileAccess.Write,
+                FileShare.Read
+            );
 
             // A fixture is committed bytes: one recorded on Windows must be the same file as one
             // recorded on POSIX, so the writer never follows Environment.NewLine.
+            using var writer = new StreamWriter(stream);
             writer.NewLine = "\n";
-            if (writer.BaseStream.Length == 0)
+
+            // A fresh file lands 0600 directly (UnixCreateMode); one an older build wrote
+            // world-readable is narrowed here so the next recording closes the window.
+            SecureFiles.RestrictToOwner(_fixturePath);
+            if (stream.Length == 0)
             {
                 writer.WriteLine(
                     FixtureFormat.SerializeHeader(_modelId ?? "unknown", _timeProvider.GetUtcNow())
