@@ -46,6 +46,7 @@ public sealed class McpServerHostTests
                 "server__add",
                 "server__boom",
                 "server__echo",
+                "server__env",
                 "server__elicit",
                 "server__elicit_form",
                 "server__elicit_url",
@@ -298,6 +299,55 @@ public sealed class McpServerHostTests
             )
         );
         Assert.False(host.Started);
+    }
+
+    /// <summary>
+    /// Issue #449, pinned while 0.2.0 documents it: a stdio MCP server inherits Lunate's whole
+    /// environment — <c>OPENAI_API_KEY</c> and the rest of the shell included — whether or not
+    /// its entry declares <c>env</c>; the declared <c>env</c> values only augment what the child
+    /// received. The 0.3 scrubber routing will flip this test to assert the opposite.
+    /// </summary>
+    [Fact]
+    public async Task A_stdio_server_sees_the_declared_env_and_the_parent_environment()
+    {
+        using var temp = new TempDirectory();
+        var marker = temp.File("marker.txt");
+        const string ParentVariable = "LUNATE_TEST_MCP_PARENT_VALUE";
+        string original = Environment.GetEnvironmentVariable(ParentVariable) ?? string.Empty;
+        Environment.SetEnvironmentVariable(ParentVariable, "from-parent-shell");
+        try
+        {
+            await using var host = new McpServerHost(
+                new McpServerOptions(
+                    "server",
+                    TestMcpServer.DotnetPath,
+                    ["exec", TestMcpServer.ServerDll],
+                    new Dictionary<string, string> { ["LUNATE_TEST_MCP_MARKER"] = marker }
+                )
+            );
+            var env = (await host.GetToolsAsync(Ct)).Single(tool => tool.Name == "server__env");
+
+            ToolResult parentValue = await env.ExecuteAsync(
+                JsonSerializer.SerializeToElement(new { name = ParentVariable }),
+                McpTestEnvironment.Context,
+                Ct
+            );
+            ToolResult declaredValue = await env.ExecuteAsync(
+                JsonSerializer.SerializeToElement(new { name = "LUNATE_TEST_MCP_MARKER" }),
+                McpTestEnvironment.Context,
+                Ct
+            );
+
+            Assert.Equal("from-parent-shell", parentValue.Output);
+            Assert.Equal(marker, declaredValue.Output);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(
+                ParentVariable,
+                original.Length == 0 ? null : original
+            );
+        }
     }
 
     private static IReadOnlyList<string> StartedLines(string markerPath) =>

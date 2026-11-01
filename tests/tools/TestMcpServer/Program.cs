@@ -121,6 +121,19 @@ tools.Add(
 );
 tools.Add(
     McpServerTool.Create(
+        // Reports what this server process itself sees, so tests can assert how the environment
+        // reached the child — declared `env` values and whatever the host inherits (issue #449).
+        (Func<string, string>)(name => Environment.GetEnvironmentVariable(name) ?? "<unset>"),
+        new McpServerToolCreateOptions
+        {
+            Name = "env",
+            Description = "Returns how the server process sees the named environment variable.",
+            ReadOnly = true,
+        }
+    )
+);
+tools.Add(
+    McpServerTool.Create(
         (Func<RequestContext<CallToolRequestParams>, CancellationToken, Task<string>>)ElicitAsync,
         new McpServerToolCreateOptions
         {
