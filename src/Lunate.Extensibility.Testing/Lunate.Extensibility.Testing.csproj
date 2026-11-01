@@ -1,14 +1,80 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <!--
+        Preview packaging (issue #237): the test kit ships so an extension author can test
+        without this repository. PREVIEW — no API stability promise before 1.0, versioned
+        0.2.0-preview.<n>. Its project references to Lunate.Ai, Lunate.Extensibility,
+        Lunate.Extensibility.Remote and Lunate.Coding would otherwise become nuspec
+        dependencies on packages that are not published (NuGet names every project reference
+        as one): PrivateAssets="All" stops the flow and the PackOwnAssemblies target below
+        carries each assembly itself. Lunate.Agent and the two contract assemblies are
+        published packages — the kit's declared dependencies — so they ride the dependency
+        chain and are never copied here.
+    -->
     <PropertyGroup>
-        <RootNamespace>Lunate.Extensibility.Testing</RootNamespace>
+        <IsPackable>true</IsPackable>
+        <PackageId>Lunate.Extensibility.Testing</PackageId>
+        <Version>0.2.0-preview.1</Version>
+        <Description>
+            The extension test kit of Lunate: ExtensionTestHost, the scripted approver and
+            trust prompt, event recording, session assertions and the wire conformance runner
+            for remote extensions. PREVIEW — no API stability promise before 1.0.
+        </Description>
+        <PackageTags>lunate;testing;preview</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>lunate-logo-dark.png</PackageIcon>
+        <PackageProjectUrl>https://github.com/wdaniel1993/lunate</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/wdaniel1993/lunate</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <TargetsForTfmSpecificContentInPackage>
+            $(TargetsForTfmSpecificContentInPackage);PackOwnAssemblies
+        </TargetsForTfmSpecificContentInPackage>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../Lunate.Agent/Lunate.Agent.csproj" />
-        <ProjectReference Include="../Lunate.Ai/Lunate.Ai.csproj" />
-        <ProjectReference Include="../Lunate.Coding/Lunate.Coding.csproj" />
-        <ProjectReference Include="../Lunate.Extensibility/Lunate.Extensibility.csproj" />
-        <ProjectReference Include="../Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
-        <ProjectReference Include="../Lunate.Extensibility.Remote/Lunate.Extensibility.Remote.csproj" />
+        <None Include="README.md" Pack="true" PackagePath="/" />
+        <None Include="../../docs/media/brand/lunate-logo-dark.png" Pack="true" PackagePath="/" />
     </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Lunate.Agent/Lunate.Agent.csproj" />
+        <ProjectReference Include="../Lunate.Ai/Lunate.Ai.csproj" PrivateAssets="All" />
+        <ProjectReference Include="../Lunate.Coding/Lunate.Coding.csproj" PrivateAssets="All" />
+        <ProjectReference
+            Include="../Lunate.Extensibility/Lunate.Extensibility.csproj"
+            PrivateAssets="All"
+        />
+        <ProjectReference Include="../Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+        <ProjectReference
+            Include="../Lunate.Extensibility.Remote/Lunate.Extensibility.Remote.csproj"
+            PrivateAssets="All"
+        />
+    </ItemGroup>
+
+    <!--
+        The kit's lib carries every Lunate assembly a test run needs that is not a published
+        package itself; the name list is the inventory a reader diffs the package against.
+        The roslyn built-in rides its own packages through the consumer's references when a
+        test registers it — the kit README says the same, and the Microsoft compiler packages
+        behind it are not shipped here.
+    -->
+    <Target Name="PackOwnAssemblies">
+        <ItemGroup>
+            <TfmSpecificPackageFile
+                Include="
+                    $(OutDir)Lunate.Ai.dll;
+                    $(OutDir)Lunate.Extensibility.dll;
+                    $(OutDir)Lunate.Extensibility.Remote.dll;
+                    $(OutDir)lunate.dll;
+                    $(OutDir)Lunate.Protocols.dll;
+                    $(OutDir)Lunate.Tui.dll;
+                    $(OutDir)Lunate.Extensibility.Compile.dll;
+                    $(OutDir)Lunate.Extensibility.Restore.dll;
+                    $(OutDir)Lunate.Roslyn.BuiltIn.dll;
+                    $(OutDir)Lunate.Roslyn.dll
+                "
+                PackagePath="lib/net10.0"
+            />
+        </ItemGroup>
+    </Target>
 </Project>

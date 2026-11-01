@@ -12,6 +12,7 @@ try {
     # English-first gate output: pin the dotnet CLI / test-runner UI language
     # (parity with scripts/verify.sh). Only UI strings are pinned, never cultures.
     if (-not $env:DOTNET_CLI_UI_LANGUAGE) { $env:DOTNET_CLI_UI_LANGUAGE = 'en' }
+    $env:MSBUILDDISABLENODEREUSE = '1'
 
     # Stale scratch sweep (parity with scripts/verify.sh): a hard-killed run can
     # leave a lunate-verify-* dir in the temp path; remove ones older than 4
@@ -114,13 +115,15 @@ try {
     # inline copy here read the intermediate nuspec in obj/, which pack writes differently on
     # Windows — the Windows legs went red for a package that was fine (PR #235).
     function Assert-PackageMetadata {
-        param([string]$Package, [string]$PackageId)
+        param([string]$Package, [string]$PackageId, [switch]$Prerelease)
         if (-not (Test-Path $Package)) {
             throw "verify: no package at $Package (dotnet pack writes <id>.<version>.nupkg to the -o directory)"
         }
         # Git Bash reads a native path in its own dialect best.
         $native = ($Package -replace '\\', '/')
-        & (Resolve-Bash) (Join-Path $PSScriptRoot 'check-package-metadata.sh') $native --id $PackageId
+        $checkArgs = @($native, '--id', $PackageId)
+        if ($Prerelease) { $checkArgs += '--prerelease' }
+        & (Resolve-Bash) (Join-Path $PSScriptRoot 'check-package-metadata.sh') @checkArgs
         if ($LASTEXITCODE -ne 0) {
             throw "verify: $Package does not carry the package metadata a feed page needs"
         }
@@ -402,6 +405,52 @@ try {
     }
     finally {
         Remove-Item -Recurse -Force -Path $packageTmp -ErrorAction SilentlyContinue
+    }
+
+    Write-Host "`n==> contract package roundtrip"
+    # The extension contract ships beside the tool (#237), on the same tag and no looser: the four
+    # SDK packages are checked by the same metadata script (the preview pair under the prerelease
+    # flag), then the template's NuGet shape is proven against this feed — the packages nuget.org
+    # serves after the next tag, exercised on every commit where they exist only in dist/.
+    # Parity with scripts/verify.sh's contract package roundtrip; the rule set lives in one
+    # script so bash and PowerShell cannot disagree.
+    $contractTmp = Join-Path ([System.IO.Path]::GetTempPath()) ('lunate-verify-contract-' + [guid]::NewGuid().ToString('N'))
+    $contractFeed = Join-Path $contractTmp 'feed'
+    New-Item -ItemType Directory -Force -Path $contractFeed | Out-Null
+    try {
+        foreach ($contractProject in @(
+            'src/Lunate.Contracts/Lunate.Contracts.csproj',
+            'src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj',
+            'src/Lunate.Agent/Lunate.Agent.csproj',
+            'src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj'
+        )) {
+            dotnet pack $contractProject -c $configuration -o $contractFeed --nologo -nodeReuse:false
+            if ($LASTEXITCODE -ne 0) { throw "verify: dotnet pack failed for $contractProject" }
+        }
+        # The stable pair is versioned with ExtensionApi, the preview pair 0.2.0-preview.<n> —
+        # neither is the repository <Version>, so each is read from the csproj that owns it.
+        $contractCsproj = Get-Content 'src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj' -Raw
+        $previewCsproj = Get-Content 'src/Lunate.Agent/Lunate.Agent.csproj' -Raw
+        $contractVersion = [regex]::Match($contractCsproj, '<Version>([^<]+)</Version>').Groups[1].Value
+        $previewVersion = [regex]::Match($previewCsproj, '<Version>([^<]+)</Version>').Groups[1].Value
+        Assert-PackageMetadata -Package (Join-Path $contractFeed "Lunate.Contracts.$contractVersion.nupkg") -PackageId 'Lunate.Contracts'
+        Assert-PackageMetadata -Package (Join-Path $contractFeed "Lunate.Extensibility.Abstractions.$contractVersion.nupkg") -PackageId 'Lunate.Extensibility.Abstractions'
+        Assert-PackageMetadata -Package (Join-Path $contractFeed "Lunate.Agent.$previewVersion.nupkg") -PackageId 'Lunate.Agent' -Prerelease
+        Assert-PackageMetadata -Package (Join-Path $contractFeed "Lunate.Extensibility.Testing.$previewVersion.nupkg") -PackageId 'Lunate.Extensibility.Testing' -Prerelease
+        # Restore and build the child extension directly too: the test project's after-build target
+        # invokes it as a second project, whose assets file would otherwise still describe the
+        # earlier in-repository ProjectReference shape.
+        dotnet restore templates/extension/TemplateExtension/TemplateExtension.csproj -p:LunateUseNuGetContracts=true -p:RestoreAdditionalProjectSources="$contractFeed" --nologo -nodeReuse:false
+        if ($LASTEXITCODE -ne 0) { throw 'verify: contract feed restore of the template extension failed' }
+        dotnet build templates/extension/TemplateExtension/TemplateExtension.csproj -c $configuration -p:LunateUseNuGetContracts=true --nologo -nodeReuse:false
+        if ($LASTEXITCODE -ne 0) { throw 'verify: the template NuGet build failed' }
+        dotnet restore templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj -p:LunateUseNuGetContracts=true -p:RestoreAdditionalProjectSources="$contractFeed" --nologo -nodeReuse:false
+        if ($LASTEXITCODE -ne 0) { throw 'verify: contract feed restore of the template failed' }
+        dotnet build templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj -c $configuration -p:LunateUseNuGetContracts=true --nologo -nodeReuse:false
+        if ($LASTEXITCODE -ne 0) { throw 'verify: the template NuGet build failed' }
+    }
+    finally {
+        Remove-Item -Recurse -Force -Path $contractTmp -ErrorAction SilentlyContinue
     }
 
     Write-Host "`n==> format"

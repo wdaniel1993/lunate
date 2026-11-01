@@ -27,6 +27,7 @@
         -->
         <NoWarn>$(NoWarn);NU5100;NU5128</NoWarn>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>lunate-logo-dark.png</PackageIcon>
         <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);PackBundleContent</TargetsForTfmSpecificContentInPackage>
     </PropertyGroup>
 
@@ -53,6 +54,12 @@
         <None Include="lunate.package.json" Pack="true" PackagePath="/" />
         <!-- The page a reader lands on from the feed is the sample's own README. -->
         <None Include="../README.md" Pack="true" PackagePath="/" />
+        <!-- The packages carry the same icon: one brand on every feed page. -->
+        <None
+            Include="../../../docs/media/brand/lunate-logo-dark.png"
+            Pack="true"
+            PackagePath="/"
+        />
     </ItemGroup>
 
     <!--

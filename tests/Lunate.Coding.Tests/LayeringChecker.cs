@@ -128,6 +128,7 @@ internal static class LayeringChecker
             ("ModelRouterExtension", "Lunate.Extensibility.Abstractions"),
             ("ModelRouterExtension.Tests", "Lunate.Ai"),
             ("ModelRouterExtension.Tests", "ModelRouterExtension"),
+            ("ModelRouterExtension.Tests", "Lunate.Extensibility"),
             ("ModelRouterExtension.Tests", "Lunate.Extensibility.Testing"),
             ("ModelRouterExtension.Tests", "SubagentsExtension"),
             ("FakeLsp", "Lunate.Extensibility.Abstractions"),
@@ -142,6 +143,7 @@ internal static class LayeringChecker
             ("PermissionGateExtension.Tests", "Lunate.Extensibility.Testing"),
             ("MemoryProviderExtension", "Lunate.Extensibility.Abstractions"),
             ("MemoryProviderExtension.Tests", "Lunate.Ai"),
+            ("MemoryProviderExtension.Tests", "Lunate.Extensibility"),
             ("MemoryProviderExtension.Tests", "Lunate.Extensibility.Abstractions"),
             ("MemoryProviderExtension.Tests", "Lunate.Extensibility.Testing"),
             ("LspDiagnosticsExtension", "Lunate.Extensibility.Abstractions"),
@@ -156,10 +158,12 @@ internal static class LayeringChecker
             ("McpFromExtensionExtension", "Lunate.Extensibility.Abstractions"),
             ("McpFromExtensionExtension.Tests", "FakeMcpServer"),
             ("McpFromExtensionExtension.Tests", "McpFromExtensionExtension"),
+            ("McpFromExtensionExtension.Tests", "Lunate.Extensibility"),
             ("McpFromExtensionExtension.Tests", "Lunate.Extensibility.Testing"),
             // The subagents sample's tests use only the kit and the extension (the public surface).
             ("SubagentsExtension", "Lunate.Extensibility.Abstractions"),
             ("SubagentsExtension.Tests", "SubagentsExtension"),
+            ("SubagentsExtension.Tests", "Lunate.Extensibility"),
             ("SubagentsExtension.Tests", "Lunate.Extensibility.Testing"),
             // The worktree-tasks sample is Abstractions-only; its tests build the child's real
             // coding tools, so they reference the Coding layer and the extension project.
@@ -179,8 +183,11 @@ internal static class LayeringChecker
             ("NodeRemoteExtension.Tests", "Lunate.Extensibility.Abstractions"),
             ("NodeRemoteExtension.Tests", "Lunate.Extensibility.Testing"),
             // The ui-showcase sample is Abstractions-only; its tests use the kit and reference
-            // the extension project itself (the sibling pattern).
+            // the extension project itself (the sibling pattern). The kit is private about its
+            // project references when it packs (#237), so the loader edge the tests drive is
+            // explicit here and in the other kit consumers below.
             ("UiShowcaseExtension", "Lunate.Extensibility.Abstractions"),
+            ("UiShowcaseExtension.Tests", "Lunate.Extensibility"),
             ("UiShowcaseExtension.Tests", "Lunate.Extensibility.Abstractions"),
             ("UiShowcaseExtension.Tests", "Lunate.Extensibility.Testing"),
             ("UiShowcaseExtension.Tests", "UiShowcaseExtension"),

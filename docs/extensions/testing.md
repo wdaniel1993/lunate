@@ -8,8 +8,14 @@ test needs a live API.
 
 ## Add the kit
 
-The test project references the AI project, both contract assemblies and the kit. The paths below
-match the template's depth; adjust them for your layout:
+`Lunate.Extensibility.Testing` ships as a preview package (`dotnet add package
+Lunate.Extensibility.Testing --version 0.2.0-preview.1`); it is self-contained, so it carries the
+harness assemblies an unpublished Lunate package would leave unresolved, and its declared
+dependencies are the published ones — the preview pair and the stable contract pair, so the
+contract assemblies your tests bind to are the same host-owned copies a real load uses. Inside this
+repository the test project references the projects instead, the way the template does (the
+packages a feed serves may not exist there yet). The paths below match the template's depth;
+adjust them for your layout:
 
 ```xml
 <ProjectReference Include="../../../src/Lunate.Ai/Lunate.Ai.csproj" />

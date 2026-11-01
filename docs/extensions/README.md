@@ -44,37 +44,44 @@ cannot drift from the file:
 ```xml
 <!--
     The host owns Lunate.Contracts and Lunate.Extensibility.Abstractions and loads them once;
-    every extension binds to those copies so their types keep one identity. Private="false"
-    keeps the DLLs out of your output directory and ExcludeAssets="runtime" keeps them out of
-    the deps file — both still compile against. A copy in your output would be ignored, with
-    one warning saying so.
+    every extension binds to those copies so their types keep one identity. They are NuGet
+    packages pinned to the stable contract version (1.15.0, the number the manifest's
+    apiVersion is judged against), and each reference is compile-only: PrivateAssets="all"
+    keeps them from flowing to consumers of a packaged extension, ExcludeAssets="runtime"
+    keeps them out of the deps file and the output directory — a copy there is ignored at
+    load, with one warning saying so.
 -->
-<ProjectReference
-    Include="../../../src/Lunate.Contracts/Lunate.Contracts.csproj"
+<PackageReference
+    Condition="'$(LunateUseNuGetContracts)' == 'true'"
+    Include="Lunate.Contracts"
+    Version="1.15.0"
     PrivateAssets="all"
-    Private="false"
     ExcludeAssets="runtime"
 />
-<ProjectReference
-    Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
+<PackageReference
+    Condition="'$(LunateUseNuGetContracts)' == 'true'"
+    Include="Lunate.Extensibility.Abstractions"
+    Version="1.15.0"
     PrivateAssets="all"
-    Private="false"
     ExcludeAssets="runtime"
 />
 ```
 
-The contract is not published as a NuGet package in this version; reference the project (or a
-local build of it). The paths above are the template's, whose project sits three directories below
-the repository root (`templates/extension/TemplateExtension/`); adjust them for where yours lives.
-The template inherits its target framework, nullability and implicit usings from the repository's
+The contract packages are pinned to `ExtensionApi.Current` (currently `1.15.0`); their READMEs
+carry the versioning and deprecation policy. Inside this repository the same template binds the
+contract as project references instead — the packages a feed serves may not exist before the
+release that publishes them, so the template switches on its own: a copy outside this
+repository gets the packages, a copy inside gets the projects, and `LunateUseNuGetContracts=true`
+forces the package shape (the verify gate does, against a feed of freshly packed packages). The
+template inherits its target framework, nullability and implicit usings from the repository's
 `Directory.Build.props`, so a project of your own declares those itself.
 
-The host owns `Lunate.Contracts`, `Lunate.Extensibility.Abstractions` and `Lunate.Agent`, and loads
-them once, so every extension binds to those copies. `Private="false"` keeps the contract assemblies
-out of your output directory and `ExcludeAssets="runtime"` keeps them out of the deps file, while
-both still compile against. A copy in the output is ignored at load, with one line saying which copy
-and who shipped it — so keep these references as they are. `PrivateAssets="all"` prevents the
-contract references from flowing to consumers of a packaged extension.
+The host owns `Lunate.Contracts` and `Lunate.Extensibility.Abstractions` — and `Lunate.Agent`,
+which ships as a preview package — and loads them once, so every extension binds to those copies.
+`ExcludeAssets="runtime"` keeps the contract assemblies out of your output directory and deps
+file, while they still compile against. A copy in the output is ignored at load, with one line
+saying which copy and who shipped it — so keep these references as they are. `PrivateAssets="all"`
+prevents the contract references from flowing to consumers of a packaged extension.
 
 ### 2. Write the extension
 

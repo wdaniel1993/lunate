@@ -8,6 +8,9 @@
         <ProjectReference Include="../../../../src/Lunate.Ai/Lunate.Ai.csproj" />
         <ProjectReference Include="../../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
         <ProjectReference Include="../../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
+        <!-- The kit is private about its project references when it packs (#237) — the loader the
+             tests drive is named here, not assumed transitively. -->
+        <ProjectReference Include="../../../../src/Lunate.Extensibility/Lunate.Extensibility.csproj" />
     </ItemGroup>
 
     <ItemGroup>

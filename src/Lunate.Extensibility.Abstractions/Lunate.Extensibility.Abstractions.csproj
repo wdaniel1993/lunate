@@ -3,10 +3,37 @@
         <RootNamespace>Lunate.Extensibility.Abstractions</RootNamespace>
         <!--
             Both contract assemblies' versions are the API version: ExtensionApiGate compares an
-            extension's contract assembly references with ExtensionApi.Current.
+            extension's contract assembly references with ExtensionApi.Current, and the parity test
+            (Lunate.Coding.Tests) fails when a bump of one drops the other.
+        -->
+        <!--
+            The extension contract ships stable beside the tool (issue #237): a packaging extension
+            header compiles against the package, where the compiled extension then names an apiVersion
+            matched by ExtensionApiGate against this version. It is a prerequisite of the
+            packaged-extension template, which installs it from NuGet.
         -->
         <Version>1.15.0</Version>
+        <PackageId>Lunate.Extensibility.Abstractions</PackageId>
+        <IsPackable>true</IsPackable>
+        <Description>
+            The extension contract of Lunate: IExtension, IExtensionFactory, the hook catalogue,
+            workspace and settings surfaces and ExtensionApi — the version number an extension's
+            apiVersion is judged against at load. The host loads this assembly once and every
+            extension binds to that copy, so a copy an extension ships is ignored at load.
+        </Description>
+        <PackageTags>lunate;extensibility;extension-api</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>lunate-logo-dark.png</PackageIcon>
+        <PackageProjectUrl>https://github.com/wdaniel1993/lunate</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/wdaniel1993/lunate</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
     </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="/" />
+        <None Include="../../docs/media/brand/lunate-logo-dark.png" Pack="true" PackagePath="/" />
+    </ItemGroup>
 
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Extensibility" />
