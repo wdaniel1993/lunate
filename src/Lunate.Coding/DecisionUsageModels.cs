@@ -111,9 +111,7 @@ internal static class DecisionUsageModels
         IChatClientFactory factory
     ) =>
         new(
-            new DeferredChatClient(() =>
-                CreateUsageClient(profile, auth, environment, factory)
-            ),
+            new DeferredChatClient(() => CreateUsageClient(profile, auth, environment, factory)),
             profile.Profile.Name,
             profile.Provider.Name,
             profile.Model
@@ -136,8 +134,7 @@ internal static class DecisionUsageModels
         {
             string keyName = reference["auth:".Length..];
             ProviderPreset? preset = ProviderPresets.Find(profile.Provider.Kind);
-            string? environmentKey =
-                preset is null ? null : environment(preset.KeyVariable);
+            string? environmentKey = preset is null ? null : environment(preset.KeyVariable);
             if (!string.IsNullOrWhiteSpace(environmentKey))
             {
                 return factory.Create(profile.Model, environmentKey);

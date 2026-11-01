@@ -75,8 +75,8 @@ internal sealed partial class InteractiveSession
                 _factory,
                 notice => Notify(notice.Message, notice.Level),
                 _warnedDecisionProfiles
-            )
-            is { } decisionModel
+            ) is
+            { } decisionModel
         )
         {
             usages["decision"] = decisionModel;

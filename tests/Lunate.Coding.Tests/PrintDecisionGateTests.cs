@@ -90,8 +90,7 @@ public sealed class PrintDecisionGateTests
     public async Task A_resolved_decision_profile_with_the_tool_enabled_declares_decide()
     {
         using var temp = new TempDirectory();
-        string settingsJson =
-            """
+        string settingsJson = """
             {
               "schemaVersion": 2,
               "model": "gpt-4o-mini",
@@ -101,8 +100,7 @@ public sealed class PrintDecisionGateTests
               "decisions": { "profile": "decision-profile", "approvals": "enforce", "tool": "on" }
             }
             """;
-        var client = new ScriptedChatClient()
-            .Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
         WriteFixture(temp, decisionProvider: true, settingsJson: settingsJson);
 
         (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(
@@ -154,16 +152,16 @@ public sealed class PrintDecisionGateTests
 
     private static string ModelsJson() =>
         """
-        {
-          "schemaVersion": 2,
-          "models": [
-            { "id": "gpt-4o-mini", "provider": "openai", "contextWindow": 64000,
-              "supportsTools": true },
-            { "id": "decision-model", "provider": "openai", "contextWindow": 64000,
-              "supportsTools": false }
-          ]
-        }
-        """;
+            {
+              "schemaVersion": 2,
+              "models": [
+                { "id": "gpt-4o-mini", "provider": "openai", "contextWindow": 64000,
+                  "supportsTools": true },
+                { "id": "decision-model", "provider": "openai", "contextWindow": 64000,
+                  "supportsTools": false }
+              ]
+            }
+            """;
 
     private static ProviderEntry Provider(string name, string kind)
     {

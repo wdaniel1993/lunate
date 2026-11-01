@@ -685,13 +685,12 @@ internal static class PrintMode
             warn,
             []
         );
-        IReadOnlyDictionary<string, UsageModelClient>? decisionUsageModels =
-            decisionModel is null
-                ? null
-                : new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
-                {
-                    ["decision"] = decisionModel,
-                };
+        IReadOnlyDictionary<string, UsageModelClient>? decisionUsageModels = decisionModel is null
+            ? null
+            : new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+            {
+                ["decision"] = decisionModel,
+            };
 
         var harnessOptions = new AgentHarnessOptions
         {

@@ -317,13 +317,12 @@ internal static class AcpMode
             warn ?? (_ => { }),
             []
         );
-        IReadOnlyDictionary<string, UsageModelClient>? usageModels =
-            decisionModel is null
-                ? null
-                : new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
-                {
-                    ["decision"] = decisionModel,
-                };
+        IReadOnlyDictionary<string, UsageModelClient>? usageModels = decisionModel is null
+            ? null
+            : new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+            {
+                ["decision"] = decisionModel,
+            };
 
         var options = new AgentHarnessOptions
         {
@@ -373,7 +372,10 @@ internal static class AcpMode
 
         (AuthStore, IReadOnlyList<ProviderEntry>) LoadSources()
         {
-            AuthStore auth = AuthStore.Load(authPath, static name => Environment.GetEnvironmentVariable(name));
+            AuthStore auth = AuthStore.Load(
+                authPath,
+                static name => Environment.GetEnvironmentVariable(name)
+            );
             ProviderStore providers = ProviderStore.Load(
                 AuthStore.ProviderStoreFilePath(authPath),
                 auth,

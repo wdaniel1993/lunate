@@ -42,7 +42,8 @@ public sealed class AcpDecisionGateTests
             new FakeChatClientFactory(client),
             temp.File("sessions"),
             Settings(ApprovalPolicy.AutoEdit),
-            ModelCatalog.Load(modelsPath)
+            ModelCatalog.Load(modelsPath),
+            authPath: temp.File("auth.json")
         );
 
         var events = new List<AgentEvent>();
@@ -89,7 +90,8 @@ public sealed class AcpDecisionGateTests
             new FakeChatClientFactory(client),
             temp.File("sessions"),
             Settings(ApprovalPolicy.AutoEdit),
-            ModelCatalog.Load(modelsPath)
+            ModelCatalog.Load(modelsPath),
+            authPath: temp.File("auth.json")
         );
 
         var events = new List<AgentEvent>();
@@ -123,22 +125,26 @@ public sealed class AcpDecisionGateTests
             },
             Profiles = new Dictionary<string, ModelProfile>(StringComparer.Ordinal)
             {
-                ["decision-profile"] = new("decision-profile", "decision-provider", "decision-model"),
+                ["decision-profile"] = new(
+                    "decision-profile",
+                    "decision-provider",
+                    "decision-model"
+                ),
             },
         };
 
     private static string ModelsJson() =>
         """
-        {
-          "schemaVersion": 2,
-          "models": [
-            { "id": "gpt-4o-mini", "provider": "openai", "contextWindow": 64000,
-              "supportsTools": true },
-            { "id": "decision-model", "provider": "openai", "contextWindow": 64000,
-              "supportsTools": false }
-          ]
-        }
-        """;
+            {
+              "schemaVersion": 2,
+              "models": [
+                { "id": "gpt-4o-mini", "provider": "openai", "contextWindow": 64000,
+                  "supportsTools": true },
+                { "id": "decision-model", "provider": "openai", "contextWindow": 64000,
+                  "supportsTools": false }
+              ]
+            }
+            """;
 
     private static ProviderEntry Provider()
     {
