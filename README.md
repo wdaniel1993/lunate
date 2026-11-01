@@ -109,11 +109,12 @@ Contributor setup — the gate, the repository map and the OpenSpec workflow —
 
 ## Quick start
 
-**1. Pick a model and a credential.** The built-in catalog carries `gpt-4o-mini`, `gpt-4o`,
-`claude-sonnet-5-5` and `claude-opus-5-5`. Put the default in `~/.lunate/settings.json`:
+**1. Pick a model and a credential.** The catalog comes from models.dev, so its model ids are the
+ones your provider serves — `claude-sonnet-5-5` and `claude-opus-5-5` are current examples. Put the
+default in `~/.lunate/settings.json`:
 
-```json
-{ "schemaVersion": 1, "model": "claude-sonnet-5-5" }
+```json settings
+{ "schemaVersion": 2, "profiles": { "chat-main": { "provider": "anthropic", "model": "claude-sonnet-5-5" } }, "usages": { "chat": "chat-main" } }
 ```
 
 Then store that provider's key with the auth command:

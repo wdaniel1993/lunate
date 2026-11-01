@@ -338,7 +338,7 @@ Append-only JSONL, one entry per line, each with `id`, `parentId`, `type` and a 
 ```json
 {"type":"header","schema":1,"id":"s_20261003-090000-ab12","cwd":"/repo","created":"2026-10-03T09:00:00.0000000+00:00","meai":"10.10.1"}
 {"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-03T09:00:01.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"add tests for Calculator"}]}}
-{"type":"message","id":"e_02","parentId":"e_01","timestamp":"2026-10-03T09:00:02.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"functionCall","name":"read","arguments":{"path":"src/Calculator.cs"},"informationalOnly":false,"callId":"c_1"}]},"model":"gpt-4o-mini","usage":{"input":1834,"output":41}}
+{"type":"message","id":"e_02","parentId":"e_01","timestamp":"2026-10-03T09:00:02.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"functionCall","name":"read","arguments":{"path":"src/Calculator.cs"},"informationalOnly":false,"callId":"c_1"}]},"model":"claude-sonnet-5-5","usage":{"input":1834,"output":41}}
 {"type":"message","id":"e_03","parentId":"e_02","timestamp":"2026-10-03T09:00:03.0000000+00:00","message":{"role":"tool","contents":[{"$type":"functionResult","result":"1  public class Calculator ...","callId":"c_1"}]}}
 {"type":"compaction","id":"e_40","parentId":"e_39","timestamp":"2026-10-03T09:10:00.0000000+00:00","summary":"...","replaces":["e_01","e_30"]}
 {"type":"modelChange","id":"e_41","parentId":"e_40","timestamp":"2026-10-03T09:11:00.0000000+00:00","model":"gpt-4o"}

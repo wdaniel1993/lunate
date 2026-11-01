@@ -13,11 +13,11 @@
 #      RepositoryRoot) and names a docs path -- the shape every docs-reading test takes;
 #   3. a File/Directory call on the same line as a docs path, root or no root.
 #
-# The single allowance is a test file named in ALLOWED_DOCS_READERS below: the guide key-table
-# drift test, requested by issue #267, which checks docs/guide.md's key cells against
-# Lunate.Tui's KeyBindingCatalog so a binding cannot lose its doc row in a suite run. Name the
-# test here and print the allowance -- never quietly bypass the shape checks above. A second
-# reader means the rule should become data-driven, with the home of each read named in the list.
+# The allowances are the test files named in ALLOWED_DOCS_READERS below, each with the read it
+# owns: GuideKeyTableTests (issue #267) checks docs/guide.md's key cells against Lunate.Tui's
+# KeyBindingCatalog, and DocsConfigExamplesTests loads every fenced settings/providers/auth example
+# through the store that reads the real file, so a documented example cannot rot. Name the test
+# here and print the allowance -- never quietly bypass the shape checks above.
 #
 # What does not: a docs path handed to an in-memory fixture or a rendered value -- AddFile,
 # AddDirectory, AddTree, CompletionItem.File. That is a workspace or a display string, not a file
@@ -42,6 +42,7 @@ FILESYSTEM_CALL='(File|Directory)\.[A-Za-z]+\([^;]*"docs[/"\\]'
 # region check does not run (it is a docs-profile step, not a full-matrix one).
 ALLOWED_DOCS_READERS=(
   tests/Lunate.Tui.Tests/GuideKeyTableTests.cs
+  tests/Lunate.Coding.Tests/DocsConfigExamplesTests.cs
   # Asserts the brand icon every package packs exists at its docs path — the same packaged asset the
   # build-file allowance above covers, checked from the test side.
   tests/Lunate.Extensibility.Tests/ExtensionContractPackages.cs
