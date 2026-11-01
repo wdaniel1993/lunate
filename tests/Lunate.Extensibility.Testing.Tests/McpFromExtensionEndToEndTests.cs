@@ -30,7 +30,7 @@ public sealed class McpFromExtensionEndToEndTests
         ExtensionMcpServerStatus status = Assert.Single(statuses);
         Assert.Equal("test", status.Name);
         Assert.Equal(ExtensionMcpServerState.Started, status.State);
-        Assert.Equal(8, status.ToolCount);
+        Assert.Equal(9, status.ToolCount);
         Assert.Equal("extension 'mcp'", status.Source);
 
         var pid = TestMcpServer.StartedPid(marker);
@@ -40,6 +40,7 @@ public sealed class McpFromExtensionEndToEndTests
                 "test__add",
                 "test__boom",
                 "test__echo",
+                "test__env",
                 "test__elicit",
                 "test__elicit_form",
                 "test__elicit_url",

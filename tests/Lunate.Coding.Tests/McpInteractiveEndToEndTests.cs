@@ -46,7 +46,7 @@ public sealed class McpInteractiveEndToEndTests
         host.Console.SendEnter();
         await InteractiveSessionCommandTests.WaitForFrameAsync(
             host,
-            "test — started, 8 tools",
+            "test — started, 9 tools",
             WaitBudgets.SpawnWindow
         );
 
@@ -89,7 +89,7 @@ public sealed class McpInteractiveEndToEndTests
             "broken — failed:",
             WaitBudgets.SpawnWindow
         );
-        Assert.Contains("test — started, 8 tools", host.LastFrame, StringComparison.Ordinal);
+        Assert.Contains("test — started, 9 tools", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
