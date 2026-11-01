@@ -13,7 +13,7 @@ using Spectre.Console;
 namespace Lunate.Coding;
 
 /// <summary>The injectable seams of an interactive session; production leaves paths null.</summary>
-internal sealed record InteractiveSessionOptions
+internal sealed partial record InteractiveSessionOptions
 {
     public IChatClientFactory? Factory { get; init; }
 
@@ -472,6 +472,12 @@ internal sealed partial class InteractiveSession : IDisposable
             _options.Environment
         );
         _settings = SettingsStore.ApplyLaunch(_settings, _options.Launch);
+        if (_settings.BashGuard)
+        {
+            WarnAboutStateRootHardlinks();
+        }
+
+        ResolveBashGuard();
         ApplyTuiPresentation();
         _thinkingLevel = _settings.Thinking;
         _catalog = HarnessFactory.LoadCatalog(_settings, _options.ModelsPath);
@@ -552,7 +558,9 @@ internal sealed partial class InteractiveSession : IDisposable
             redaction: _redaction,
             writeVerifiers: _extensions?.WriteVerifiers,
             verificationMode: _settings.Verify,
-            refusalTracker: _writeVerificationRefusals
+            refusalTracker: _writeVerificationRefusals,
+            bashGuardEnabled: _settings.BashGuard,
+            bashGuard: _bashGuard
         );
         _tools.Add(new AskUserTool());
         await ComposeMcpConfigAsync(ct);
@@ -580,7 +588,8 @@ internal sealed partial class InteractiveSession : IDisposable
             redaction: _redaction,
             writeVerifiers: _extensions?.WriteVerifiers,
             verificationMode: _settings.Verify,
-            refusalTracker: _writeVerificationRefusals
+            refusalTracker: _writeVerificationRefusals,
+            bashGuardEnabled: _settings.BashGuard
         );
         // The model resolves after the extension host: the configured id may name a virtual or
         // extension-registered model, which only the registry knows.

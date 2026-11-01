@@ -1,4 +1,5 @@
 using Lunate.Ai;
+using Lunate.Tui;
 
 namespace Lunate.Coding;
 
@@ -60,7 +61,8 @@ internal sealed record GuardCommand(
     IReadOnlyList<string> ArgumentsPrefix,
     string Mechanism,
     bool Wrapped,
-    string? Notice
+    string? Notice,
+    string ProbeState = "not run"
 );
 
 /// <summary>
@@ -87,6 +89,7 @@ internal sealed partial class BashGuard
     private readonly GuardTarget _target;
     private readonly GuardProbe _probe;
     private GuardCommand? _command;
+    private BashGuardStatus? _status;
     private string? _workspace;
 
     internal BashGuard()
@@ -96,6 +99,23 @@ internal sealed partial class BashGuard
     {
         _target = target;
         _probe = probe;
+    }
+
+    internal BashGuardStatus Status
+    {
+        get
+        {
+            if (_command is not { } command)
+            {
+                return new BashGuardStatus("none", "not run", Enabled: true);
+            }
+
+            return _status ??= new BashGuardStatus(
+                NormalizedMechanism(command.Mechanism),
+                command.ProbeState,
+                Enabled: true
+            );
+        }
     }
 
     /// <summary>
@@ -117,8 +137,18 @@ internal sealed partial class BashGuard
             : !_probe.FileExists(shell.ExecutablePath) ? Unwrapped(shell, "none", notice: null)
             : _probe.IsMacOs ? ResolveMacOs(shell)
             : ResolveLinux(shell, workspace);
+        _status = Status;
         return _command;
     }
+
+    private static string NormalizedMechanism(string mechanism) =>
+        mechanism switch
+        {
+            MacOsMechanism => "sandbox-exec",
+            LinuxBwrapMechanism => "bwrap",
+            LinuxLandlockMechanism => "landlock",
+            _ => "none",
+        };
 
     private static GuardCommand UnsupportedWindows(ResolvedShell shell) =>
         new(
@@ -129,6 +159,18 @@ internal sealed partial class BashGuard
             WindowsNotice
         );
 
-    private static GuardCommand Unwrapped(ResolvedShell shell, string mechanism, string? notice) =>
-        new(shell.ExecutablePath, [.. shell.ArgumentsPrefix], mechanism, Wrapped: false, notice);
+    private static GuardCommand Unwrapped(
+        ResolvedShell shell,
+        string mechanism,
+        string? notice,
+        string probeState = "not run"
+    ) =>
+        new(
+            shell.ExecutablePath,
+            [.. shell.ArgumentsPrefix],
+            mechanism,
+            Wrapped: false,
+            notice,
+            probeState
+        );
 }

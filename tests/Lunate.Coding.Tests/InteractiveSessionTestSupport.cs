@@ -587,7 +587,10 @@ internal sealed class InteractiveSessionHost : IDisposable
         string? editorTempDirectory = null,
         UpdateCheckSeams? updateCheck = null,
         bool interactiveConsole = false,
-        Action<AgentEvent>? eventObserverSuffix = null
+        Action<AgentEvent>? eventObserverSuffix = null,
+        GuardProbe? bashGuardProbe = null,
+        string? hardlinkScanRoot = null,
+        IHardlinkScanFileSystem? hardlinkScanFileSystem = null
     )
     {
         _eventObserverSuffix = eventObserverSuffix;
@@ -633,6 +636,9 @@ internal sealed class InteractiveSessionHost : IDisposable
                 Clock = clock,
                 EditorTempDirectory = editorTempDirectory,
                 UpdateCheck = updateCheck,
+                BashGuardProbe = bashGuardProbe ?? Fake.Unix(macOs: false),
+                HardlinkScanRoot = hardlinkScanRoot,
+                HardlinkScanFileSystem = hardlinkScanFileSystem,
             }
         );
     }

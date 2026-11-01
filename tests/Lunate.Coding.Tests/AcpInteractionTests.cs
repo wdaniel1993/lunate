@@ -59,4 +59,46 @@ public sealed class AcpInteractionTests
         Assert.Equal(0, exitCode);
         Assert.Empty(output.ToArray());
     }
+
+    [Fact]
+    public void A_hardlink_warning_is_written_to_stderr_not_acp_stdout()
+    {
+        using var temp = new TempDirectory();
+        string state = Directory.CreateDirectory(Path.Combine(temp.Root, "state")).FullName;
+        string link = Path.Combine(state, "linked.json");
+        using var input = new MemoryStream();
+        using var output = new MemoryStream();
+        using var errors = new StringWriter();
+        var fileSystem = new HardlinkScanFileSystem(state, link);
+
+        int exitCode = AcpMode.Run(
+            errors,
+            input,
+            output,
+            TestContext.Current.CancellationToken,
+            TestExtensionSeams.Empty(temp),
+            mcpConfigPath: temp.File("global-mcp.json"),
+            mcpAgentsConfigPath: temp.File("agents-mcp.json"),
+            hardlinkScanRoot: state,
+            hardlinkScanFileSystem: fileSystem
+        );
+
+        Assert.Equal(0, exitCode);
+        Assert.Empty(output.ToArray());
+        Assert.Contains(link, errors.ToString(), StringComparison.Ordinal);
+    }
+
+    private sealed class HardlinkScanFileSystem(string state, string file) : IHardlinkScanFileSystem
+    {
+        public bool DirectoryExists(string path) => path == state;
+
+        public IReadOnlyList<string> EnumerateDirectories(string path) => [];
+
+        public IReadOnlyList<string> EnumerateFiles(string path) => path == state ? [file] : [];
+
+        public bool IsDirectoryLink(string path) => false;
+
+        public HardlinkFileMetadata? GetFileMetadata(string path) =>
+            path == file ? new(new HardlinkFileIdentity(1, 1), LinkCount: 2) : null;
+    }
 }

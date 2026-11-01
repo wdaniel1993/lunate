@@ -93,6 +93,7 @@ internal sealed partial class InteractiveSession
             tail.Add(cache);
         }
 
+        tail.Add(_bashGuardStatus.ContextText);
         tail.Add(SkillsContextSegment());
         tail.Add(SavingsContextSegment());
         return FormattableString.Invariant(

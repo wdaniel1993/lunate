@@ -83,6 +83,51 @@ public sealed class BashGuardToolTests
     }
 
     [Fact]
+    public async Task A_disabled_guard_skips_the_probe_and_is_named_in_the_result()
+    {
+        using var temp = new TempDirectory();
+        string workspace = Directory.CreateDirectory(temp.File("workspace")).FullName;
+        string state = Directory.CreateDirectory(temp.File("state")).FullName;
+        string prefix = Directory.CreateDirectory(temp.File("prefix")).FullName;
+        var target = new GuardTarget(state, Path.Combine(state, "auth.json"), prefix, temp.Root);
+        int probeCalls = 0;
+        GuardProbe probe = GuardProbe.Current with
+        {
+            IsWindows = false,
+            IsMacOs = false,
+            IsLinux = true,
+            FindOnPath = name => name == "bwrap" ? "bwrap" : null,
+            FileExists = _ => true,
+            DirectoryExists = _ => true,
+            ListDirectories = _ => [],
+            ListFiles = _ => [],
+            Run = (_, _) =>
+            {
+                probeCalls++;
+                return (0, string.Empty);
+            },
+        };
+        var tool = new BashTool(
+            new Workspace(workspace),
+            null,
+            null,
+            null,
+            new BashGuard(target, probe),
+            guardEnabled: false
+        );
+
+        ToolResult result = await tool.ExecuteAsync(
+            CommandArgs("echo guard-disabled"),
+            Context,
+            CancellationToken.None
+        );
+
+        Assert.False(result.IsError);
+        Assert.Contains("bash guard is disabled", result.Output, StringComparison.Ordinal);
+        Assert.Equal(0, probeCalls);
+    }
+
+    [Fact]
     public async Task On_macos_the_auth_store_file_is_readable_neither_plain_nor_silently()
     {
         if (!OperatingSystem.IsMacOS())

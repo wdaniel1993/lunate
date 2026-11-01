@@ -47,6 +47,29 @@ public sealed class WelcomeHeaderSessionTests
     }
 
     [Fact]
+    public async Task A_disabled_bash_guard_is_named_in_the_welcome_header()
+    {
+        using var host = new InteractiveSessionHost(environment: KeyedEnvironment());
+        File.WriteAllText(
+            host.Temp.File("settings.json"),
+            """{"schemaVersion":2,"bashGuard":false}"""
+        );
+        Task run = host.RunAsync();
+
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        string scrollback = await host.WaitForScrollbackAsync(
+            text => text.Contains("bash guard disabled", StringComparison.Ordinal),
+            "the disabled bash-guard header status"
+        );
+
+        Assert.Contains("bash guard disabled", scrollback, StringComparison.Ordinal);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
     public async Task The_loading_line_continues_under_the_header()
     {
         using var temp = new TempDirectory();
@@ -123,10 +146,10 @@ public sealed class WelcomeHeaderSessionTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         string scrollback = await host.WaitForScrollbackAsync(
-            $"lunate v{ProductVersion.Build} — /help for commands"
+            $"lunate v{ProductVersion.Build} · bash guard none · probe not run — /help for commands"
         );
         Assert.Contains(
-            $"lunate v{ProductVersion.Build} — /help for commands",
+            $"lunate v{ProductVersion.Build} · bash guard none · probe not run — /help for commands",
             scrollback,
             StringComparison.Ordinal
         );
@@ -149,10 +172,10 @@ public sealed class WelcomeHeaderSessionTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         string scrollback = await host.WaitForScrollbackAsync(
-            $"lunate v{ProductVersion.Build} - /help for commands"
+            $"lunate v{ProductVersion.Build} - bash guard none - probe not run - /help for commands"
         );
         Assert.Contains(
-            $"lunate v{ProductVersion.Build} - /help for commands",
+            $"lunate v{ProductVersion.Build} - bash guard none - probe not run - /help for commands",
             scrollback,
             StringComparison.Ordinal
         );
