@@ -1,3 +1,4 @@
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent.Tests;
@@ -202,6 +203,49 @@ public sealed class SessionBranchTests
     }
 
     /// <summary>one → two on branch A, one → branch-b on branch B, the leaf on B.</summary>
+    [Fact]
+    public void A_branch_redacts_what_the_source_file_redacted()
+    {
+        using var temp = new TempDirectory();
+        Session session = Branched(temp);
+        const string Secret = "sk-branch-123456789";
+        session.Redactor = new CredentialRedactor([("openai", Secret)]);
+        session.AppendMessage(new ChatMessage(ChatRole.User, $"my key is {Secret}"));
+        Assert.DoesNotContain(Secret, File.ReadAllText(session.Path), StringComparison.Ordinal);
+
+        Session fork = session.Fork(temp.Root, session.Entries[^1].Id);
+
+        // The in-memory entry holds the real text; only the written line is masked. A branch written
+        // verbatim would carry the value the source file had already replaced.
+        string branch = File.ReadAllText(fork.Path);
+        Assert.DoesNotContain(Secret, branch, StringComparison.Ordinal);
+        Assert.Contains("[redacted:openai]", branch, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_branch_copies_the_image_blobs_its_entries_reference()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(
+            temp.File("s.jsonl"),
+            "/work",
+            new FixedTimeProvider(SessionImageTestData.Start)
+        );
+        ImageContentReference reference = SessionImages
+            .ForSession(session)
+            .Store(SessionImageTestData.PngBytes, "image/png", 1, 1);
+        session.AppendMessage(new ChatMessage(ChatRole.User, [new TextContent("look"), reference]));
+
+        Session fork = session.Fork(temp.Root, session.Entries[^1].Id);
+
+        // Blobs live under the session id: without the copy the branch references a digest that
+        // exists nowhere it looks and the harness refuses the resume.
+        Assert.True(
+            SessionImages.ForSession(fork).TryRead(reference, out ReadOnlyMemory<byte> copied)
+        );
+        Assert.Equal(SessionImageTestData.PngBytes, copied.ToArray());
+    }
+
     private static Session Branched(TempDirectory temp)
     {
         Session session = Session.Create(

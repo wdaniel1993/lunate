@@ -153,9 +153,43 @@ public sealed partial class Session
             Branched = true,
         };
 
-        List<string> lines = [SessionFormat.Serialize(header)];
-        lines.AddRange(entries.Select(SessionFormat.Serialize));
+        // Every boundary that writes a session file redacts: the in-memory entries hold the real
+        // text and only the written line is masked, so a branch written verbatim would carry a
+        // value the source file had already replaced.
+        List<string> lines = [Redactor.Redact(SessionFormat.Serialize(header))];
+        lines.AddRange(entries.Select(entry => Redactor.Redact(SessionFormat.Serialize(entry))));
         SessionFiles.WriteText(path, string.Join('\n', lines) + "\n");
-        return Load(path, _timeProvider);
+
+        Session branch = Load(path, _timeProvider);
+        CopyImages(branch, entries);
+        return branch;
+    }
+
+    /// <summary>
+    /// Copies every image the copied entries reference into the branch's own store. Blobs live
+    /// under the session id, so a branch that kept only the JSONL would reference digests that
+    /// exist nowhere it looks, and the harness refuses to resume it before the first request.
+    /// </summary>
+    private void CopyImages(Session branch, IEnumerable<SessionEntry> entries)
+    {
+        SessionImages source = SessionImages.ForSession(this);
+        SessionImages target = SessionImages.ForSession(branch);
+        foreach (
+            ImageContentReference reference in entries
+                .OfType<SessionMessageEntry>()
+                .SelectMany(entry => entry.Message.Contents)
+                .OfType<ImageContentReference>()
+                .DistinctBy(reference => reference.Digest)
+        )
+        {
+            if (!source.TryRead(reference, out ReadOnlyMemory<byte> data))
+            {
+                throw new InvalidDataException(
+                    $"Session image '{reference.Digest}' is missing from '{SessionId}'; the branch cannot reference it."
+                );
+            }
+
+            target.Store(data, reference.MimeType, reference.Width, reference.Height);
+        }
     }
 }
