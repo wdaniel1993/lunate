@@ -110,9 +110,7 @@ internal sealed partial class BashGuard
             return Unwrapped(
                 shell,
                 "unavailable",
-                Notice([
-                    $"the bash guard could not create {_target.StateRoot}, so writes under it cannot be denied",
-                ]),
+                Notice([$"the bash guard could not create {_target.StateRoot}, so writes under it cannot be denied"]),
                 probeState: "failure"
             );
         }
