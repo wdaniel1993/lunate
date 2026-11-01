@@ -983,24 +983,37 @@ public sealed partial class AgentHarness
     {
         _history.Add(message);
         _historyUtf8 += CompactionReducer.Utf8Length(message);
-        string? entryId = null;
-        if (_options.Session is { } session)
+        try
         {
-            if (skill is null)
+            string? entryId = null;
+            if (_options.Session is { } session)
             {
-                session.AppendMessage(message, model, usage);
-            }
-            else
-            {
-                session.AppendSkillMessage(message, skill, model, usage);
+                if (skill is null)
+                {
+                    session.AppendMessage(message, model, usage);
+                }
+                else
+                {
+                    session.AppendSkillMessage(message, skill, model, usage);
+                }
+
+                entryId = session.Entries[^1].Id;
             }
 
-            entryId = session.Entries[^1].Id;
+            _historyEntryIds.Add(entryId);
+            _historyModels.Add(model);
+            return entryId;
         }
-
-        _historyEntryIds.Add(entryId);
-        _historyModels.Add(model);
-        return entryId;
+        catch
+        {
+            // The four list halves stay one per message: a session append that throws unwinds
+            // its in-memory twin, so a later request indexes _historyModels against exactly
+            // what _history holds. The run fails with the persistence error itself; nothing
+            // drains from history the session never received (#441).
+            _history.RemoveAt(_history.Count - 1);
+            _historyUtf8 -= CompactionReducer.Utf8Length(message);
+            throw;
+        }
     }
 
     private static string MappedStopReason(ChatFinishReason? finishReason) =>
