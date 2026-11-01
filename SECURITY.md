@@ -54,7 +54,11 @@ API keys come from the environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) or fr
 `~/.lunate/auth.json`, which Lunate writes owner-only (`rw-------`) on POSIX. Extension secrets live
 in `~/.lunate/extensions-secrets/<extension-id>.json`, are never written to session files, and are
 never printed by the `/extensions` view; errors name the missing key, never its value. Provider keys
-are read by Lunate and sent only to the provider you configured.
+are read by Lunate and sent only to the provider you configured. Configured stdio MCP servers run as
+children that inherit your environment — existing MCP setups keep working — except for the values
+above: the credentials Lunate itself knows (provider keys, `auth.json` keys, extension secrets and
+the configured `env` values) are removed from that child's environment unless the server's own
+`env` map names the variable explicitly. The trust prompt for a project server states the same.
 
 ## What is out of scope
 

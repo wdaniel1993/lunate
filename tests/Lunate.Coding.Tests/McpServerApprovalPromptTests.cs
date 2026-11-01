@@ -28,9 +28,14 @@ public sealed class McpServerApprovalPromptTests
 
         Assert.True(approved);
         Assert.Equal($"Run project MCP server 'srv' from '{Source}'", title);
-        string detail = Assert.Single(details!);
-        Assert.Equal($"dotnet exec {longArgument}", detail);
-        Assert.DoesNotContain("…", detail, StringComparison.Ordinal);
+        Assert.Equal(2, details!.Count);
+        Assert.Equal($"dotnet exec {longArgument}", details[0]);
+        Assert.DoesNotContain("…", details[0], StringComparison.Ordinal);
+        Assert.StartsWith(
+            "The server sees the session environment",
+            details[1],
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]
