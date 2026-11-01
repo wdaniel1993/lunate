@@ -16,6 +16,9 @@ public sealed class McpChildEnvironmentTests
     private const string AnthropicVariable = "ANTHROPIC_API_KEY";
     private const string ProviderVariable = "MY_PROVIDER_TOKEN";
     private const string ParentFlagVariable = "LUNATE_TEST_PARENT_FLAG";
+    private const string WithheldVariable = "LUNATE_TEST_WITHHELD_KEY";
+    private const string StagingVariable = "LUNATE_TEST_STAGING_KEY";
+    private const string DottedIVariable = "lunate_test_dotted_i";
 
     private static readonly string AnthropKeyValue = "sk-ant-fixture-9876543210";
     private static readonly string ProviderKeyValue = "sk-provider-fixture-0123456789";
@@ -110,6 +113,118 @@ public sealed class McpChildEnvironmentTests
             // the parent environment as is. The rule only tightens what Lunate knows.
             Assert.Contains(AnthropicVariable, names);
             Assert.Contains(ParentFlagVariable, names);
+        }
+        finally
+        {
+            restore.Dispose();
+        }
+    }
+
+    [Fact]
+    public void A_variable_whose_value_matches_a_withheld_value_is_removed()
+    {
+        IDisposable restore = SetTestEnvironment(
+            (WithheldVariable, AnthropKeyValue),
+            (ParentFlagVariable, ParentFlagValue)
+        );
+        try
+        {
+            var child = McpChildEnvironment.BuildChildEnvironment(
+                [AnthropKeyValue],
+                declaredEnvironment: null
+            );
+
+            // Removed entirely — never replaced with an empty string or a masked placeholder.
+            Assert.False(child.ContainsKey(WithheldVariable));
+            Assert.True(child.ContainsKey(ParentFlagVariable));
+        }
+        finally
+        {
+            restore.Dispose();
+        }
+    }
+
+    [Fact]
+    public void A_variable_whose_value_differs_from_the_withheld_values_stays()
+    {
+        string similarButDifferent = AnthropKeyValue + "-extra";
+        IDisposable restore = SetTestEnvironment(
+            (WithheldVariable, similarButDifferent),
+            (StagingVariable, AnthropKeyValue + "-staging")
+        );
+        try
+        {
+            var child = McpChildEnvironment.BuildChildEnvironment(
+                [AnthropKeyValue],
+                declaredEnvironment: null
+            );
+
+            // An exact-value comparison: a near-miss value keeps its variable, and a known
+            // value under a different name survives on its own entry.
+            Assert.Equal(similarButDifferent, child[WithheldVariable]);
+            Assert.Equal(AnthropKeyValue + "-staging", child[StagingVariable]);
+        }
+        finally
+        {
+            restore.Dispose();
+        }
+    }
+
+    [Fact]
+    public void A_declared_name_receives_its_value_even_when_the_value_is_withheld()
+    {
+        IDisposable restore = SetTestEnvironment(
+            (AnthropicVariable, AnthropKeyValue),
+            (ProviderVariable, ProviderKeyValue),
+            (WithheldVariable, ProviderKeyValue)
+        );
+        try
+        {
+            var child = McpChildEnvironment.BuildChildEnvironment(
+                [AnthropKeyValue, ProviderKeyValue],
+                declaredEnvironment: new Dictionary<string, string>
+                {
+                    [AnthropicVariable] = AnthropKeyValue,
+                }
+            );
+
+            // The server's own env map is the opt-in: it wins over the withholding. An undeclared
+            // name whose value is withheld is still removed.
+            Assert.Equal(AnthropKeyValue, child[AnthropicVariable]);
+            Assert.False(child.ContainsKey(ProviderVariable));
+            Assert.False(child.ContainsKey(WithheldVariable));
+        }
+        finally
+        {
+            restore.Dispose();
+        }
+    }
+
+    [Fact]
+    public void Names_are_compared_without_the_machine_culture()
+    {
+        IDisposable restore = SetTestEnvironment((DottedIVariable, ParentFlagValue));
+        try
+        {
+            CultureInfo previous = CultureInfo.CurrentCulture;
+            CultureInfo.CurrentUICulture = new CultureInfo("tr-TR");
+            try
+            {
+                var child = McpChildEnvironment.BuildChildEnvironment(
+                    [AnthropKeyValue],
+                    declaredEnvironment: null
+                );
+
+                // Ordinal comparisons: under a Turkish culture the dotted-i name keeps its exact
+                // entry, and a case-variant lookup finds nothing — no comparison is culture-shaped.
+                Assert.Equal(ParentFlagValue, child[DottedIVariable]);
+                Assert.False(child.ContainsKey("LUNATE_TEST_DOTTED_I"));
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = previous;
+                CultureInfo.CurrentUICulture = previous;
+            }
         }
         finally
         {

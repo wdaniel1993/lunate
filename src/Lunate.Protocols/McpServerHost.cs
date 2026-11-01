@@ -169,6 +169,11 @@ public sealed class McpServerHost : IAsyncDisposable
     private async Task StartAsync(CancellationToken ct)
     {
         using var liveness = new StartupLiveness(startupStallBound, ct);
+        // With known credential values the child starts from an explicit environment Lunate builds
+        // (see McpChildEnvironment); with none it keeps today's full inheritance. The declared env
+        // map is the per-server opt-in in either case.
+        IReadOnlyList<string> withheld = options.WithheldCredentialValues ?? [];
+        bool withholds = withheld.Count > 0;
         var transport = new StdioClientTransport(
             new StdioClientTransportOptions
             {
@@ -176,10 +181,13 @@ public sealed class McpServerHost : IAsyncDisposable
                 Command = options.Command,
                 Arguments = [.. options.Arguments],
                 WorkingDirectory = options.WorkingDirectory,
-                EnvironmentVariables = options.Environment?.ToDictionary(
-                    pair => pair.Key,
-                    pair => (string?)pair.Value
-                ),
+                EnvironmentVariables = withholds
+                    ? McpChildEnvironment.BuildChildEnvironment(withheld, options.Environment)
+                    : options.Environment?.ToDictionary(
+                        pair => pair.Key,
+                        pair => (string?)pair.Value
+                    ),
+                InheritEnvironmentVariables = !withholds,
                 ShutdownTimeout = ShutdownTimeout,
                 // stderr is the only child output the client can observe while it waits on the
                 // protocol stream, so each line is the liveness signal that restarts the stall
