@@ -111,14 +111,16 @@ check_package() {
     failures=$((failures + 1))
   fi
 
-  # The preview packages must say preview where the feed reads it: the version. A push that
+  # The preview packages must be a prerelease where the feed reads it: the version. A push that
   # would publish stable metadata for a preview surface fails here, before nuget.org serves it.
+  # The marker is any semver prerelease suffix, not the word 'preview': an RC publishes
+  # 0.2.0-rc.N, a final tag publishes 0.2.0-preview.N, and both are prereleases to the feed.
   if [ "$requires_prerelease" = "true" ]; then
     case "$version" in
-      *-preview.*) ;;
+      *-*) ;;
       *)
-        echo "check-package-metadata: ${package} is published as preview but its version '${version}' names no '-preview.' prerelease" >&2
-        echo "check-package-metadata: set <Version>0.2.0-preview.<n></Version> in the project file" >&2
+        echo "check-package-metadata: ${package} is published as preview but its version '${version}' is stable" >&2
+        echo "check-package-metadata: derive a prerelease version for it (an RC tag publishes 0.2.0-rc.N, a final tag 0.2.0-preview.N)" >&2
         failures=$((failures + 1))
         ;;
     esac
@@ -311,7 +313,7 @@ XML
   expect_rejected readme-not-packed "an unpacked readme" "carries no such entry at its root"
   expect_rejected nested-readme "a readme outside the package root" "carries no such entry at its root"
   expect_rejected icon-not-packed "an unpacked icon" "declares icon 'lunate-logo-dark.png' but carries no such entry"
-  expect_rejected complete "a stable version under the prerelease flag" "names no '-preview.'" --prerelease
+  expect_rejected complete "a stable version under the prerelease flag" "is stable" --prerelease
   expect_rejected no-repository-url "no repository url" "no repository url and type"
   expect_rejected no-nuspec "no nuspec" "carries no nuspec at its root"
   expect_rejected complete "the wrong package id" "expected 'other'" --id other
