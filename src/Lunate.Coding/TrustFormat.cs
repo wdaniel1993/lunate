@@ -124,10 +124,12 @@ internal static class TrustFormat
     /// <summary>
     /// The interactive per-server approval question; its one detail line is
     /// <see cref="Command"/> — the full command, never truncated (the config-file prompt's
-    /// truncation does not apply to what is being approved).
+    /// truncation does not apply to what is being approved). The question names that the server
+    /// sees the environment: a stdio server inherits Lunate's whole shell environment (issue
+    /// #449), so approval is what stands between a server and the provider keys in it.
     /// </summary>
     internal static string McpServerQuestion(McpServerOptions server) =>
-        $"Run project MCP server '{server.Name}' from '{RealPath(server.Source ?? string.Empty)}'";
+        $"Run project MCP server '{server.Name}' from '{RealPath(server.Source ?? string.Empty)}' — it sees your shell environment";
 
     internal static string Command(McpServerOptions server) =>
         server.Arguments.Count == 0

@@ -27,7 +27,10 @@ public sealed class McpServerApprovalPromptTests
         bool approved = await prompt.ApproveAsync(server, TestContext.Current.CancellationToken);
 
         Assert.True(approved);
-        Assert.Equal($"Run project MCP server 'srv' from '{Source}'", title);
+        Assert.Equal(
+            $"Run project MCP server 'srv' from '{Source}' — it sees your shell environment",
+            title
+        );
         string detail = Assert.Single(details!);
         Assert.Equal($"dotnet exec {longArgument}", detail);
         Assert.DoesNotContain("…", detail, StringComparison.Ordinal);
