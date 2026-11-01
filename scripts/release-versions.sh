@@ -90,6 +90,20 @@ self_test() {
     check "final" v0.2.0 TEMPLATE 1.15.0
     check "final" v0.2.0 TOOL 0.2.0
 
+    # No template may pin a Lunate package to a literal version: the pin has to follow the release,
+    # or an RC tag's feed and the template's restore disagree (NU1102) — the failure this guard was
+    # written after.
+    checks=$((checks + 1))
+    while IFS= read -r project; do
+        if awk '
+            /Include="Lunate\./ { anchor = NR }
+            anchor && NR - anchor <= 3 && /Version="[0-9]/ { print FILENAME; exit 1 }
+        ' "${project}"; then :; else
+            echo "release-versions: FAIL: ${project} pins a Lunate package to a literal version" >&2
+            failures=$((failures + 1))
+        fi
+    done < <(find templates -name '*.csproj' -not -path '*/bin/*' -not -path '*/obj/*')
+
     # A bad tag is refused rather than guessed at.
     checks=$((checks + 1))
     if derive "0.2" >/dev/null 2>&1; then
