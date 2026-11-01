@@ -13,6 +13,19 @@ permissions:
   pull-requests: read
 
 jobs:
+  docs-region:
+    name: docs-region
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # docs-sync --check runs in the docs profile only, so a prose-only pull request that
+      # stales a generated region failed no PR gate until the tag: v0.2.0-rc.1 shipped a stale
+      # docs/extensions/README.md (#433 fixed it after the tag). This always-on leg fails the
+      # pull request that causes the staleness instead.
+      - name: Check the generated docs regions
+        run: python3 scripts/docs-sync --check
+
   archive-only:
     name: archive-only
     runs-on: ubuntu-latest

@@ -69,9 +69,7 @@ internal static class SessionHtmlWriter
             .Append("<meta http-equiv=\"Content-Security-Policy\" content=\"")
             .Append(ContentSecurityPolicy)
             .Line("\">");
-        document.Line(
-            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-        );
+        document.Line("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
         document.Append("<title>").Append(Text(title, redactor)).Line("</title>");
         document.Append("<style>").Line();
         document.Line(Style);
@@ -212,9 +210,7 @@ internal static class SessionHtmlWriter
                 break;
             case SessionActiveLeafEntry leaf:
                 html.Append("<p class=\"meta\">").Append(Stamp(leaf.Timestamp));
-                html.Append(" · active leaf → ")
-                    .Append(Text(leaf.LeafId, redactor))
-                    .Line("</p>");
+                html.Append(" · active leaf → ").Append(Text(leaf.LeafId, redactor)).Line("</p>");
                 break;
             case SessionHeaderEntry:
                 break;

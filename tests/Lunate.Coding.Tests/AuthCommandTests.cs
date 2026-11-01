@@ -64,7 +64,10 @@ public sealed class AuthCommandTests
 
         (int exit, string output, _) = Run(
             ["list"],
-            Seams(temp) with { ProviderProbeHandler = new StatusHandler() }
+            Seams(temp) with
+            {
+                ProviderProbeHandler = new StatusHandler(),
+            }
         );
 
         Assert.Equal(0, exit);
