@@ -20,6 +20,17 @@
         <RootNamespace>TemplateExtension</RootNamespace>
     </PropertyGroup>
 
+    <!--
+        The contracts a copied template pins must be installable. Inside this repository the pinned
+        version follows the release being built, so an RC pins `1.15.0-rc.N` — the only contract
+        version that exists for that tag — and a final tag pins `1.15.0`. Outside the repository
+        there is no release context, so the stable API version is the only thing that can exist.
+    -->
+    <PropertyGroup Condition="'$(LunateContractsVersion)' == ''">
+        <LunateContractsVersion Condition="'$(ContractVersion)' != ''">$(ContractVersion)</LunateContractsVersion>
+        <LunateContractsVersion Condition="'$(ContractVersion)' == ''">1.15.0</LunateContractsVersion>
+    </PropertyGroup>
+
     <ItemGroup>
         <!-- snippet:start — included by docs/extensions/README.md through scripts/docs-sync; keep the markers -->
         <!--
@@ -34,14 +45,14 @@
         <PackageReference
             Condition="'$(LunateUseNuGetContracts)' == 'true'"
             Include="Lunate.Contracts"
-            Version="1.15.0"
+            Version="$(LunateContractsVersion)"
             PrivateAssets="all"
             ExcludeAssets="runtime"
         />
         <PackageReference
             Condition="'$(LunateUseNuGetContracts)' == 'true'"
             Include="Lunate.Extensibility.Abstractions"
-            Version="1.15.0"
+            Version="$(LunateContractsVersion)"
             PrivateAssets="all"
             ExcludeAssets="runtime"
         />

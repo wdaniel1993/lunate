@@ -11,7 +11,7 @@
     <PropertyGroup>
         <IsPackable>true</IsPackable>
         <PackageId>Lunate.Agent</PackageId>
-        <Version>0.2.0-preview.1</Version>
+        <Version>$(PreviewVersion)</Version>
         <Description>
             The Lunate agent harness: the loop, tools, events, steering, approvals and the
             session store. PREVIEW — no API stability promise before 1.0; exists so the

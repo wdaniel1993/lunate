@@ -32,11 +32,27 @@ pack src/Lunate.Agent/Lunate.Agent.csproj
 pack src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj
 
 product_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)"
-# The contract csprojs carry `$(ContractVersion)`; read the computed value from the packed file so
-# the check never depends on how MSBuild expanded the property (it follows the product's prerelease
-# suffix: 0.2.0-rc.1 -> 1.15.0-rc.1).
-contract_version="$(ls "${OUT}" | sed -n 's/^Lunate\.Contracts\.\(.*\)\.nupkg$/\1/p' | head -n 1)"
-preview_version="$(ls "${OUT}" | sed -n 's/^Lunate\.Agent\.\(.*\)\.nupkg$/\1/p' | head -n 1)"
+# The versions the release rule derives from the tree's own version, read as a tag. Comparing the
+# packed file names against this is the end-to-end half of the rule: a package that packs under a
+# different version than the derivation says is a release-blocking mismatch, not a warning.
+while IFS='=' read -r key value; do printf -v "derived_${key}" '%s' "${value}"; done \
+    < <(bash scripts/release-versions.sh "v${product_version}")
+contract_version="${derived_CONTRACTS}"
+preview_version="${derived_PREVIEW}"
+
+for expected in \
+    "lunate.${derived_TOOL}.nupkg" \
+    "Lunate.Extensions.Subagents.${derived_TOOL}.nupkg" \
+    "Lunate.Contracts.${derived_CONTRACTS}.nupkg" \
+    "Lunate.Extensibility.Abstractions.${derived_CONTRACTS}.nupkg" \
+    "Lunate.Agent.${derived_PREVIEW}.nupkg" \
+    "Lunate.Extensibility.Testing.${derived_PREVIEW}.nupkg"; do
+    if [ ! -f "${OUT}/${expected}" ]; then
+        echo "pack-dry-run: FAIL: expected ${expected} — the packed names disagree with the version rule for v${product_version}" >&2
+        echo "pack-dry-run: packed: $(ls "${OUT}" | tr '\n' ' ')" >&2
+        exit 1
+    fi
+done
 
 bash scripts/check-package-metadata.sh "${OUT}/lunate.${product_version}.nupkg" --id lunate
 bash scripts/check-package-metadata.sh "${OUT}/Lunate.Extensions.Subagents.${product_version}.nupkg" --id Lunate.Extensions.Subagents

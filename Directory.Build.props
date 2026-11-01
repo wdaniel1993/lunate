@@ -24,6 +24,15 @@
         <ContractVersion>$(ContractApiVersion)$(ContractVersionSuffix)</ContractVersion>
 
         <!--
+            The embedded harness and the test kit are preview packages: they carry the product
+            version as long as it is already a prerelease (`0.2.0-rc.1`), and otherwise carry the
+            product version with the preview marker (`0.2.0` -> `0.2.0-preview.1`). The rule the
+            release follows is one sentence: an RC tag never publishes a stable version of anything.
+        -->
+        <PreviewVersion Condition="$(Version.Contains('-'))">$(Version)</PreviewVersion>
+        <PreviewVersion Condition="!$(Version.Contains('-'))">$(Version)-preview.1</PreviewVersion>
+
+        <!--
             The in-process restore engine ships NuGet.Frameworks as a runtime asset — it parses the
             TFM and picks the nearest framework group — and MSBuild ships its own copy of the same
             assembly. Microsoft.Build.Locator's MSBL001 check cannot express the rule that actually

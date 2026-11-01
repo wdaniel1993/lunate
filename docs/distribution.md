@@ -11,10 +11,10 @@ How Lunate reaches users: what a release carries, how the one-command installers
 | `lunate-win-x64.zip` | Windows x64 binary (`lunate.exe`) |
 | `lunate.<version>.nupkg` | framework-dependent `dotnet tool` (package and command `lunate`) |
 | `Lunate.Extensions.Subagents.<version>.nupkg` | the reference subagents extension, installed with `lunate install Lunate.Extensions.Subagents` |
-| `Lunate.Contracts.<ExtensionApi.Current>.nupkg` | the stable message/tool contract half (versioned with `ExtensionApi`, not the tool) |
+| `Lunate.Contracts.<ExtensionApi.Current>[-rc.<n>].nupkg` | the message/tool contract half (versioned with `ExtensionApi`, not the tool; an RC tag publishes the `-rc.<n>` prerelease and only the final tag publishes the stable version) |
 | `Lunate.Extensibility.Abstractions.<ExtensionApi.Current>.nupkg` | the stable extension contract the template installs from NuGet |
-| `Lunate.Agent.0.2.0-preview.<n>.nupkg` | the embedded harness, preview |
-| `Lunate.Extensibility.Testing.0.2.0-preview.<n>.nupkg` | the test kit, preview |
+| `Lunate.Agent.<product version>-preview.<n>.nupkg` | the embedded harness, preview |
+| `Lunate.Extensibility.Testing.<product version>-preview.<n>.nupkg` | the test kit, preview |
 | `SHA256SUMS` | `<hash>  <filename>` lines covering every other asset |
 
 - Installers: [`install.sh`](../install.sh) (`curl | sh`, macOS arm64 + Linux x64) and [`install.ps1`](../install.ps1) (`irm | iex`, Windows x64). Both verify SHA-256 before installing, never need `sudo`/admin, and are served from the repository (`raw.githubusercontent.com/wdaniel1993/lunate/main/...`), not from the release assets.

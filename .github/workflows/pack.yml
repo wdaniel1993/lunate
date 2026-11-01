@@ -38,6 +38,10 @@ jobs:
       # The same list the release packs, plus the metadata check the release runs before pushing.
       # `scripts/pack-dry-run.sh` is the single list; `.github/workflows/release.yml`'s pack steps
       # must mirror it.
+      # The version rule first: an RC tag never publishes a stable version of anything.
+      - name: Prove the version derivation
+        run: bash scripts/release-versions.sh --self-test
+
       - name: Pack every release package
         run: bash scripts/pack-dry-run.sh
 
