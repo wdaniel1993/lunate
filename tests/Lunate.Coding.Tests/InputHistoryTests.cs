@@ -134,7 +134,7 @@ public sealed class InputHistoryTests
             UnixFileMode.UserRead
                 | UnixFileMode.UserWrite
                 | UnixFileMode.GroupRead
-                | UnixFileMode.OthersRead
+                | UnixFileMode.OtherRead
         );
         var history = new InputHistory(path);
 

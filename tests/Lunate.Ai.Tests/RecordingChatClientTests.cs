@@ -218,7 +218,7 @@ public sealed class RecordingChatClientTests
             UnixFileMode.UserRead
                 | UnixFileMode.UserWrite
                 | UnixFileMode.GroupRead
-                | UnixFileMode.OthersRead
+                | UnixFileMode.OtherRead
         );
         await client
             .GetStreamingResponseAsync(

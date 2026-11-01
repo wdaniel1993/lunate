@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Lunate.Ai;
 
 namespace Lunate.Coding;
 
@@ -112,9 +113,19 @@ internal sealed class InputHistory
         string? directory = Path.GetDirectoryName(Path.GetFullPath(_path));
         if (!string.IsNullOrEmpty(directory))
         {
-            Directory.CreateDirectory(directory);
+            SecureFiles.CreateOwnerOnlyDirectory(directory);
         }
 
-        File.AppendAllText(_path, JsonSerializer.Serialize(text) + "\n");
+        FileStream stream = SecureFiles.OpenOwnerOnly(
+            _path,
+            FileMode.Append,
+            FileAccess.Write,
+            FileShare.Read
+        );
+        // A fresh file is created 0600 directly (UnixCreateMode); one that an older build wrote
+        // world-readable is narrowed here so the next write closes the window.
+        SecureFiles.RestrictToOwner(_path);
+        using var writer = new StreamWriter(stream);
+        writer.Write(JsonSerializer.Serialize(text) + "\n");
     }
 }
