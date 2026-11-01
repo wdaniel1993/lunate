@@ -215,10 +215,13 @@ public sealed class McpChildEnvironmentTests
                     declaredEnvironment: null
                 );
 
-                // Ordinal comparisons: under a Turkish culture the dotted-i name keeps its exact
-                // entry, and a case-variant lookup finds nothing — no comparison is culture-shaped.
+                // Environment names are case-insensitive on Windows and case-sensitive elsewhere.
+                // In either case, the result must not change with the Turkish machine culture.
                 Assert.Equal(ParentFlagValue, child[DottedIVariable]);
-                Assert.False(child.ContainsKey("LUNATE_TEST_DOTTED_I"));
+                Assert.Equal(
+                    OperatingSystem.IsWindows(),
+                    child.ContainsKey("LUNATE_TEST_DOTTED_I")
+                );
             }
             finally
             {
