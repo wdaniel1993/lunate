@@ -111,10 +111,7 @@ public sealed class InputHistoryTests
             UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute,
             File.GetUnixFileMode(Path.GetDirectoryName(path)!)
         );
-        Assert.Equal(
-            UnixFileMode.UserRead | UnixFileMode.UserWrite,
-            File.GetUnixFileMode(path)
-        );
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(path));
     }
 
     [Fact]
@@ -140,9 +137,6 @@ public sealed class InputHistoryTests
 
         history.Add("two");
 
-        Assert.Equal(
-            UnixFileMode.UserRead | UnixFileMode.UserWrite,
-            File.GetUnixFileMode(path)
-        );
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(path));
     }
 }

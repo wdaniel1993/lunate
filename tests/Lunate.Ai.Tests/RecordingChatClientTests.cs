@@ -185,10 +185,7 @@ public sealed class RecordingChatClientTests
             UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute,
             File.GetUnixFileMode(Path.GetDirectoryName(path)!)
         );
-        Assert.Equal(
-            UnixFileMode.UserRead | UnixFileMode.UserWrite,
-            File.GetUnixFileMode(path)
-        );
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(path));
     }
 
     [Fact]
@@ -227,10 +224,7 @@ public sealed class RecordingChatClientTests
             )
             .ToListAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(
-            UnixFileMode.UserRead | UnixFileMode.UserWrite,
-            File.GetUnixFileMode(path)
-        );
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(path));
     }
 
     private static IEnumerable<string> Serialize(IEnumerable<ChatResponseUpdate> updates) =>
