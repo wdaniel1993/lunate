@@ -38,17 +38,20 @@ public sealed class SelectListRenderer
         ArgumentNullException.ThrowIfNull(model);
         int selected = SelectedInWindow(model);
         var builder = new StringBuilder();
-        builder.Append(Markup.Escape(model.Title)).Append('\n');
+        builder.Append(Markup.Escape(CellText.Sanitize(model.Title))).Append('\n');
         int index = 0;
         foreach (string item in PlainItems(model))
         {
             if (index == selected)
             {
-                builder.Append("[bold]> ").Append(Markup.Escape(item)).Append("[/]");
+                builder
+                    .Append("[bold]> ")
+                    .Append(Markup.Escape(CellText.Sanitize(item)))
+                    .Append("[/]");
             }
             else
             {
-                builder.Append("  ").Append(Markup.Escape(item));
+                builder.Append("  ").Append(Markup.Escape(CellText.Sanitize(item)));
             }
 
             builder.Append('\n');
