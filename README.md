@@ -341,6 +341,13 @@ expand when the file loads. Within a scope `.lunate/` wins over `.agents/` wins 
 and a project file wins over a user file. Servers start on first use, their tools arrive as
 `server__tool`, and a project file and each of its servers needs its own trust decision.
 
+A stdio MCP server is a child process and nothing narrows what it receives: it inherits Lunate's
+whole shell environment — provider keys such as `OPENAI_API_KEY` included — whether or not its
+entry declares `env`. The per-server trust prompt says so. To keep exposure down, declare only the
+variables a server needs in `env` and expand trusted values into them with `${VAR}`, so keys are
+read from your shell each run instead of stored in `mcp.json`; future releases will narrow the
+inheritance.
+
 Lunate can also be the server: `lunate mcp roslyn` serves the five read-only `cs_*` C# tools over
 stdio to another MCP host, with no approvals or write path behind them.
 [`docs/mcp-roslyn.md`](docs/mcp-roslyn.md) covers the configuration and what it leaves out by design.

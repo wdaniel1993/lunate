@@ -8,6 +8,13 @@ Notable changes to Lunate, one section per release. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The inheritance of MCP stdio servers is stated where MCP servers are described: they inherit
+  Lunate's whole shell environment — provider keys included — whether or not their `mcp.json` entry
+  declares `env` (README, guide, SECURITY.md; the per-server trust prompt says so too), and
+  `env` with `${VAR}` is the recommended way to keep exposure down (#449).
+
 ## [0.2.0-rc.1] - 2026-11-01
 
 The second release: the extension contract becomes a published surface, the bash guard lands on macOS

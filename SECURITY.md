@@ -56,6 +56,12 @@ in `~/.lunate/extensions-secrets/<extension-id>.json`, are never written to sess
 never printed by the `/extensions` view; errors name the missing key, never its value. Provider keys
 are read by Lunate and sent only to the provider you configured.
 
+A configured stdio MCP server is a child process that inherits your whole environment — provider
+keys included — for as long as it runs, whether or not its entry declares `env`. The per-server
+trust prompt states this: approving a server is what exposes the environment to it. To reduce
+exposure, declare only the variables a server needs in its `env` and expand trusted values with
+`${VAR}`, so credentials are read from your shell instead of stored in `mcp.json`.
+
 ## What is out of scope
 
 - Anything that requires an attacker to already run code as you on the machine.
