@@ -69,7 +69,7 @@ Run each step in one terminal. Ellipses are timing, not commands.
 
 7. Choose the model.
 
-   Type `/model`, press `Enter`, and pick `gpt-4o-mini` (or the model that belongs to the selected
+   Type `/model`, press `Enter`, and pick `claude-sonnet-5-5` (or the model that belongs to the selected
    provider).
 
 8. Send the first prompt.
