@@ -468,7 +468,9 @@ endpoint. Credentials and optional header values are references (`auth:` or `env
 literal values. Legacy stored keys migrate idempotently, without copying secrets; environment
 credentials retain precedence. Project settings may reference existing user providers/profiles and
 lower limits, but cannot define endpoints or credential references. Provider `region` is metadata,
-not a routing or residency policy. See [first run](first-run.md) for setup and examples.
+not a routing or residency policy. See [first run](first-run.md) for setup and examples. The
+generated [configuration reference](configuration.md) lists every settings key with its type,
+default, scope and allowed values, and is the page `--check` keeps from going stale.
 
 Profiles bind a name to a provider and catalog model with validated reasoning, output, temperature,
 context-window, decision-threshold and capability-override settings. Capability sets are open strings
