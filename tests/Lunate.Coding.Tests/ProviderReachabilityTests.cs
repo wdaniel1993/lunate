@@ -82,7 +82,14 @@ public sealed class ProviderReachabilityTests
             StringComparison.Ordinal
         );
         Assert.Contains(
-            "credential: present",
+            "credential: absent",
+            LineFor(text, "slow-openai"),
+            StringComparison.Ordinal
+        );
+        // A helper reference is accepted by the store but no host resolves one in 0.2 (#450); the
+        // row must report that instead of claiming a credential nothing can produce.
+        Assert.Contains(
+            "helper unsupported",
             LineFor(text, "slow-openai"),
             StringComparison.Ordinal
         );
