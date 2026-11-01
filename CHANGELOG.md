@@ -8,6 +8,13 @@ Notable changes to Lunate, one section per release. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Stdio MCP children keep inheriting Lunate's environment so existing setups continue to work, but
+  credential values Lunate knows (provider preset and provider-store `env:` values, auth-store keys,
+  extension secrets and configured MCP `env` values) are removed unless the server's own `env` map
+  declares that variable. A declared `${VAR}` still resolves from Lunate's environment (#449, #455).
+
 ## [0.2.0-rc.1] - 2026-11-01
 
 The second release: the extension contract becomes a published surface, the bash guard lands on macOS
