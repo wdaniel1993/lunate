@@ -52,7 +52,15 @@ public sealed class QuestionDecisionSuggestionTests
         );
         host.Advance(301);
         host.Console.SendEscape();
-        await host.WaitUntilAsync(() => chat.Requests.Count == 2);
+        // Wait on the events this test asserts, not on the chat counter: the tool result and the
+        // decision record are published by the harness around the next chat request, and which
+        // lands first depends on scheduling (three CI sightings, macOS and Linux). A counter-only
+        // wait reaches the assert with the event still in flight and reports "collection empty".
+        await host.WaitUntilAsync(() =>
+            chat.Requests.Count == 2
+            && host.Events.OfType<ToolCallResult>().Any()
+            && host.Events.OfType<DecisionEvaluated>().Any(e => e.QuestionId == "question-1")
+        );
 
         ToolCallResult result = Assert.Single(host.Events.OfType<ToolCallResult>());
         Assert.Contains("unanswered: user skipped", result.Output, StringComparison.Ordinal);
