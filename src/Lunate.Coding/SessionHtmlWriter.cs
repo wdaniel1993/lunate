@@ -61,25 +61,23 @@ internal static class SessionHtmlWriter
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(redactor);
         var document = new StringBuilder();
-        document.AppendLine("<!DOCTYPE html>");
-        document.AppendLine("<html lang=\"en\">");
-        document.AppendLine("<head>");
-        document.AppendLine("<meta charset=\"utf-8\">");
+        document.Line("<!DOCTYPE html>");
+        document.Line("<html lang=\"en\">");
+        document.Line("<head>");
+        document.Line("<meta charset=\"utf-8\">");
         document
             .Append("<meta http-equiv=\"Content-Security-Policy\" content=\"")
             .Append(ContentSecurityPolicy)
-            .AppendLine("\">");
-        document.AppendLine(
-            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-        );
-        document.Append("<title>").Append(Text(title, redactor)).AppendLine("</title>");
-        document.Append("<style>").AppendLine();
-        document.AppendLine(Style);
-        document.AppendLine("</style>");
-        document.AppendLine("</head>");
-        document.AppendLine("<body>");
-        document.AppendLine("<header>");
-        document.Append("<h1>").Append(Text(title, redactor)).AppendLine("</h1>");
+            .Line("\">");
+        document.Line("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
+        document.Append("<title>").Append(Text(title, redactor)).Line("</title>");
+        document.Append("<style>").Line();
+        document.Line(Style);
+        document.Line("</style>");
+        document.Line("</head>");
+        document.Line("<body>");
+        document.Line("<header>");
+        document.Append("<h1>").Append(Text(title, redactor)).Line("</h1>");
         document
             .Append("<p class=\"meta\">session ")
             .Append(Text(session.SessionId, redactor))
@@ -89,9 +87,9 @@ internal static class SessionHtmlWriter
             .Append(session.Entries.Count.ToString("N0", CultureInfo.InvariantCulture))
             .Append(" entries · ")
             .Append(Text(session.Header.Cwd, redactor))
-            .AppendLine("</p>");
-        document.AppendLine("</header>");
-        document.AppendLine("<main>");
+            .Line("</p>");
+        document.Line("</header>");
+        document.Line("<main>");
 
         var turnOpened = false;
         foreach (SessionEntry entry in session.Entries)
@@ -100,7 +98,7 @@ internal static class SessionHtmlWriter
             {
                 if (turnOpened)
                 {
-                    document.AppendLine("<hr class=\"turn\">");
+                    document.Line("<hr class=\"turn\">");
                 }
 
                 turnOpened = true;
@@ -109,20 +107,24 @@ internal static class SessionHtmlWriter
             AppendEntry(document, entry, redactor);
         }
 
-        document.AppendLine("</main>");
-        document.AppendLine("<footer>");
-        document.AppendLine(
+        document.Line("</main>");
+        document.Line("<footer>");
+        document.Line(
             "<p class=\"meta\">Exported from Lunate. May contain file contents and command output; review before sharing.</p>"
         );
-        document.AppendLine("</footer>");
-        document.AppendLine("</body>");
-        document.AppendLine("</html>");
+        document.Line("</footer>");
+        document.Line("</body>");
+        document.Line("</html>");
         return document.ToString();
     }
 
-    /// <summary>The document as the bytes the export writes: UTF-8, no BOM, the platform's newlines.</summary>
+    /// <summary>The document as the bytes the export writes: UTF-8, no BOM, LF line endings everywhere.</summary>
     internal static byte[] Bytes(Session session, string title, CredentialRedactor redactor) =>
         Utf8NoBom.GetBytes(Write(session, title, redactor));
+
+    /// <summary>Appends one LF-terminated line, never the platform's newline (see DiagnosticBundle).</summary>
+    private static void Line(this StringBuilder document, string value = "") =>
+        document.Append(value).Append('\n');
 
     private static void AppendEntry(
         StringBuilder html,
@@ -136,36 +138,36 @@ internal static class SessionHtmlWriter
                 AppendMessage(html, message, redactor);
                 break;
             case SessionCompactionEntry compaction:
-                html.AppendLine("<section class=\"entry\">");
+                html.Line("<section class=\"entry\">");
                 AppendHead(html, "compaction", compaction.Timestamp);
                 AppendParagraphs(html, compaction.Summary, redactor);
                 html.Append("<p class=\"meta\">replaces ")
                     .Append(Text(string.Join(", ", compaction.Replaces), redactor))
-                    .AppendLine("</p>");
-                html.AppendLine("</section>");
+                    .Line("</p>");
+                html.Line("</section>");
                 break;
             case SessionBranchSummaryEntry summary:
-                html.AppendLine("<section class=\"entry\">");
+                html.Line("<section class=\"entry\">");
                 AppendHead(html, "branch summary", summary.Timestamp);
                 AppendParagraphs(html, summary.Summary, redactor);
-                html.AppendLine("</section>");
+                html.Line("</section>");
                 break;
             case SessionModelChangeEntry change:
                 html.Append("<p class=\"meta\">").Append(Stamp(change.Timestamp));
-                html.Append(" · model → ").Append(Text(change.Model, redactor)).AppendLine("</p>");
+                html.Append(" · model → ").Append(Text(change.Model, redactor)).Line("</p>");
                 break;
             case SessionActiveToolsEntry tools:
                 html.Append("<p class=\"meta\">").Append(Stamp(tools.Timestamp));
                 html.Append(" · tools: ")
                     .Append(Text(string.Join(", ", tools.Tools), redactor))
-                    .AppendLine("</p>");
+                    .Line("</p>");
                 break;
             case SessionPromptSectionEntry section:
                 html.Append("<details class=\"prompt-section\"><summary>system prompt (")
                     .Append(Text(section.Section, redactor))
                     .Append(")</summary>");
                 AppendPre(html, null, section.Text, redactor, diffClasses: false);
-                html.AppendLine("</details>");
+                html.Line("</details>");
                 break;
             case SessionChildSessionEntry child:
                 html.Append("<p class=\"meta\">").Append(Stamp(child.Timestamp));
@@ -173,7 +175,7 @@ internal static class SessionHtmlWriter
                     .Append(Text(child.ChildSessionId, redactor))
                     .Append(" (run ")
                     .Append(Text(child.RunId, redactor))
-                    .AppendLine(")</p>");
+                    .Line(")</p>");
                 break;
             case SessionNestedCallsEntry nested:
                 html.Append("<div class=\"entry\">")
@@ -181,7 +183,7 @@ internal static class SessionHtmlWriter
                     .Append(Stamp(nested.Timestamp))
                     .Append(" · nested calls for ")
                     .Append(Text(nested.CallId, redactor))
-                    .AppendLine("</p><ul class=\"nested\">");
+                    .Line("</p><ul class=\"nested\">");
                 foreach (SessionNestedCall call in nested.Calls)
                 {
                     html.Append("<li><span class=\"tool-name\">")
@@ -192,10 +194,10 @@ internal static class SessionHtmlWriter
                         .Append(Text(call.Status, redactor))
                         .Append(" · ")
                         .Append(call.DurationMs.ToString("N0", CultureInfo.InvariantCulture))
-                        .AppendLine(" ms</li>");
+                        .Line(" ms</li>");
                 }
 
-                html.AppendLine("</ul></div>");
+                html.Line("</ul></div>");
                 break;
             case SessionExtensionEntry extension:
                 html.Append("<details class=\"extension\"><summary>")
@@ -204,20 +206,18 @@ internal static class SessionHtmlWriter
                     .Append(Stamp(extension.Timestamp))
                     .Append("</summary>");
                 AppendPre(html, null, extension.PayloadJson, redactor, diffClasses: false);
-                html.AppendLine("</details>");
+                html.Line("</details>");
                 break;
             case SessionActiveLeafEntry leaf:
                 html.Append("<p class=\"meta\">").Append(Stamp(leaf.Timestamp));
-                html.Append(" · active leaf → ")
-                    .Append(Text(leaf.LeafId, redactor))
-                    .AppendLine("</p>");
+                html.Append(" · active leaf → ").Append(Text(leaf.LeafId, redactor)).Line("</p>");
                 break;
             case SessionHeaderEntry:
                 break;
             default:
                 html.Append("<p class=\"meta\">[entry ")
                     .Append(Text(entry.Id, redactor))
-                    .AppendLine("]</p>");
+                    .Line("]</p>");
                 break;
         }
     }
@@ -236,7 +236,7 @@ internal static class SessionHtmlWriter
             "tool" => "tool",
             _ => "other",
         };
-        html.Append("<section class=\"entry ").Append(cssRole).AppendLine("\">");
+        html.Append("<section class=\"entry ").Append(cssRole).Line("\">");
         string label =
             role == "assistant" && entry.Model is { Length: > 0 } model
                 ? "assistant · " + model
@@ -256,7 +256,7 @@ internal static class SessionHtmlWriter
                 case FunctionCallContent call:
                     html.Append("<p><span class=\"tool-name\">")
                         .Append(Text(call.Name ?? "tool", redactor))
-                        .AppendLine("</span></p>");
+                        .Line("</span></p>");
                     AppendPre(
                         html,
                         "args",
@@ -271,12 +271,12 @@ internal static class SessionHtmlWriter
                 case DataContent data:
                     html.Append("<p class=\"meta\">[image ")
                         .Append(Text(data.MediaType ?? "binary", redactor))
-                        .AppendLine("]</p>");
+                        .Line("]</p>");
                     break;
                 case UriContent uri:
                     html.Append("<p class=\"meta\">[image ")
                         .Append(Text(uri.MediaType ?? "binary", redactor))
-                        .AppendLine("]</p>");
+                        .Line("]</p>");
                     break;
                 case ErrorContent error:
                     AppendPre(html, "tool-result", error.Message, redactor, diffClasses: false);
@@ -284,12 +284,12 @@ internal static class SessionHtmlWriter
                 default:
                     html.Append("<p class=\"meta\">[")
                         .Append(Text(content.GetType().Name, redactor))
-                        .AppendLine("]</p>");
+                        .Line("]</p>");
                     break;
             }
         }
 
-        html.AppendLine("</section>");
+        html.Line("</section>");
     }
 
     /// <summary>
@@ -310,17 +310,17 @@ internal static class SessionHtmlWriter
             return;
         }
 
-        html.AppendLine("<details class=\"thinking\"><summary>thinking</summary>");
+        html.Line("<details class=\"thinking\"><summary>thinking</summary>");
         if (redacted)
         {
-            html.AppendLine("<pre class=\"redacted\">[redacted thinking]</pre>");
+            html.Line("<pre class=\"redacted\">[redacted thinking]</pre>");
         }
         else
         {
             AppendPre(html, null, text, redactor, diffClasses: false);
         }
 
-        html.AppendLine("</details>");
+        html.Line("</details>");
     }
 
     private static void AppendHead(StringBuilder html, string role, DateTimeOffset timestamp)
@@ -329,7 +329,7 @@ internal static class SessionHtmlWriter
             .Append(Escape(role))
             .Append("</span><time>")
             .Append(Stamp(timestamp))
-            .AppendLine("</time></div>");
+            .Line("</time></div>");
     }
 
     /// <summary>Message text as paragraphs, so a long answer is readable without any markup pass.</summary>
@@ -349,10 +349,10 @@ internal static class SessionHtmlWriter
                 continue;
             }
 
-            html.Append("<p>").Append(Text(paragraph, redactor)).AppendLine("</p>");
+            html.Append("<p>").Append(Text(paragraph, redactor)).Line("</p>");
         }
 
-        html.AppendLine("</div>");
+        html.Line("</div>");
     }
 
     /// <summary>
@@ -404,7 +404,7 @@ internal static class SessionHtmlWriter
             }
         }
 
-        html.AppendLine("</pre>");
+        html.Line("</pre>");
     }
 
     /// <summary>The one escaping helper: session text becomes a text node, never markup.</summary>

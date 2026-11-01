@@ -59,8 +59,8 @@ multiple named provider entries of one kind in `~/.lunate/providers.json`:
 ```
 
 `credentialReference` and optional header values are references, never secret values. Supported
-sources are `auth:<key>`, `env:<VARIABLE>`, and `helper:<name>`. The credential itself stays in
-`auth.json`, the environment, or the configured helper. `region` (`eu`, `us`, or `local`) is
+sources are `auth:<key>` and `env:<VARIABLE>`. The credential itself stays in `auth.json` or the
+environment. `region` (`eu`, `us`, or `local`) is
 descriptive metadata only: it does not choose an endpoint or guarantee data residency.
 
 On load, Lunate idempotently migrates legacy stored keys and custom endpoints into matching provider

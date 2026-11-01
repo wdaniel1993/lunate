@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using Lunate.Agent;
 using Lunate.Ai;
 using Microsoft.Extensions.AI;
@@ -128,6 +129,38 @@ public sealed class SessionHtmlWriterTests
 
         Assert.DoesNotContain("sk-openai-123456", html, StringComparison.Ordinal);
         Assert.Contains("[redacted:openai]", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_export_bytes_are_utf8_without_a_bom_and_terminate_every_line_with_lf()
+    {
+        using var temp = new TempDirectory();
+        Session session = BuildSession(temp, "tool output");
+
+        byte[] bytes = SessionHtmlWriter.Bytes(session, "title", CredentialRedactor.Empty);
+        string html = SessionHtmlWriter.Write(session, "title", CredentialRedactor.Empty);
+
+        // AGENTS.md: an export's bytes must not depend on where it was written. Not a substring
+        // assertion: the full document is compared against the UTF-8 encoding of the string form,
+        // and the writer's own line terminators are pinned as LF.
+        Assert.Equal(Encoding.UTF8.GetBytes(html), bytes);
+        byte[] head = Encoding.UTF8.GetBytes("<!DOCTYPE html>\n");
+        Assert.Equal(head, bytes[..head.Length]);
+        byte[] tail = Encoding.UTF8.GetBytes("</html>\n");
+        Assert.Equal(tail, bytes[^tail.Length..]);
+        Assert.False(bytes.Contains((byte)'\r'));
+    }
+
+    [Fact]
+    public void A_tool_result_that_carries_crlf_keeps_its_text_but_not_its_carriage_returns()
+    {
+        using var temp = new TempDirectory();
+        Session session = BuildSession(temp, "first\r\nsecond");
+
+        string html = SessionHtmlWriter.Write(session, "title", CredentialRedactor.Empty);
+
+        Assert.Contains("first\nsecond", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("\r\nsecond", html, StringComparison.Ordinal);
     }
 
     /// <summary>

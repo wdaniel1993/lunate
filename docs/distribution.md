@@ -27,6 +27,14 @@ How Lunate reaches users: what a release carries, how the one-command installers
 
 Before tagging, run the terminal matrix from the guide: Windows Terminal, conhost, Git Bash, macOS Terminal, one Linux terminal, and tmux over SSH. The tag itself runs the full verify gate on ubuntu, macos and windows before anything is published.
 
+### 0. Re-read the README, the guide and the security model against the shipped behaviour
+
+Re-read `README.md`, `docs/guide.md` and `SECURITY.md` against the state the code ships: every
+command, flag and credential source those pages name must exist in the tree, and the generated docs
+regions must be fresh (`scripts/docs-sync --check` is always-on in Process). The 0.2.0-rc.1 review
+found pages documenting a `helper:` credential source and an `--allow-path` flag the code never
+implemented (#450) — this step exists to name that class of drift before a tag.
+
 ## Release smoke
 
 [`smoke.yml`](../.github/workflows/smoke.yml) verifies a *published* release rather than a branch, on ubuntu, macos and windows: both installers install the tag's archive, the binary prints that version and starts, and the extension package the same tag published is installed by id from nuget.org, listed by `lunate packages`, verified, discovered by `lunate extensions` (pending trust) and uninstalled with nothing left behind. Run it after the Release workflow finishes:

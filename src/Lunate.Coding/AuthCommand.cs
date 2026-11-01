@@ -281,7 +281,9 @@ internal static partial class AuthCommand
                     : ("present", $"environment ({variable})");
             }
 
-            return ("present", "helper");
+            // A helper reference is accepted by the store schema but no host can resolve one in
+            // 0.2: list must not claim a credential is present that nothing can produce.
+            return ("absent", "helper unsupported");
         }
 
         private bool IsTerminal => seams.StdinIsTerminal ?? !Console.IsInputRedirected;
