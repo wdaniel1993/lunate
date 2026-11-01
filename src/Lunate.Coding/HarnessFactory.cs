@@ -263,7 +263,8 @@ internal static class HarnessFactory
         string? storePath,
         string worktreeRoot,
         string? mcpConfigPath = null,
-        string? mcpAgentsConfigPath = null
+        string? mcpAgentsConfigPath = null,
+        string? providerStorePath = null
     )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(worktreeRoot);
@@ -277,7 +278,8 @@ internal static class HarnessFactory
             AuthStore.Load(authPath, environment),
             environment ?? Environment.GetEnvironmentVariable,
             storePath ?? ExtensionHostOptions.Default.StorePath,
-            configPaths
+            configPaths,
+            providerStorePath ?? AuthStore.ProviderStoreFilePath(authPath)
         );
     }
 

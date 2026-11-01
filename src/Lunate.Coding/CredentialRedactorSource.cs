@@ -22,7 +22,8 @@ internal static class CredentialRedactorSource
         AuthStore auth,
         Func<string, string?> environment,
         string storePath,
-        IReadOnlyList<string> mcpConfigPaths
+        IReadOnlyList<string> mcpConfigPaths,
+        string? providerStorePath = null
     )
     {
         ArgumentNullException.ThrowIfNull(auth);
@@ -47,7 +48,98 @@ internal static class CredentialRedactorSource
 
         values.AddRange(ExtensionSecrets(storePath));
         values.AddRange(McpEnvironment(mcpConfigPaths, environment));
+        values.AddRange(ProviderEnvironment(providerStorePath, environment));
         return new CredentialRedactor(values);
+    }
+
+    /// <summary>
+    /// Every environment variable a user-owned provider entry names through an <c>env:</c>
+    /// reference — its credential or any header value. The preset list above only knows the
+    /// variables of the twelve built-in templates; a provider entry can name any variable, and a
+    /// command that prints it would otherwise put the value into the tool result and the session
+    /// file unmasked. A missing or unreadable store contributes nothing: redaction is best-effort.
+    /// </summary>
+    private static IEnumerable<(string Name, string Value)> ProviderEnvironment(
+        string? providerStorePath,
+        Func<string, string?> environment
+    )
+    {
+        if (string.IsNullOrWhiteSpace(providerStorePath))
+        {
+            yield break;
+        }
+
+        string json;
+        try
+        {
+            if (!File.Exists(providerStorePath))
+            {
+                yield break;
+            }
+
+            json = File.ReadAllText(providerStorePath);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            yield break;
+        }
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(json);
+        }
+        catch (JsonException)
+        {
+            yield break;
+        }
+
+        using (document)
+        {
+            foreach (string reference in References(document.RootElement))
+            {
+                if (!reference.StartsWith("env:", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                string variable = reference["env:".Length..];
+                if (environment(variable) is { Length: > 0 } value)
+                {
+                    yield return (variable, value);
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<string> References(JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (JsonProperty property in element.EnumerateObject())
+                {
+                    foreach (string reference in References(property.Value))
+                    {
+                        yield return reference;
+                    }
+                }
+
+                break;
+            case JsonValueKind.Array:
+                foreach (JsonElement item in element.EnumerateArray())
+                {
+                    foreach (string reference in References(item))
+                    {
+                        yield return reference;
+                    }
+                }
+
+                break;
+            case JsonValueKind.String:
+                yield return element.GetString() ?? string.Empty;
+                break;
+        }
     }
 
     private static void AddVariable(

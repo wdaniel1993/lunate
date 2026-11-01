@@ -15,6 +15,36 @@ public sealed class CredentialRedactorTests
     private const string McpSecret = "mcp-secret-555";
 
     [Fact]
+    public void A_custom_provider_env_reference_is_redacted_before_it_reaches_context()
+    {
+        using var temp = new TempDirectory();
+        // A user-owned provider may name any variable, not only the twelve presets' own. The
+        // provider store is read for env: references so a `printenv`-style command cannot carry
+        // that value into the tool result or the session file unmasked.
+        const string Key = "acme-key-913";
+        const string Org = "acme-org-424";
+        string providers = temp.File("providers.json");
+        File.WriteAllText(
+            providers,
+            """{"providers":{"acme":{"credentialReference":"env:ACME_CUSTOM_KEY","headers":{"X-Org":"env:ACME_ORG_TOKEN"}}}}"""
+        );
+        CredentialRedactor redactor = CredentialRedactorSource.Collect(
+            AuthStore.Load(temp.File("auth.json"), Environment.Of()),
+            Environment.Of(("ACME_CUSTOM_KEY", Key), ("ACME_ORG_TOKEN", Org)),
+            temp.Root,
+            [],
+            providers
+        );
+
+        string redacted = redactor.Redact($"key={Key} org={Org}");
+
+        Assert.DoesNotContain(Key, redacted, StringComparison.Ordinal);
+        Assert.DoesNotContain(Org, redacted, StringComparison.Ordinal);
+        Assert.Contains("[redacted:ACME_CUSTOM_KEY]", redacted, StringComparison.Ordinal);
+        Assert.Contains("[redacted:ACME_ORG_TOKEN]", redacted, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Every_value_the_session_knows_is_named_from_its_own_source()
     {
         using var temp = new TempDirectory();

@@ -66,7 +66,8 @@ internal sealed partial class InteractiveSession
                 _auth,
                 _environment,
                 _options.Extensions?.StorePath ?? ExtensionHostOptions.Default.StorePath,
-                McpConfigPaths()
+                McpConfigPaths(),
+                AuthStore.ProviderStoreFilePath(_options.AuthPath)
             );
             scrubber = DiagnosticScrubber.FromEnvironment(redactor);
             DiagnosticBundleInput input = DiagnosticInput(destination, now, store) with

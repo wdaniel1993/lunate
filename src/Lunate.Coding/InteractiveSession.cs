@@ -491,7 +491,8 @@ internal sealed partial class InteractiveSession : IDisposable
             _options.Extensions?.StorePath,
             _workspace.WorktreeRoot,
             _options.McpConfigPath,
-            _options.McpAgentsConfigPath
+            _options.McpAgentsConfigPath,
+            AuthStore.ProviderStoreFilePath(_options.AuthPath)
         );
         // Before anything of this session's own state is created: a store inside the tree this
         // session governs could have its trust records written by that tree.
