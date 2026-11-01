@@ -122,8 +122,10 @@ public sealed partial class SettingsSchemaTests
     [Fact]
     public void The_schema_lists_exactly_the_literals_the_store_accepts()
     {
-        IReadOnlySet<string> accepted = AcceptedKeys();
-        IReadOnlySet<string> documented = SchemaSegments();
+        IReadOnlySet<string> accepted = AcceptedKeyPaths();
+        IReadOnlySet<string> documented = SettingsSchema
+            .All.Select(entry => entry.Name)
+            .ToHashSet(StringComparer.Ordinal);
 
         string[] undocumented =
         [
@@ -517,20 +519,7 @@ public sealed partial class SettingsSchemaTests
         }
     }
 
-    private static IReadOnlySet<string> SchemaSegments()
-    {
-        var segments = new HashSet<string>(StringComparer.Ordinal);
-        foreach (SettingEntry entry in SettingsSchema.All)
-        {
-            segments.UnionWith(
-                entry
-                    .Name.Split('.')
-                    .Where(part => !string.Equals(part, "*", StringComparison.Ordinal))
-            );
-        }
-
-        return segments;
-    }
+    private static IReadOnlySet<string> AcceptedKeyPaths() => AcceptedKeys();
 
     [GeneratedRegex(@"^\s*switch \(\w+\.Name\)")]
     private static partial Regex NameSwitch();
