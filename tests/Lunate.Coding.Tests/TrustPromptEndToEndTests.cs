@@ -246,7 +246,7 @@ public sealed class TrustPromptEndToEndTests
         host.Console.SendText("y");
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "3 of 4");
         Assert.Contains(
-            "Run project MCP server 'alpha' from",
+            "Run project MCP server 'alpha', which sees your shell environment, from",
             host.LastFrame,
             StringComparison.Ordinal
         );
@@ -254,7 +254,7 @@ public sealed class TrustPromptEndToEndTests
         host.Console.SendText("y");
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "4 of 4");
         Assert.Contains(
-            "Run project MCP server 'beta' from",
+            "Run project MCP server 'beta', which sees your shell environment, from",
             host.LastFrame,
             StringComparison.Ordinal
         );

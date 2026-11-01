@@ -45,7 +45,7 @@ public sealed class TrustCommandMcpEndToEndTests
         Assert.Equal(TrustCommand.ExitPending, inspectExit);
         Assert.Empty(inspectErrors);
         Assert.Contains(
-            $"Run project MCP server 'srv' from '{config}'",
+            $"Run project MCP server 'srv', which sees your shell environment, from '{config}'",
             inspectOutput,
             StringComparison.Ordinal
         );

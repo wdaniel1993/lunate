@@ -124,12 +124,14 @@ internal static class TrustFormat
     /// <summary>
     /// The interactive per-server approval question; its one detail line is
     /// <see cref="Command"/> — the full command, never truncated (the config-file prompt's
-    /// truncation does not apply to what is being approved). The question names that the server
+    /// truncation does not apply to what is being approved). The clause names that the server
     /// sees the environment: a stdio server inherits Lunate's whole shell environment (issue
-    /// #449), so approval is what stands between a server and the provider keys in it.
+    /// #449), so approval is what stands between a server and the provider keys in it. The
+    /// clause sits before the path so the question mark the TUI headline appends closes the
+    /// sentence, not the clause.
     /// </summary>
     internal static string McpServerQuestion(McpServerOptions server) =>
-        $"Run project MCP server '{server.Name}' from '{RealPath(server.Source ?? string.Empty)}' — it sees your shell environment";
+        $"Run project MCP server '{server.Name}', which sees your shell environment, from '{RealPath(server.Source ?? string.Empty)}'";
 
     internal static string Command(McpServerOptions server) =>
         server.Arguments.Count == 0

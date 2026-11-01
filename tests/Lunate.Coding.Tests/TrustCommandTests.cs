@@ -31,7 +31,7 @@ public sealed class TrustCommandTests
         Assert.Contains("Start 1 server from project mcp.json", output, StringComparison.Ordinal);
         Assert.Contains("  srv — x", output, StringComparison.Ordinal);
         Assert.Contains(
-            $"Run project MCP server 'srv' from '{fixture.ConfigPath}'",
+            $"Run project MCP server 'srv', which sees your shell environment, from '{fixture.ConfigPath}'",
             output,
             StringComparison.Ordinal
         );
@@ -95,7 +95,7 @@ public sealed class TrustCommandTests
 
         Assert.Equal(TrustCommand.ExitPending, inspectExit);
         Assert.Contains(
-            $"Run project MCP server 'srv' from '{fixture.ConfigPath}'",
+            $"Run project MCP server 'srv', which sees your shell environment, from '{fixture.ConfigPath}'",
             inspect,
             StringComparison.Ordinal
         );

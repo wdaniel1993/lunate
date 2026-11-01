@@ -28,7 +28,7 @@ public sealed class McpServerApprovalPromptTests
 
         Assert.True(approved);
         Assert.Equal(
-            $"Run project MCP server 'srv' from '{Source}' — it sees your shell environment",
+            $"Run project MCP server 'srv', which sees your shell environment, from '{Source}'",
             title
         );
         string detail = Assert.Single(details!);
