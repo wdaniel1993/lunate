@@ -24,12 +24,14 @@ public sealed class SessionAppendFailureTests
 
         List<AgentEvent> failed;
         string lockPath = SessionFiles.WriterLockPath(sessionPath);
-        using (var heldWriterLock = new FileStream(
-            lockPath,
-            FileMode.OpenOrCreate,
-            FileAccess.ReadWrite,
-            FileShare.None
-        ))
+        using (
+            var heldWriterLock = new FileStream(
+                lockPath,
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.None
+            )
+        )
         {
             failed = await Run(harness, "first");
         }
@@ -58,5 +60,4 @@ public sealed class SessionAppendFailureTests
         await harness
             .RunAsync(input, TestContext.Current.CancellationToken)
             .ToListAsync(TestContext.Current.CancellationToken);
-
 }
