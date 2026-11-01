@@ -292,7 +292,8 @@ internal static class PrintMode
                     extensions,
                     mcpTools,
                     inheritedTools,
-                    skills
+                    skills,
+                    notice => interaction.Notify(notice)
                 );
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -622,7 +623,8 @@ internal static class PrintMode
         ExtensionSession? extensions,
         IReadOnlyList<ITool> mcpTools,
         List<ITool> inheritedTools,
-        SkillCatalog skills
+        SkillCatalog skills,
+        Action<UserNotice> warn
     )
     {
         var refusalTracker = new WriteVerificationRefusalTracker();
@@ -668,11 +670,39 @@ internal static class PrintMode
             }
         }
 
+        // The decision model resolves once, before the harness options: the decision usage
+        // client, the decide-tool declaration and the gate's settings all come from one
+        // resolution. The decision gate is wired in print mode like in the interactive session:
+        // the fail-closed rule covers a run no one watches, so with --yolo an enforce-mode deny
+        // above the threshold is still denied (no user is present to ask). A profile that
+        // cannot resolve degrades to no gate with a visible warning, not a run error.
+        UsageModelClient? decisionModel = DecisionUsageModels.ResolveDecisionModel(
+            settings,
+            LoadSources,
+            catalog,
+            options.Environment ?? Environment.GetEnvironmentVariable,
+            factory,
+            warn,
+            []
+        );
+        IReadOnlyDictionary<string, UsageModelClient>? decisionUsageModels = decisionModel is null
+            ? null
+            : new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+            {
+                ["decision"] = decisionModel,
+            };
+
         var harnessOptions = new AgentHarnessOptions
         {
+            // A deny reaching the threshold still passes through the approver seam; the
+            // fail-closed denial itself lives in the harness (ADR-0003's single approval seam).
+            DecisionMode = settings.Decisions.Approvals,
+            ApprovalsThreshold = settings.Decisions.ApprovalsThreshold,
+            DecideTool = settings.Decisions.Tool,
+            UsageModels = decisionUsageModels,
             SystemPrompt = SystemPrompt.Compose(
                 workspace,
-                [.. tools.Tools.Select(tool => tool.Name)],
+                ToolNames(),
                 SystemPrompt.Directives(options.Launch, session)
             ),
             PromptSections =
@@ -712,6 +742,30 @@ internal static class PrintMode
         };
 
         return new AgentHarness(factory.Create(model), tools, harnessOptions);
+
+        (AuthStore, IReadOnlyList<ProviderEntry>) LoadSources()
+        {
+            AuthStore auth = AuthStore.Load(options.AuthPath, options.Environment);
+            ProviderStore providers = ProviderStore.Load(
+                AuthStore.ProviderStoreFilePath(options.AuthPath),
+                auth,
+                settings.Providers
+            );
+            return (auth, providers.Entries);
+        }
+
+        // The decide tool is declared to the model only when it will be registered: the harness
+        // constructor adds it when the decision profile resolved and the setting asked for it.
+        IReadOnlyList<string> ToolNames()
+        {
+            List<string> names = [.. tools.Tools.Select(tool => tool.Name)];
+            if (decisionModel is not null && settings.Decisions.Tool && !names.Contains("decide"))
+            {
+                names.Add("decide");
+            }
+
+            return names;
+        }
     }
 
     /// <summary>
