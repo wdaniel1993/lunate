@@ -52,6 +52,11 @@ public sealed class QuestionDecisionAvailabilityTests
         host.Console.SendEnter();
         await host.WaitForFrameAsync("Which plan should I use?");
         Assert.DoesNotContain("(suggested · decision model", host.Frames, StringComparison.Ordinal);
+        await host.WaitUntilAsync(() =>
+            host
+                .Events.OfType<DecisionUnavailable>()
+                .Any(unavailable => unavailable.QuestionId == "question-1")
+        );
         Assert.Contains(
             host.Events.OfType<DecisionUnavailable>(),
             unavailable => unavailable.QuestionId == "question-1"
