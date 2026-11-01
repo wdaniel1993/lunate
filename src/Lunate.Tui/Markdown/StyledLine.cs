@@ -80,9 +80,13 @@ internal sealed class StyledLine
 
     public void Add(string text, SpanStyle style)
     {
-        if (text.Length > 0)
+        // The scrub boundary for committed markup: a span never stores a control byte, so no
+        // tool result, diff, config value or pasted text can reach ToMarkup's output with an
+        // escape sequence in it.
+        string sanitized = CellText.Sanitize(text);
+        if (sanitized.Length > 0)
         {
-            _spans.Add(new StyledSpan(text, style));
+            _spans.Add(new StyledSpan(sanitized, style));
         }
     }
 

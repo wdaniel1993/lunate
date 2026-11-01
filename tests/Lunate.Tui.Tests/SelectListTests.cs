@@ -128,6 +128,23 @@ public sealed class SelectListTests
     }
 
     [Fact]
+    public void Control_bytes_in_title_and_item_are_scrubbed_before_rendering()
+    {
+        string output = Render(
+            new SelectListModel(
+                "Title \u001b]52;c;AAA\u0007\u009b31m",
+                ["item \u001b]8;;https://evil.example\u0007fake link"],
+                0
+            )
+        );
+
+        Assert.DoesNotContain("\u001b", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("\u009b", output, StringComparison.Ordinal);
+        Assert.Contains("Title ]52;c;AAA31m", output, StringComparison.Ordinal);
+        Assert.Contains("item ]8;;https://evil.examplefake link", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void An_empty_list_renders_only_the_title()
     {
         Assert.Equal("Pick\n", Render(new SelectListModel("Pick", [], 0)));
