@@ -22,15 +22,16 @@ public sealed class SessionAppendFailureTests
             new AgentHarnessOptions { Session = session, WorkingDirectory = temp.Root }
         );
 
-        DenyAppends(sessionPath);
         List<AgentEvent> failed;
-        try
+        string lockPath = SessionFiles.WriterLockPath(sessionPath);
+        using (var heldWriterLock = new FileStream(
+            lockPath,
+            FileMode.OpenOrCreate,
+            FileAccess.ReadWrite,
+            FileShare.None
+        ))
         {
             failed = await Run(harness, "first");
-        }
-        finally
-        {
-            AllowAppends(sessionPath);
         }
 
         RunError reported = Assert.Single(failed.OfType<RunError>());
@@ -58,32 +59,4 @@ public sealed class SessionAppendFailureTests
             .RunAsync(input, TestContext.Current.CancellationToken)
             .ToListAsync(TestContext.Current.CancellationToken);
 
-    /// <summary>Makes the session file refuse a write, as a permission error would.</summary>
-    private static void DenyAppends(string path)
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            File.SetAttributes(path, FileAttributes.ReadOnly);
-        }
-        else
-        {
-            File.SetUnixFileMode(
-                path,
-                UnixFileMode.UserRead | UnixFileMode.GroupRead | UnixFileMode.OtherRead
-            );
-        }
-    }
-
-    /// <summary>Restores the owner-writable mode the product gives a session file.</summary>
-    private static void AllowAppends(string path)
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            File.SetAttributes(path, FileAttributes.Normal);
-        }
-        else
-        {
-            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
-        }
-    }
 }
