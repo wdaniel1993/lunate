@@ -22,4 +22,15 @@ public sealed record McpServerOptions(
     string? NamespaceName = null,
     string? Source = null,
     bool WorkspaceIndependent = false
-);
+)
+{
+    /// <summary>
+    /// The credential values Lunate itself knows (the set <c>CredentialRedactorSource.Collect</c>
+    /// aggregates) that must be withheld from the child's environment. Null or empty keeps today's
+    /// full inheritance; a set makes the host build the child environment explicitly, so a variable
+    /// whose value matches one of these is removed entirely — never replaced with an empty string
+    /// — unless the server's own <c>env</c> map names the variable (the opt-in, which receives its
+    /// value as declared; <c>${VAR}</c> expansion happened when the config loaded).
+    /// </summary>
+    public IReadOnlyList<string>? WithheldCredentialValues { get; init; }
+}

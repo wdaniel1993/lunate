@@ -162,6 +162,36 @@ tools.Add(
     )
 );
 
+// LUNATE_TEST_MCP_ENV_TOOL=1 registers the environment-reporting tools the child-environment
+// tests use; the variable is one of those tests' declared env values, so every other test keeps
+// the tool list it pins and nothing new starts on its behalf.
+if (Environment.GetEnvironmentVariable("LUNATE_TEST_MCP_ENV_TOOL") == "1")
+{
+    tools.Add(
+        McpServerTool.Create(
+            (Func<string>)EnvNames,
+            new McpServerToolCreateOptions
+            {
+                Name = "env_names",
+                Description =
+                    "Returns the child process's environment variable names as a JSON array.",
+                ReadOnly = true,
+            }
+        )
+    );
+    tools.Add(
+        McpServerTool.Create(
+            (Func<string, string>)EnvValue,
+            new McpServerToolCreateOptions
+            {
+                Name = "env_value",
+                Description = "Returns one environment variable's value, or (unset) when absent.",
+                ReadOnly = true,
+            }
+        )
+    );
+}
+
 var serverOptions = new McpServerOptions
 {
     ServerInfo = new Implementation { Name = "test-mcp-server", Version = "1.0.0" },
@@ -380,6 +410,18 @@ string SpawnTool()
     );
     return "registered late_tool";
 }
+
+string EnvNames() =>
+    JsonSerializer.Serialize(
+        Environment
+            .GetEnvironmentVariables()
+            .Keys.OfType<string>()
+            .Order(StringComparer.Ordinal)
+            .ToArray()
+    );
+
+string EnvValue(string name) =>
+    Environment.GetEnvironmentVariable(name) is { } value ? value : "(unset)";
 
 internal sealed record AddResult(int Sum);
 
