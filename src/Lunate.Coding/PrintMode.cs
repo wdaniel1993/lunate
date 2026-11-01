@@ -712,12 +712,18 @@ internal static class PrintMode
             {
                 ["decision"] = decisionModel,
             };
+        // The routing consumer is wired like the interactive session: a routed selection applies
+        // to the run nobody watches too. Unresolved routing profiles are a settings-validation
+        // error before this point, so a resolution failure is a run error, not a degraded gate.
+        IReadOnlyDictionary<string, UsageModelClient>? routingProfiles = ResolveRoutingProfiles();
 
         var harnessOptions = new AgentHarnessOptions
         {
             // A deny reaching the threshold still passes through the approver seam; the
             // fail-closed denial itself lives in the harness (ADR-0003's single approval seam).
             DecisionMode = settings.Decisions.Approvals,
+            RoutingMode = settings.Decisions.Routing,
+            RoutingProfiles = routingProfiles,
             ApprovalsThreshold = settings.Decisions.ApprovalsThreshold,
             DecideTool = settings.Decisions.Tool,
             UsageModels = decisionUsageModels,
@@ -773,6 +779,26 @@ internal static class PrintMode
                 settings.Providers
             );
             return (auth, providers.Entries);
+        }
+
+        // The profile clients load the stores only when routing is on, like the interactive
+        // session's per-build resolution.
+        IReadOnlyDictionary<string, UsageModelClient>? ResolveRoutingProfiles()
+        {
+            if (settings.Decisions.Routing == DecisionMode.Off)
+            {
+                return null;
+            }
+
+            (AuthStore auth, IReadOnlyList<ProviderEntry> providers) = LoadSources();
+            return DecisionUsageModels.ResolveRoutingProfiles(
+                settings,
+                providers,
+                auth,
+                catalog,
+                options.Environment ?? Environment.GetEnvironmentVariable,
+                factory
+            );
         }
 
         // The decide tool is declared to the model only when it will be registered: the harness
