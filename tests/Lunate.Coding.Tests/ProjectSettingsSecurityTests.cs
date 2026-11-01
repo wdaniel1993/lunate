@@ -185,6 +185,49 @@ public sealed class ProjectSettingsSecurityTests
         Assert.Equal(0, environmentCredentialReads);
     }
 
+    [Fact]
+    public void Project_settings_may_lower_output_toolResultLimit()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("user-settings.json"), "{ \"schemaVersion\": 2 }");
+        File.WriteAllText(
+            temp.File("project-settings.json"),
+            """{ "schemaVersion": 2, "output": { "toolResultLimit": 100 } }"""
+        );
+
+        AgentSettings settings = SettingsStore.ResolveWithProject(
+            temp.File("user-settings.json"),
+            temp.File("project-settings.json"),
+            [],
+            _ => null
+        );
+
+        Assert.Equal(100, settings.ToolOutputLimit);
+    }
+
+    [Fact]
+    public void Project_settings_cannot_raise_output_toolResultLimit()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("user-settings.json"), "{ \"schemaVersion\": 2 }");
+        File.WriteAllText(
+            temp.File("project-settings.json"),
+            """{ "schemaVersion": 2, "output": { "toolResultLimit": 40000 } }"""
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.ResolveWithProject(
+                temp.File("user-settings.json"),
+                temp.File("project-settings.json"),
+                [],
+                _ => null
+            )
+        );
+
+        Assert.Contains("output.toolResultLimit", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("cannot raise", exception.Message, StringComparison.Ordinal);
+    }
+
     private static ProviderEntry Provider(string name)
     {
         bool valid = ProviderEntry.TryCreate(
