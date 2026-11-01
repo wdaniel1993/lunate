@@ -7,7 +7,7 @@ namespace Lunate.Coding;
 /// <c>user</c> when only the user settings file may carry the key, and <c>user, project</c>
 /// when a project file may carry it too.
 /// </summary>
-public sealed record SettingEntry(
+internal sealed record SettingEntry(
     string Name,
     string Type,
     string Default,
@@ -24,7 +24,7 @@ public sealed record SettingEntry(
 /// own literals (both directions) and to the project merge's scope rules, so a key cannot be
 /// accepted, documented or scoped alone. Loaded on first use, never at startup.
 /// </summary>
-public static class SettingsSchema
+internal static class SettingsSchema
 {
     internal const string ResourceName = "Lunate.Coding.settings-schema.json";
 
@@ -33,7 +33,7 @@ public static class SettingsSchema
     /// <summary>The file scopes a settings key may declare.</summary>
     internal static readonly IReadOnlyList<string> Scopes = ["user", "user, project"];
 
-    public static IReadOnlyList<SettingEntry> All { get; } = Load();
+    internal static IReadOnlyList<SettingEntry> All { get; } = Load();
 
     private static IReadOnlyList<SettingEntry> Load()
     {
