@@ -72,10 +72,7 @@ public sealed class RoutingDecisionWiringTests
         );
         string modelsPath = temp.File("models.json");
         File.WriteAllText(modelsPath, ModelsJson());
-        ProviderStore.Save(
-            AuthStore.ProviderStoreFilePath(temp.File("auth.json")),
-            [Provider()]
-        );
+        ProviderStore.Save(AuthStore.ProviderStoreFilePath(temp.File("auth.json")), [Provider()]);
         AgentHarness harness = AcpMode.CreateHarness(
             new AcpSessionContext(temp.Root, null, null),
             null,
@@ -134,10 +131,7 @@ public sealed class RoutingDecisionWiringTests
             }
             """
         );
-        ProviderStore.Save(
-            AuthStore.ProviderStoreFilePath(temp.File("auth.json")),
-            [Provider()]
-        );
+        ProviderStore.Save(AuthStore.ProviderStoreFilePath(temp.File("auth.json")), [Provider()]);
     }
 
     private static AgentSettings Settings() =>
@@ -199,10 +193,7 @@ public sealed class RoutingDecisionWiringTests
     ) : IChatClientFactory
     {
         public IChatClient Create(ModelInfo model) =>
-            clients.TryGetValue(
-                model.Id,
-                out IChatClient? client
-            )
+            clients.TryGetValue(model.Id, out IChatClient? client)
                 ? client
                 : throw new InvalidOperationException($"no scripted client for {model.Id}");
 
