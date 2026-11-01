@@ -40,19 +40,11 @@ public sealed class BashChangeTrackerTests
         repo.Write("a.cs", "class A { int x; }\n");
         var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.BashScan);
 
-        IReadOnlyList<BashChangeTracker.Change> first = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
-        IReadOnlyList<BashChangeTracker.Change> second = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport first = await tracker.ObserveAsync("run_1", repo.Root, Ct);
+        ScanReport second = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
-        Assert.Empty(first);
-        Assert.Empty(second);
+        Assert.Empty(first.Changes);
+        Assert.Empty(second.Changes);
     }
 
     [Fact]
@@ -65,19 +57,14 @@ public sealed class BashChangeTrackerTests
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         repo.Write("b.cs", "class B { }\n");
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
-        IReadOnlyList<BashChangeTracker.Change> again = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport changes = await tracker.ObserveAsync("run_1", repo.Root, Ct);
+        ScanReport again = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
-        Assert.Equal([new BashChangeTracker.Change("b.cs", FileChangeKind.Created)], changes);
-        Assert.Empty(again);
+        Assert.Equal(
+            [new BashChangeTracker.Change("b.cs", FileChangeKind.Created)],
+            changes.Changes
+        );
+        Assert.Empty(again.Changes);
     }
 
     [Fact]
@@ -91,15 +78,11 @@ public sealed class BashChangeTrackerTests
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         repo.Write("unrelated.cs", "class U { }\n");
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport changes = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         Assert.Equal(
             [new BashChangeTracker.Change("unrelated.cs", FileChangeKind.Created)],
-            changes
+            changes.Changes
         );
     }
 
@@ -116,13 +99,12 @@ public sealed class BashChangeTrackerTests
         DateTime stamp = File.GetLastWriteTimeUtc(file);
         repo.Write("a.cs", "class A { int y; }\n");
         File.SetLastWriteTimeUtc(file, stamp);
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport changes = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
-        Assert.Equal([new BashChangeTracker.Change("a.cs", FileChangeKind.Modified)], changes);
+        Assert.Equal(
+            [new BashChangeTracker.Change("a.cs", FileChangeKind.Modified)],
+            changes.Changes
+        );
     }
 
     [Fact]
@@ -136,13 +118,12 @@ public sealed class BashChangeTrackerTests
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         repo.Run("checkout", "--", "a.cs");
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport changes = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
-        Assert.Equal([new BashChangeTracker.Change("a.cs", FileChangeKind.Modified)], changes);
+        Assert.Equal(
+            [new BashChangeTracker.Change("a.cs", FileChangeKind.Modified)],
+            changes.Changes
+        );
     }
 
     [Fact]
@@ -156,13 +137,9 @@ public sealed class BashChangeTrackerTests
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         repo.CommitAll("the dirty file");
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport changes = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
-        Assert.Empty(changes);
+        Assert.Empty(changes.Changes);
     }
 
     [Fact]
@@ -179,13 +156,12 @@ public sealed class BashChangeTrackerTests
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         repo.Run("checkout", "-q", "-");
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport changes = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
-        Assert.Equal([new BashChangeTracker.Change("a.cs", FileChangeKind.Modified)], changes);
+        Assert.Equal(
+            [new BashChangeTracker.Change("a.cs", FileChangeKind.Modified)],
+            changes.Changes
+        );
     }
 
     [Fact]
@@ -199,13 +175,12 @@ public sealed class BashChangeTrackerTests
 
         repo.Write("newdir/inner.cs", "class Inner { }\n");
         repo.Write("newfile.cs", "class NewFile { }\n");
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport changes = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
-        Assert.Equal([new BashChangeTracker.Change("newfile.cs", FileChangeKind.Created)], changes);
+        Assert.Equal(
+            [new BashChangeTracker.Change("newfile.cs", FileChangeKind.Created)],
+            changes.Changes
+        );
     }
 
     [Fact]
@@ -218,18 +193,14 @@ public sealed class BashChangeTrackerTests
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         File.Move(Path.Combine(repo.Root, "a.cs"), Path.Combine(repo.Root, "b.cs"));
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport changes = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         Assert.Equal(
             [
                 new BashChangeTracker.Change("a.cs", FileChangeKind.Modified),
                 new BashChangeTracker.Change("b.cs", FileChangeKind.Created),
             ],
-            changes.OrderBy(change => change.RelativePath, StringComparer.Ordinal)
+            changes.Changes.OrderBy(change => change.RelativePath, StringComparer.Ordinal)
         );
     }
 
@@ -244,18 +215,14 @@ public sealed class BashChangeTrackerTests
 
         repo.Run("mv", "a.cs", "renamed.cs");
         repo.Run("add", "-A");
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport changes = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         Assert.Equal(
             [
                 new BashChangeTracker.Change("a.cs", FileChangeKind.Modified),
                 new BashChangeTracker.Change("renamed.cs", FileChangeKind.Created),
             ],
-            changes.OrderBy(change => change.RelativePath, StringComparer.Ordinal)
+            changes.Changes.OrderBy(change => change.RelativePath, StringComparer.Ordinal)
         );
     }
 
@@ -265,13 +232,9 @@ public sealed class BashChangeTrackerTests
         using var temp = new TempDirectory();
         var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.BashScan);
 
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            temp.Root,
-            Ct
-        );
+        ScanReport changes = await tracker.ObserveAsync("run_1", temp.Root, Ct);
 
-        Assert.Empty(changes);
+        Assert.Empty(changes.Changes);
     }
 
     [Fact]
@@ -287,13 +250,12 @@ public sealed class BashChangeTrackerTests
 
         repo.Write("sub/a.cs", "class A { int changed; }\n");
         repo.Write("outside.cs", "class Outside { int changed; }\n");
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            sub,
-            Ct
-        );
+        ScanReport changes = await tracker.ObserveAsync("run_1", sub, Ct);
 
-        Assert.Equal([new BashChangeTracker.Change("a.cs", FileChangeKind.Modified)], changes);
+        Assert.Equal(
+            [new BashChangeTracker.Change("a.cs", FileChangeKind.Modified)],
+            changes.Changes
+        );
     }
 
     [Fact]
@@ -305,17 +267,13 @@ public sealed class BashChangeTrackerTests
         var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.BashScan);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
         repo.Write("a.cs", "class A { int x; }\n");
-        Assert.Single(await tracker.ObserveAsync("run_1", repo.Root, Ct));
+        Assert.Single((await tracker.ObserveAsync("run_1", repo.Root, Ct)).Changes);
 
         // The commit moves HEAD and the content is unchanged: nothing may be published.
         repo.CommitAll();
-        IReadOnlyList<BashChangeTracker.Change> committed = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport committed = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
-        Assert.Empty(committed);
+        Assert.Empty(committed.Changes);
     }
 
     [Fact]
@@ -327,16 +285,15 @@ public sealed class BashChangeTrackerTests
         var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.BashScan);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
         repo.Write("a.cs", "class A { int x; }\n");
-        Assert.Single(await tracker.ObserveAsync("run_1", repo.Root, Ct));
+        Assert.Single((await tracker.ObserveAsync("run_1", repo.Root, Ct)).Changes);
 
         repo.Run("checkout", "--", "a.cs");
-        IReadOnlyList<BashChangeTracker.Change> reverted = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport reverted = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
-        Assert.Equal([new BashChangeTracker.Change("a.cs", FileChangeKind.Modified)], reverted);
+        Assert.Equal(
+            [new BashChangeTracker.Change("a.cs", FileChangeKind.Modified)],
+            reverted.Changes
+        );
     }
 
     [Fact]
@@ -360,18 +317,14 @@ public sealed class BashChangeTrackerTests
 
         repo.Run("mv", "a.cs", "b.cs");
         repo.CommitAll();
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport changes = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         Assert.Equal(
             [
                 new BashChangeTracker.Change("a.cs", FileChangeKind.Modified),
                 new BashChangeTracker.Change("b.cs", FileChangeKind.Created),
             ],
-            changes
+            changes.Changes
         );
     }
 
@@ -384,7 +337,7 @@ public sealed class BashChangeTrackerTests
         var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.BashScan);
         await tracker.ObserveAsync("run_old", repo.Root, Ct);
         repo.Write("a.cs", "class A { int x; }\n");
-        Assert.Single(await tracker.ObserveAsync("run_old", repo.Root, Ct));
+        Assert.Single((await tracker.ObserveAsync("run_old", repo.Root, Ct)).Changes);
 
         for (int i = 0; i < BashChangeTracker.MaxSnapshots; i++)
         {
@@ -393,13 +346,9 @@ public sealed class BashChangeTrackerTests
 
         // The oldest snapshot was evicted, so this scan baselines afresh and publishes nothing.
         repo.Write("a.cs", "class A { int y; }\n");
-        IReadOnlyList<BashChangeTracker.Change> afterEviction = await tracker.ObserveAsync(
-            "run_old",
-            repo.Root,
-            Ct
-        );
+        ScanReport afterEviction = await tracker.ObserveAsync("run_old", repo.Root, Ct);
 
-        Assert.Empty(afterEviction);
+        Assert.Empty(afterEviction.Changes);
     }
 
     [Fact]
@@ -412,15 +361,14 @@ public sealed class BashChangeTrackerTests
         var log = new RecordingExtensionLog();
         var tracker = new BashChangeTracker(log, scanTimeout: WaitBudgets.BashScan);
 
-        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
-            "run_1",
-            repo.Root,
-            Ct
-        );
+        ScanReport scan = await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         // A git that exits non-zero used to be silent — the exact shape that let a starved
-        // sharded leg run three CI passes without a publish and without a hint (#395).
-        Assert.Empty(changes);
+        // sharded leg run three CI passes without a publish and without a hint (#395). With the
+        // stamp backstop (#418) the scan still answers from content: it baselines.
+        Assert.Empty(scan.Changes);
+        Assert.Equal(ScanSource.Stamp, scan.Source);
+        Assert.NotNull(scan.FailureReason);
         Assert.True(
             log.Contains("bash change scan: git status failed"),
             $"the log said nothing about the scan: {string.Join(Environment.NewLine, log.Messages)}"

@@ -53,6 +53,40 @@ public sealed class RestoreCacheKeyTests
     }
 
     [Fact]
+    public void Stored_artifacts_never_carry_git()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("Fixture.slnx"), "solution");
+        string obj = Path.Combine(temp.Root, "obj");
+        Directory.CreateDirectory(obj);
+        File.WriteAllText(Path.Combine(obj, "project.assets.json"), "{}");
+        // Poison a snapshot must never travel: a foreign repository metadata would be copied
+        // over the next test's fresh .git and mix refs from one snapshot with its objects.
+        string objects = Path.Combine(temp.Root, ".git", "objects", "aa");
+        Directory.CreateDirectory(objects);
+        File.WriteAllText(Path.Combine(objects, "deadbeef"), "poison");
+
+        string key = RestoreCache.Key(temp.Root, "Fixture.slnx");
+        RestoreCache.Store(key, temp.Root);
+
+        using var destination = new TempDirectory();
+        string refs = Path.Combine(destination.Root, ".git", "refs", "heads");
+        Directory.CreateDirectory(refs);
+        File.WriteAllText(Path.Combine(refs, "main"), "0123456789abcde0");
+
+        Assert.True(RestoreCache.TryReuse(key, destination.Root));
+        Assert.True(
+            File.Exists(Path.Combine(destination.Root, "obj", "project.assets.json")),
+            "restore output should arrive"
+        );
+        Assert.False(
+            Directory.Exists(Path.Combine(destination.Root, ".git", "objects")),
+            ".git must never travel"
+        );
+        Assert.Equal("0123456789abcde0", File.ReadAllText(Path.Combine(refs, "main")));
+    }
+
+    [Fact]
     public void Restore_output_is_ignored()
     {
         using var temp = new TempDirectory();

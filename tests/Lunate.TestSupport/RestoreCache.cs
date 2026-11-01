@@ -215,6 +215,18 @@ internal static class RestoreCache
             {
                 string name = Path.GetFileName(directory);
                 string childRelative = relative.Length == 0 ? name : Path.Combine(relative, name);
+                if (name == ".git")
+                {
+                    // A restore never writes repository metadata, so a snapshot must never carry
+                    // it (#418): a fixture whose test committed into its root would otherwise
+                    // store a foreign .git, and reusing it would copy that over the next test's
+                    // fresh one — refs from one snapshot mixed with objects from another — and
+                    // git would answer "fatal: bad object HEAD" for the rest of the leg. Copying
+                    // less needs no Format bump: it is additive, older entries only stop being
+                    // copied where they were never written by a restore.
+                    continue;
+                }
+
                 if (Excluded.Contains(name, StringComparer.OrdinalIgnoreCase))
                 {
                     yield return (directory, childRelative);
