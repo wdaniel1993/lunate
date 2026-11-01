@@ -97,8 +97,9 @@ so the host asks once per repository before loading it.
   `trust-denied`; the session continues without it.
 - **The record is not a boundary.** `trust.json` records what was asked and answered; it does not
   stop a process that can write the file. The approval panel is the boundary in default mode, and
-  `--yolo` removes it. Nothing here is an OS sandbox: 0.1.0 runs commands with your user's rights on
-  every platform, Windows included; the guard profile is scheduled for 0.2.
+  `--yolo` removes it. The bash guard narrows what a command started by the agent can reach — writes
+  under the state root and the install prefix, reads of `auth.json` — on macOS and Linux only; it is
+  not an OS sandbox for the whole process, and Windows has no mechanism.
 
 ### The `ProjectTrust` hook
 

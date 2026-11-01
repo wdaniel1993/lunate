@@ -32,13 +32,18 @@
   [`docs/spec/extensibility.md`](docs/spec/extensibility.md).
 - **Open protocols.** An MCP client for servers you already run, an ACP server so an editor such as
   Zed or JetBrains drives it, Agent Skills (`SKILL.md`) and `AGENTS.md` for project rules.
+- **Guarded by the OS, not only by a prompt.** On macOS and Linux every bash command runs under an
+  OS-level deny for the agent's own state: writes under `~/.lunate` and the install prefix are
+  refused and `auth.json` is read-denied, through `sandbox-exec` on macOS and bubblewrap (or
+  Landlock) on Linux ([ADR-0024](adr/0024-bash-guard.md)). Windows has no cheap mechanism and says
+  so in the tool result instead of running unconfined silently.
 - **A daily driver.** Every write and command asks first — edits show you their diff — repository
   code asks once per repository before it runs, sessions resume, and print mode (`lunate -p`,
   `--json`) scripts the whole thing for CI.
 
 ## Install
 
-`0.1.0` is the first stable release.
+The current stable release is `0.2.0`; `0.1.0` was the first.
 
 macOS (arm64) and Linux (x64), through Homebrew:
 
@@ -79,7 +84,7 @@ lunate packages --verify
 ```
 
 Prerequisite: the [.NET 10 SDK](https://dotnet.microsoft.com/download), pinned in
-[`global.json`](global.json) at 10.0.401.
+[`global.json`](global.json) at 10.0.402.
 
 ```bash
 git clone https://github.com/wdaniel1993/lunate
@@ -312,7 +317,7 @@ The answer is cached under `~/.lunate/update-check.json` and reused for 24 hours
 There is no telemetry: the only header sent is `User-Agent: lunate/<version>`. Turn it off with
 `updateCheck: false` or `LUNATE_UPDATE_CHECK=0`; `--offline`, print mode, ACP and CI never check.
 
-The welcome header names the running build: `lunate  v0.1.0+0c96dc6`. The seven characters after `+` are the commit
+The welcome header names the running build: `lunate v0.2.0+1b045e5`. The seven characters after `+` are the commit
 it was built from, so two installs can be told apart without running `lunate --version`; a working-tree build
 with no commit metadata shows the plain version.
 
@@ -422,10 +427,19 @@ sources register the same way.
 ## Security model
 
 Lunate is a single-user tool, not a sandbox. The file tools (`read`, `write`, `edit`) resolve paths
-canonically — symlinks included — and refuse anything outside the working directory; `bash` is not
-boundary-checked, so the approval policy is its guard, and every write, edit and command asks before
-it runs unless you chose `auto-edit` or `--yolo`. Repository-provided code asks once per repository
-and re-asks when its content changes. In-process extensions are fully trusted, and an out-of-process
+canonically — symlinks included — and refuse anything outside the working directory. `bash` is not
+path-confined, but on macOS and Linux it runs under an OS-level guard ([ADR-0024](adr/0024-bash-guard.md))
+that refuses writes under the state root (`~/.lunate`, `LUNATE_HOME`) and the install prefix and
+read-denies `auth.json` — `sandbox-exec` on macOS, bubblewrap on Linux with `setpriv`'s Landlock
+rules as the fallback. When the mechanism cannot start (for example Ubuntu 23.10+'s AppArmor
+restriction), the command still runs with a visible notice and the result says so. The guard does not
+stop a reachable Docker socket, a pre-existing hardlink into the state root, or anything inside the
+workspace; `bashGuard: false` turns it off, and the header and tool results name that state. Windows
+has no mechanism yet and reports it rather than running unconfined silently.
+
+Beyond the guard, the approval policy is the boundary: every write, edit and command asks before it
+runs unless you chose `auto-edit` or `--yolo`. Repository-provided code asks once per repository and
+re-asks when its content changes. In-process extensions are fully trusted, and an out-of-process
 extension runs with your user privileges: the process boundary isolates dependencies and crashes,
 not permissions. Secrets are stored owner-only on POSIX and never printed. Report a vulnerability
 through GitHub's private vulnerability reporting on this repository — never a public issue — and see
