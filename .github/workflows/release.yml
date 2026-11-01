@@ -193,10 +193,11 @@ jobs:
           bash scripts/check-package-metadata.sh "dist/Lunate.Contracts.${contract_version}.nupkg" --id Lunate.Contracts
           bash scripts/check-package-metadata.sh \
             "dist/Lunate.Extensibility.Abstractions.${contract_version}.nupkg" --id Lunate.Extensibility.Abstractions
-          bash scripts/check-package-metadata.sh --prerelease \
-            "dist/Lunate.Agent.${preview_version}.nupkg" --id Lunate.Agent
-          bash scripts/check-package-metadata.sh --prerelease \
-            "dist/Lunate.Extensibility.Testing.${preview_version}.nupkg" --id Lunate.Extensibility.Testing
+          bash scripts/check-package-metadata.sh \
+            "dist/Lunate.Agent.${preview_version}.nupkg" --id Lunate.Agent --prerelease
+          bash scripts/check-package-metadata.sh \
+            "dist/Lunate.Extensibility.Testing.${preview_version}.nupkg" \
+            --id Lunate.Extensibility.Testing --prerelease
 
       - name: Sign in to nuget.org
         id: nuget
