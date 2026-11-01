@@ -8,7 +8,7 @@
         <Deterministic>true</Deterministic>
         <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
         <IsPackable>false</IsPackable>
-        <Version>0.2.0-rc.1</Version>
+        <Version>0.2.0-rc.2</Version>
 
         <!--
             The contract assemblies carry the API version, not the product version (ADR-0002's
