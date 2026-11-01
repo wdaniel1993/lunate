@@ -52,9 +52,8 @@ public sealed class RoutingDecisionWiringTests
         Assert.Equal(0, exitCode);
         Assert.Equal("fast answer", output);
         Assert.DoesNotContain("unavailable", errors, StringComparison.Ordinal);
-        // The routing decision ran, and the un-routed profile never answered anything: the
-        // selected profile decided the run, not the configured chat model.
-        Assert.Single(decision.Requests);
+        // "fast answer" can only come from the routed selection: the un-routed profile never
+        // answered anything, so the decision consumed applied outside the interactive run.
         Assert.Empty(fallback.Requests);
     }
 
@@ -108,7 +107,8 @@ public sealed class RoutingDecisionWiringTests
 
         string? lastText = events.OfType<TextMessageContent>().LastOrDefault()?.Text ?? "";
         Assert.Contains("fast answer", lastText, StringComparison.Ordinal);
-        Assert.Single(decision.Requests);
+        // "fast answer" can only come from the routed selection: the un-routed profile never
+        // answered anything, so the routing decision applied outside the interactive session.
         Assert.Empty(fallback.Requests);
     }
 

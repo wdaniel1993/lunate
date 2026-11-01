@@ -345,6 +345,11 @@ internal static class AcpMode
             {
                 ["decision"] = decisionModel,
             };
+        // The routing consumer is wired like the interactive session: an editor session is
+        // selected between the configured profiles it configured. Unresolved routing profiles
+        // are a settings-validation error before this point, so a resolution failure is a
+        // composition error, not a degraded gate.
+        IReadOnlyDictionary<string, UsageModelClient>? routingProfiles = ResolveRoutingProfiles();
 
         var options = new AgentHarnessOptions
         {
@@ -364,6 +369,8 @@ internal static class AcpMode
             SubagentLimits = effective.Subagents,
             ThinkingLevel = effective.Thinking,
             DecisionMode = effective.Decisions.Approvals,
+            RoutingMode = effective.Decisions.Routing,
+            RoutingProfiles = routingProfiles,
             ApprovalsThreshold = effective.Decisions.ApprovalsThreshold,
             DecideTool = effective.Decisions.Tool,
             UsageModels = usageModels,
@@ -404,6 +411,26 @@ internal static class AcpMode
                 effective.Providers
             );
             return (auth, providers.Entries);
+        }
+
+        // The profile clients load the stores only when routing is on, like the interactive
+        // session's per-build resolution.
+        IReadOnlyDictionary<string, UsageModelClient>? ResolveRoutingProfiles()
+        {
+            if (effective.Decisions.Routing == DecisionMode.Off)
+            {
+                return null;
+            }
+
+            (AuthStore auth, IReadOnlyList<ProviderEntry> providers) = LoadSources();
+            return DecisionUsageModels.ResolveRoutingProfiles(
+                effective,
+                providers,
+                auth,
+                models,
+                static name => Environment.GetEnvironmentVariable(name),
+                clientFactory
+            );
         }
 
         // The decide tool is declared to the model only when it will be registered: the harness
