@@ -130,14 +130,14 @@
       "type": "integer",
       "default": "unset",
       "scope": "user, project",
-      "description": "The profile's context window in tokens; a project profile may lower it against the user value, never raise it."
+      "description": "The profile's context window in tokens; a project profile may lower an already-set value, never raise it."
     },
     {
       "name": "profiles.*.maxOutput",
       "type": "integer",
       "default": "unset",
       "scope": "user, project",
-      "description": "The profile's maximum output tokens; a project profile may lower it against the user value, never raise it."
+      "description": "The profile's maximum output tokens; a project profile may lower an already-set value, never raise it."
     },
     {
       "name": "profiles.*.model",

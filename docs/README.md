@@ -5,6 +5,7 @@ Lunate keeps each kind of document in exactly one home. Start here, then jump to
 | Document kind | Home | What it owns |
 | --- | --- | --- |
 | Project entry point | [`../README.md`](../README.md) | What Lunate is, install, quick start, features, configuration and modes |
+| Settings reference | [`configuration.md`](configuration.md) | Every settings key with its type, default, scope and allowed values, generated from the settings schema so it cannot list a key the store refuses |
 | First run | [`first-run.md`](first-run.md) | Choosing a provider, `lunate auth`, the `/auth` picker, custom OpenAI-compatible endpoints and where credentials live |
 | Contributor guide | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Prerequisites, build, the verify gate, the repository map, the OpenSpec workflow |
 | Security policy | [`../SECURITY.md`](../SECURITY.md) | How to report a vulnerability, the trust model, secrets |
@@ -35,9 +36,12 @@ Lunate keeps each kind of document in exactly one home. Start here, then jump to
 - **One home per fact.** Link to the owning document instead of copying it; a fact that exists twice drifts.
 - **Generated regions are not hand-written.** `scripts/docs-sync` fills
   `<!-- keys:start --> … <!-- keys:end -->` in `guide.md` from `src/Lunate.Tui/keys.json` (the file
-  the router and the in-app help read), and expands `<!-- snippet: <path> -->` into a fenced block
+  the router and the in-app help read) and `<!-- docs-sync: settings --> …` in `configuration.md`
+  from `src/Lunate.Coding/settings-schema.json` (the file `SettingsSchema` reads and tests pin to
+  the parser's accepted keys), and expands `<!-- snippet: <path> -->` into a fenced block
   taken from that real file — the marker owns the block below it. Edit the source, then run
-  `scripts/docs-sync`; `--check` is what the gate runs.
+  `scripts/docs-sync`; `--check` is what the gate runs, in the docs profile and in the always-on
+  `Process` job.
 - **Behaviour changes update the specs first.** `openspec/specs/` is the source of truth; when prose and spec disagree, the spec wins.
 - **Keep it current.** A change updates the documents it invalidates; stale documentation is a bug.
 - **New documents land in a home above.** If none fits, propose a new home in an OpenSpec change first.
