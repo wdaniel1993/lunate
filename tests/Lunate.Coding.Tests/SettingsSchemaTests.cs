@@ -452,31 +452,7 @@ public sealed partial class SettingsSchemaTests
         return Assert.IsType<ProviderEntry>(provider);
     }
 
-    /// <summary>
-    /// The property-name literals the store switches over, read from the partials' sources. The
-    /// store is deny-by-default at every level, so its accepted key set is exactly the set of
-    /// literals it compares property names against; a key that resolved by itself would fail the
-    /// parser's own unknown-key refusal, so scanning the comparisons is the enumeration.
-    /// Captured shapes: <c>switch (property.Name)</c> regions, <c>property.Name ==</c>/
-    /// <c>!=</c> comparisons, and single-line <c>is not (x or y)</c> allow-lists.
-    /// </summary>
-    private static IReadOnlySet<string> AcceptedKeys()
-    {
-        var keys = new HashSet<string>(StringComparer.Ordinal);
-        foreach (
-            string file in Directory.GetFiles(
-                Path.Combine(TestPaths.RepositoryRoot, "src", "Lunate.Coding"),
-                "SettingsStore*.cs"
-            )
-        )
-        {
-            Collect(File.ReadAllLines(file), keys);
-        }
-
-        Assert.True(keys.Count > 20, $"scanned only {keys.Count} accepted keys; the scan broke");
-        return keys;
-    }
-
+    /// <summary>Captures property-name literals from switches and comparisons.</summary>
     private static void Collect(string[] lines, ISet<string> keys)
     {
         bool capturing = false;
@@ -519,7 +495,116 @@ public sealed partial class SettingsSchemaTests
         }
     }
 
-    private static IReadOnlySet<string> AcceptedKeyPaths() => AcceptedKeys();
+    private static readonly IReadOnlyDictionary<string, string> ParserPrefixes = new Dictionary<
+        string,
+        string
+    >
+    {
+        ["ParseJson"] = "",
+        ["ReadOutput"] = "output.",
+        ["ReadProjection"] = "projection.",
+        ["ReadSubagents"] = "subagents.",
+        ["ReadRoslyn"] = "roslyn.",
+        ["ReadTools"] = "tools.",
+        ["ReadDecisions"] = "decisions.",
+        ["ReadTui"] = "tui.",
+        ["ReadProfiles"] = "profiles.*.",
+        ["ReadProfileCapabilities"] = "profiles.*.capabilities.",
+        ["ReadUsages"] = "usages.",
+        ["ReadProviders"] = "providers.*.",
+    };
+
+    private static readonly IReadOnlyDictionary<string, IReadOnlySet<string>> StructuralKeys =
+        new Dictionary<string, IReadOnlySet<string>>
+        {
+            ["ParseJson"] = new HashSet<string>(StringComparer.Ordinal)
+            {
+                "output",
+                "projection",
+                "subagents",
+                "roslyn",
+                "tools",
+                "providers",
+                "profiles",
+                "usages",
+                "decisions",
+                "tui",
+            },
+            ["ReadTui"] = new HashSet<string>(StringComparer.Ordinal) { "keys" },
+            ["ReadProfiles"] = new HashSet<string>(StringComparer.Ordinal) { "capabilities" },
+        };
+
+    /// <summary>
+    /// Captures each parser method's literal property names, then qualifies them with that
+    /// method's JSON path so two identical leaf names in different blocks cannot mask drift.
+    /// </summary>
+    private static IReadOnlySet<string> AcceptedKeyPaths()
+    {
+        string[] files = Directory.GetFiles(
+            Path.Combine(TestPaths.RepositoryRoot, "src", "Lunate.Coding"),
+            "SettingsStore*.cs"
+        );
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        foreach ((string method, string prefix) in ParserPrefixes)
+        {
+            string[][] matches =
+            [
+                .. files
+                    .Select(File.ReadAllLines)
+                    .Select(lines => MethodBody(lines, method))
+                    .Where(body => body is not null)
+                    .Select(body => body!),
+            ];
+            Assert.True(matches.Length == 1, $"expected one parser method named {method}");
+
+            var literals = new HashSet<string>(StringComparer.Ordinal);
+            Collect(matches[0], literals);
+            IReadOnlySet<string> excluded = StructuralKeys.GetValueOrDefault(
+                method,
+                new HashSet<string>(StringComparer.Ordinal)
+            );
+            keys.UnionWith(
+                literals
+                    .Where(literal => !excluded.Contains(literal))
+                    .Select(literal => prefix + literal)
+            );
+        }
+
+        // Binding ids are dynamic parser keys; the schema represents the accepted key shape.
+        keys.Add("tui.keys.*");
+        Assert.True(keys.Count > 20, $"scanned only {keys.Count} accepted keys; the scan broke");
+        return keys;
+    }
+
+    private static string[]? MethodBody(string[] lines, string name)
+    {
+        Regex declaration = new($@"^\s*(?:private|public|internal|protected)\s+.*\b{name}\s*\(");
+        int start = Array.FindIndex(lines, line => declaration.IsMatch(line));
+        if (start < 0)
+        {
+            return null;
+        }
+
+        int opening = Array.FindIndex(
+            lines,
+            start,
+            line => line.Contains('{', StringComparison.Ordinal)
+        );
+        Assert.True(opening >= 0, $"parser method {name} has no body");
+        int depth = 0;
+        for (int index = opening; index < lines.Length; index++)
+        {
+            depth += lines[index].Count(character => character == '{');
+            depth -= lines[index].Count(character => character == '}');
+            if (depth == 0)
+            {
+                return lines[opening..(index + 1)];
+            }
+        }
+
+        Assert.Fail($"parser method {name} has unbalanced braces");
+        return null;
+    }
 
     [GeneratedRegex(@"^\s*switch \(\w+\.Name\)")]
     private static partial Regex NameSwitch();
