@@ -91,4 +91,58 @@ public sealed class InputHistoryTests
         Assert.Empty(history.Entries);
         Assert.False(File.Exists(path));
     }
+
+    [Fact]
+    public void The_history_file_and_a_fresh_store_directory_are_owner_only_on_posix()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Unix file modes do not exist on Windows.");
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        string path = temp.File("store/history");
+        var history = new InputHistory(path);
+
+        history.Add("prompt");
+
+        Assert.Equal(
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute,
+            File.GetUnixFileMode(Path.GetDirectoryName(path)!)
+        );
+        Assert.Equal(
+            UnixFileMode.UserRead | UnixFileMode.UserWrite,
+            File.GetUnixFileMode(path)
+        );
+    }
+
+    [Fact]
+    public void An_existing_world_readable_history_file_is_narrowed_on_the_next_write()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Unix file modes do not exist on Windows.");
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        string path = temp.File("history");
+        File.WriteAllText(path, "\"one\"\n");
+        File.SetUnixFileMode(
+            path,
+            UnixFileMode.UserRead
+                | UnixFileMode.UserWrite
+                | UnixFileMode.GroupRead
+                | UnixFileMode.OthersRead
+        );
+        var history = new InputHistory(path);
+
+        history.Add("two");
+
+        Assert.Equal(
+            UnixFileMode.UserRead | UnixFileMode.UserWrite,
+            File.GetUnixFileMode(path)
+        );
+    }
 }

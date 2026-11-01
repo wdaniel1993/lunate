@@ -158,6 +158,81 @@ public sealed class RecordingChatClientTests
         Assert.Throws<ArgumentException>("fixturePath", () => new RecordingChatClient(inner, " "));
     }
 
+    [Fact]
+    public async Task The_recording_file_and_its_directory_are_owner_only_on_posix()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Unix file modes do not exist on Windows.");
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        string path = temp.File("recordings/stream.jsonl");
+        var inner = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("one")])
+        );
+        var client = new RecordingChatClient(inner, path, "gpt-4o-mini");
+
+        await client
+            .GetStreamingResponseAsync(
+                [new ChatMessage(ChatRole.User, "hello")],
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute,
+            File.GetUnixFileMode(Path.GetDirectoryName(path)!)
+        );
+        Assert.Equal(
+            UnixFileMode.UserRead | UnixFileMode.UserWrite,
+            File.GetUnixFileMode(path)
+        );
+    }
+
+    [Fact]
+    public async Task An_existing_world_readable_recording_is_narrowed_on_the_next_write()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Unix file modes do not exist on Windows.");
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        string path = temp.File("stream.jsonl");
+        var inner = new ScriptedChatClient()
+            .Enqueue(new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("one")]))
+            .Enqueue(new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("two")]));
+        var client = new RecordingChatClient(inner, path, "gpt-4o-mini");
+
+        await client
+            .GetStreamingResponseAsync(
+                [new ChatMessage(ChatRole.User, "first")],
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+            .ToListAsync(TestContext.Current.CancellationToken);
+        File.SetUnixFileMode(
+            path,
+            UnixFileMode.UserRead
+                | UnixFileMode.UserWrite
+                | UnixFileMode.GroupRead
+                | UnixFileMode.OthersRead
+        );
+        await client
+            .GetStreamingResponseAsync(
+                [new ChatMessage(ChatRole.User, "second")],
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            UnixFileMode.UserRead | UnixFileMode.UserWrite,
+            File.GetUnixFileMode(path)
+        );
+    }
+
     private static IEnumerable<string> Serialize(IEnumerable<ChatResponseUpdate> updates) =>
         updates.Select(update => JsonSerializer.Serialize(update, FixtureFormat.JsonOptions));
 
