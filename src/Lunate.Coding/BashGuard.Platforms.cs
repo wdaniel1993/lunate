@@ -142,6 +142,23 @@ internal sealed partial class BashGuard
             );
         }
 
+        // Landlock is allow-only: the denial exists because no rule grants the target. A target
+        // that does not exist yet never enters the walk, so its parent stays fully granted and a
+        // command could create it and write inside — report that instead of wrapping and claiming a
+        // protection the rules do not contain.
+        if (!_probe.DirectoryExists(_target.StateRoot))
+        {
+            reasons.Add(
+                $"{_target.StateRoot} does not exist yet, so Landlock cannot deny writes under it"
+            );
+            return Unwrapped(
+                shell,
+                "unavailable",
+                Notice(reasons),
+                probeState: bwrap is null ? "not run" : "failure"
+            );
+        }
+
         List<string>? rules = LandlockBase(workspace, out int ruleCount);
         if (rules is null)
         {
@@ -202,11 +219,11 @@ internal sealed partial class BashGuard
         arguments.AddRange(["--dev-bind", "/dev", "/dev", "--die-with-parent"]);
         return arguments;
 
-        // A missing source is a bwrap failure, not a protection; skip rather than break the
-        // mechanism, and let the write land — the next resolution picks the directory up so the
-        // following spawn denies writes under it.
+        // A missing source is a bwrap failure, not a protection, and skipping the mount leaves the
+        // path writable. A tmpfs over the target needs no host directory: the mount point is made
+        // inside the sandbox, writes land in a throwaway mount, and nothing appears on the host.
         IEnumerable<string> TargetBind(string flag, string path) =>
-            _probe.DirectoryExists(path) ? [flag, path, path] : [];
+            _probe.DirectoryExists(path) ? [flag, path, path] : ["--tmpfs", path];
     }
 
     /// <summary>
