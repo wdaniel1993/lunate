@@ -90,12 +90,27 @@ internal sealed class ClientApprover : IUserPromptToolApprover
         return await PromptAsync(request, ct).ConfigureAwait(false);
     }
 
-    /// <summary>Always requests a decision from the editor, bypassing remembered outcomes.</summary>
+    /// <summary>
+    /// Requests a decision from the editor, bypassing a remembered allow so an escalation can
+    /// force the ask. A remembered reject-always is final for the session: it declines without
+    /// asking again, whatever a decision model recommends.
+    /// </summary>
     public async ValueTask<bool> PromptAsync(ApprovalRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
         ITool tool = request.Tool;
         JsonElement args = request.Args;
+
+        lock (_gate)
+        {
+            if (_never.Contains(tool.Name))
+            {
+                Log(
+                    $"request_permission {tool.Name}: reject-always remembered; the call is declined"
+                );
+                return false;
+            }
+        }
 
         var permission = new RequestPermissionRequest
         {
