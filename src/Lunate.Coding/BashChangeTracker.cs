@@ -11,12 +11,17 @@ namespace Lunate.Coding;
 /// per-run snapshot (HEAD oid, the root's prefix inside the repository, and the content hash of
 /// every path the last scan saw) is diffed against each new scan — <c>git status</c> answers
 /// "what differs from HEAD", so publishing it raw would re-flag already-dirty files after every
-/// call and would miss clean-to-clean changes. Failures (no git, no repository, timeout, parse
-/// trouble) yield no events and no snapshot advance — the content-stamp scan stays the backstop —
-/// and every failure names why it produced nothing in the extension log (#395), so a scan trouble
-/// cannot hide behind a test that polls for a publish that never comes.
+/// call and would miss clean-to-clean changes. When git cannot answer (no git, no repository,
+/// broken HEAD, timeout, spawn trouble), the content-stamp walk covers (#418): it hashes every
+/// readable regular file under the root and diff-answers from the snapshot, and the report says
+/// how it was seen. When nothing can look at the workspace, the report is unavailable and the
+/// snapshot stays — the name why it produced nothing is in the extension log (#395), so a scan
+/// trouble cannot hide behind a test that polls for a publish that never comes.
 /// </summary>
-internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? scanTimeout = null)
+internal sealed partial class BashChangeTracker(
+    IExtensionLog? log = null,
+    TimeSpan? scanTimeout = null
+)
 {
     private static readonly TimeSpan DefaultScanTimeout = TimeSpan.FromSeconds(2);
 
@@ -41,12 +46,13 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
     internal sealed record Change(string RelativePath, FileChangeKind Kind);
 
     /// <summary>
-    /// Scans the run's workspace root and returns the changes since this run's previous scan; the
-    /// first scan of a run only baselines (nothing is published for pre-existing state). Scan
-    /// trouble returns an empty list and says why in the log — the content-stamp scan stays the
-    /// backstop; only a cancelled token propagates.
+    /// Scans the run's workspace root and reports the changes since this run's previous scan; the
+    /// first scan of a run only baselines (nothing is published for pre-existing state). When git
+    /// cannot answer, the stamp walk covers (#418) and the report's source says how it was seen;
+    /// only when nothing can look at the workspace is a bare empty list again the answer, marked
+    /// unavailable. Only a cancelled token propagates.
     /// </summary>
-    internal async Task<IReadOnlyList<Change>> ObserveAsync(
+    internal async Task<ScanReport> ObserveAsync(
         string? runId,
         string root,
         CancellationToken cancellationToken = default
@@ -55,16 +61,44 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
         await _scanGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            Scan? scan = await ScanAsync(root, cancellationToken).ConfigureAwait(false);
+            var key = (runId, root);
+            bool baselined = _snapshots.TryGetValue(
+                key,
+                out (Snapshot Snapshot, long Tick) previous
+            );
+
+            (Scan? scan, string? gitReason) = await ScanAsync(root, cancellationToken)
+                .ConfigureAwait(false);
+            ScanSource source = ScanSource.Git;
             if (scan is null)
             {
-                // Unreachable git, a non-repository root, a scan timeout or parse trouble: no
-                // events, and the previous snapshot stays — the next scan still sees the change.
-                return [];
+                // Git did not answer (a broken HEAD, no repository, a timeout, a starved runner):
+                // the stamp walk covers from content (#418) so a workspace a model keeps editing
+                // stays observable behind a git that cannot look. A non-repository or unreadable
+                // root is not walkable either — then nothing looked, and the scan says so instead
+                // of a bare empty list that reads as "no change".
+                (Scan? stamp, string? walkTrouble) = StampScan(
+                    root,
+                    baselined ? previous.Snapshot.Status : null
+                );
+                if (stamp is null)
+                {
+                    return new ScanReport(
+                        [],
+                        ScanSource.Unavailable,
+                        $"{gitReason}; the stamp walk could not look either ({walkTrouble})"
+                    );
+                }
+
+                scan = stamp;
+                source = ScanSource.Stamp;
+            }
+            else
+            {
+                gitReason = null;
             }
 
-            var key = (runId, root);
-            if (!_snapshots.TryGetValue(key, out (Snapshot Snapshot, long Tick) previous))
+            if (!baselined)
             {
                 if (_snapshots.Count >= MaxSnapshots)
                 {
@@ -72,7 +106,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
                 }
 
                 _snapshots[key] = (Snapshot.Baseline(scan), ++_tick);
-                return [];
+                return new ScanReport([], source, gitReason);
             }
 
             (IReadOnlyList<Change> changes, Snapshot next) = await DiffAsync(
@@ -84,7 +118,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
                 .ConfigureAwait(false);
             // A fresh tick marks this snapshot as the most recently used.
             _snapshots[key] = (next, ++_tick);
-            return changes;
+            return new ScanReport(changes, source, gitReason);
         }
         finally
         {
@@ -187,9 +221,12 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
         return (changes, next);
     }
 
-    private async Task<Scan?> ScanAsync(string root, CancellationToken cancellationToken)
+    private async Task<(Scan? Scan, string? Reason)> ScanAsync(
+        string root,
+        CancellationToken cancellationToken
+    )
     {
-        ProcessRunResult? status = await RunGitAsync(
+        (ProcessRunResult? status, string? spawnReason) = await RunGitAsync(
                 root,
                 ["status", "--porcelain", "-z", "--ignore-submodules=dirty", "-unormal", "--", "."],
                 cancellationToken
@@ -197,32 +234,35 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
             .ConfigureAwait(false);
         if (status is null)
         {
-            return null;
+            // The reason is already logged inside the spawn wrapper.
+            return (null, spawnReason);
         }
 
         if (status.TimedOut)
         {
             log?.Warn("bash change scan timed out; the content-stamp scan stays the backstop.");
-            return null;
+            return (null, "git scan timed out");
         }
 
         if (status.ExitCode != 0)
         {
             // A git failure never publishes; it does say why (#395): a scan that produces nothing
             // must be distinguishable from "no change", in the log the extension owner reads.
+            string reason =
+                $"git status failed (exit {status.ExitCode!.Value.ToString(CultureInfo.InvariantCulture)}; {FirstLine(status.Stderr)})";
             log?.Warn(
                 $"bash change scan: git status failed (exit "
                     + $"{status.ExitCode!.Value.ToString(CultureInfo.InvariantCulture)}; "
                     + $"{FirstLine(status.Stderr)}); the content-stamp scan stays the backstop."
             );
-            return null;
+            return (null, reason);
         }
 
         IReadOnlyList<(string Path, FileChangeKind Kind)> parsed = ParsePorcelain(status.Stdout);
 
         string? head = null;
         string prefix = "";
-        ProcessRunResult? identity = await RunGitAsync(
+        (ProcessRunResult? identity, _) = await RunGitAsync(
                 root,
                 ["rev-parse", "HEAD", "--show-prefix"],
                 cancellationToken
@@ -256,7 +296,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
             hashes[relative] = HashOf(root, relative);
         }
 
-        return new Scan(head, prefix, entries, hashes);
+        return (new Scan(head, prefix, entries, hashes), null);
     }
 
     /// <summary>
@@ -345,7 +385,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
         CancellationToken cancellationToken
     )
     {
-        ProcessRunResult? diff = await RunGitAsync(
+        (ProcessRunResult? diff, _) = await RunGitAsync(
                 root,
                 ["diff", "--name-status", "-z", fromHead, toHead],
                 cancellationToken
@@ -401,7 +441,11 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
         return entries;
     }
 
-    private async Task<ProcessRunResult?> RunGitAsync(
+    /// <summary>
+    /// Runs one git invocation. A spawn failure returns no result and the reason, already logged
+    /// (#395), so a scan that could not look says so.
+    /// </summary>
+    private async Task<(ProcessRunResult? Result, string? Reason)> RunGitAsync(
         string root,
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken
@@ -409,7 +453,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
     {
         try
         {
-            return await Runner
+            ProcessRunResult result = await Runner
                 .RunAsync(
                     new ProcessRunRequest(
                         "git",
@@ -421,6 +465,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
                     cancellationToken
                 )
                 .ConfigureAwait(false);
+            return (result, null);
         }
         catch (Exception exception)
             when (exception
@@ -433,11 +478,13 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? sca
         {
             // Git cannot start (or is missing): still say why (#395) — a starved runner whose
             // spawn fails must not look like a run that changed nothing.
+            string reason =
+                $"git could not start ({exception.GetType().Name}: {exception.Message})";
             log?.Warn(
                 $"bash change scan: git could not start ({exception.GetType().Name}: "
                     + $"{exception.Message}); the content-stamp scan stays the backstop."
             );
-            return null;
+            return (null, reason);
         }
     }
 

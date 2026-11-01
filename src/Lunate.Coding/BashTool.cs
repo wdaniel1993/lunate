@@ -220,9 +220,10 @@ public sealed class BashTool : ITool
     }
 
     /// <summary>
-    /// Publishes the run's bash-made changes (the git-status diffed scan; source <c>bash</c>).
-    /// Never affects the tool result: failures are silent and the content-stamp scan stays the
-    /// backstop. The scan keeps its own short timeout, so a cancelled call is still scanned.
+    /// Publishes the run's bash-made changes (the change tracker's scan; source <c>bash</c>).
+    /// Never affects the tool result: failures name themselves in the log, and the stamp backstop
+    /// (#418) keeps a broken git from going blind. The scan keeps its own short timeout, so a
+    /// cancelled call is still scanned.
     /// </summary>
     private async Task PublishChangesAsync(ToolContext ctx)
     {
@@ -233,10 +234,10 @@ public sealed class BashTool : ITool
 
         try
         {
-            IReadOnlyList<BashChangeTracker.Change> changes = await _changes
+            ScanReport report = await _changes
                 .ObserveAsync(ctx.RunId, ctx.WorkingDirectory, CancellationToken.None)
                 .ConfigureAwait(false);
-            foreach (BashChangeTracker.Change change in changes)
+            foreach (BashChangeTracker.Change change in report.Changes)
             {
                 string absolute = Workspace.Canonicalize(
                     Path.Combine(
@@ -253,6 +254,16 @@ public sealed class BashTool : ITool
                         change.Kind,
                         Source: "bash"
                     )
+                );
+            }
+
+            if (report.Source == ScanSource.Unavailable)
+            {
+                // Nothing could look at the workspace — a scan that produced nothing must not
+                // read as "no change" (#395, #418): the log is where the blindness explains itself.
+                _log?.Warn(
+                    $"bash change report: could not look at the workspace ({report.FailureReason}); "
+                        + "bash-made changes go undetected until a scan can look"
                 );
             }
         }
