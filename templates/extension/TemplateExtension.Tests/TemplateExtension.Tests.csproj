@@ -26,8 +26,10 @@
         release context, so the last published preview is the only thing that can exist.
     -->
     <PropertyGroup Condition="'$(LunateTestingVersion)' == ''">
-        <LunateTestingVersion Condition="'$(PreviewVersion)' != ''">$(PreviewVersion)</LunateTestingVersion>
-        <LunateTestingVersion Condition="'$(PreviewVersion)' == ''">0.2.0-preview.1</LunateTestingVersion>
+        <LunateTestingVersion Condition="'$(PreviewVersion)' != ''"
+            >$(PreviewVersion)</LunateTestingVersion>
+        <LunateTestingVersion Condition="'$(PreviewVersion)' == ''"
+            >0.2.0-preview.1</LunateTestingVersion>
     </PropertyGroup>
 
     <ItemGroup>
