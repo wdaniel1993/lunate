@@ -16,9 +16,31 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 OUT="${1:-${RUNNER_TEMP:-/tmp}/lunate-pack-dry-run}"
 
+# The output directory is deleted before packing. A caller-supplied path must therefore be a
+# scratch directory and nothing else: refuse a filesystem root, the home directory, the repository
+# or any ancestor of it, and refuse to clear a non-empty directory this script did not create.
+resolved="$(cd "${OUT}" 2>/dev/null && pwd -P || printf '%s' "${OUT}")"
+for guarded in "/" "${HOME}" "${REPO_ROOT}"; do
+    if [ "${resolved}" = "${guarded}" ]; then
+        echo "pack-dry-run: refusing to use ${resolved} as an output directory" >&2
+        exit 2
+    fi
+done
+case "${REPO_ROOT}/" in
+    "${resolved}"/*)
+        echo "pack-dry-run: refusing to use ${resolved}, which contains the repository" >&2
+        exit 2
+        ;;
+esac
+if [ -d "${resolved}" ] && [ -n "$(ls -A "${resolved}")" ] && [ ! -f "${resolved}/.pack-dry-run" ]; then
+    echo "pack-dry-run: ${resolved} is not empty and was not created by this script" >&2
+    exit 2
+fi
+
 cd "${REPO_ROOT}"
-rm -rf "${OUT}"
-mkdir -p "${OUT}"
+rm -rf "${resolved}"
+mkdir -p "${resolved}"
+: > "${resolved}/.pack-dry-run"
 
 pack() {
     dotnet pack "$1" -c Release -o "${OUT}" --nologo

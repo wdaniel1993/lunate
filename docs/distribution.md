@@ -47,7 +47,7 @@ The commands below use `0.1.0`; substitute the version from `Directory.Build.pro
 Before the first tag, run the Release workflow once via `workflow_dispatch` (dry run) to exercise the pack job and the archives; the attach job only runs on tags, so nothing is published:
 
 ```sh
-gh workflow run release.yml --ref main
+gh workflow run release.yml --ref main -f version=v0.2.0
 gh run list --workflow release.yml --limit 1
 ```
 

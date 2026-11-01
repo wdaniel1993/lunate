@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to derive the packages from (e.g. v0.2.0). Defaults to the ref name; a dispatch never publishes.'
+        required: false
 
 jobs:
   gate:
@@ -186,8 +190,12 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/release-versions.sh --self-test
-          bash scripts/release-versions.sh "${GITHUB_REF_NAME}" >> "${GITHUB_ENV}"
-          sed -n 's/^/release: /p' < <(bash scripts/release-versions.sh "${GITHUB_REF_NAME}")
+          # A dispatch runs the same pack path without a tag, so the version comes from the
+          # `version` input; a tag push derives it from the tag itself.
+          tag="${{ inputs.version }}"
+          tag="${tag:-${GITHUB_REF_NAME}}"
+          bash scripts/release-versions.sh "${tag}" >> "${GITHUB_ENV}"
+          sed -n 's/^/release: /p' < <(bash scripts/release-versions.sh "${tag}")
 
       - name: Check package metadata
         run: |
@@ -285,13 +293,18 @@ jobs:
         run: |
           set -euo pipefail
           tag="${GITHUB_REF_NAME}"
-          if ! gh release view "$tag" >/dev/null 2>&1; then
-            gh release create "$tag" --title "$tag" --generate-notes
-          fi
           # A candidate must never be "latest": install.sh and install.ps1 resolve latest/download
           # when no version is given, and v0.1.0-rc.1 was served as the stable release until this
-          # line existed.
+          # line existed. The flags go on the create call itself — creating the release first and
+          # editing it afterwards leaves a window in which the candidate is the latest release.
+          edit=(--title "$tag")
+          create=(--title "$tag" --generate-notes)
           case "$tag" in
-            *-*) gh release edit "$tag" --prerelease --latest=false ;;
+            *-*) edit+=(--prerelease --latest=false); create+=(--prerelease --latest=false) ;;
           esac
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" "${edit[@]}"
+          else
+            gh release create "$tag" "${create[@]}"
+          fi
           gh release upload "$tag" dist/* --clobber
