@@ -8,6 +8,11 @@ Notable changes to Lunate, one section per release. The format follows
 
 ## [Unreleased]
 
+## [0.2.0-rc.1] - 2026-11-01
+
+The second release: the extension contract becomes a published surface, the bash guard lands on macOS
+and Linux, and the tool gains a pack-only gate that proves every package version before a tag does.
+
 ### Added
 
 - The bash guard: a bash command is wrapped in an OS-level deny that refuses writes under the state
@@ -120,4 +125,5 @@ verified against a real, versioned build; the first stable release is `0.1.0`.
 
 [0.1.0]: https://github.com/wdaniel1993/lunate/compare/v0.1.0-rc.2...v0.1.0
 [0.1.0-rc.2]: https://github.com/wdaniel1993/lunate/compare/v0.1.0-rc.1...v0.1.0-rc.2
-[0.1.0-rc.1]: https://github.com/wdaniel1993/lunate/compare/v0.1.0-rc.1...v0.1.0-rc.2
+[0.2.0-rc.1]: https://github.com/wdaniel1993/lunate/compare/v0.1.0...v0.2.0-rc.1
+[0.1.0-rc.1]: https://github.com/wdaniel1993/lunate/releases/tag/v0.1.0-rc.1

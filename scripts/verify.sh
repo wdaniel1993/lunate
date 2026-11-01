@@ -709,6 +709,13 @@ XML
     -p:LunateUseNuGetContracts=true --nologo -nodeReuse:false
 
   step "packaging files"
+  # A candidate is not a channel release: homebrew, scoop and winget keep pointing at the last stable
+  # version while the version under test carries a prerelease suffix, so only the files' presence is
+  # asserted here — a tag that produces 0.2.0 goes through the version match again.
+  packaging_requires_version=true
+  case "$version" in
+    *-*) packaging_requires_version=false ;;
+  esac
   for packaging_file in \
     packaging/homebrew/lunate.rb \
     packaging/scoop/lunate.json \
@@ -719,7 +726,7 @@ XML
       echo "verify: missing packaging file: ${packaging_file}" >&2
       exit 1
     fi
-    if ! grep -Fq "$version" "$packaging_file"; then
+    if [ "$packaging_requires_version" = true ] && ! grep -Fq "$version" "$packaging_file"; then
       echo "verify: ${packaging_file} does not carry the current version ${version}" >&2
       exit 1
     fi
