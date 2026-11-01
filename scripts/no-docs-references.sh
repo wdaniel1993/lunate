@@ -40,7 +40,12 @@ FILESYSTEM_CALL='(File|Directory)\.[A-Za-z]+\([^;]*"docs[/"\\]'
 # guide's key table to be checked against the key binding catalog; that check reads
 # docs/guide.md and is the guide's page-level guard inside `dotnet test`, where the docs-sync
 # region check does not run (it is a docs-profile step, not a full-matrix one).
-ALLOWED_DOCS_READERS=(tests/Lunate.Tui.Tests/GuideKeyTableTests.cs)
+ALLOWED_DOCS_READERS=(
+  tests/Lunate.Tui.Tests/GuideKeyTableTests.cs
+  # Asserts the brand icon every package packs exists at its docs path — the same packaged asset the
+  # build-file allowance above covers, checked from the test side.
+  tests/Lunate.Extensibility.Tests/ExtensionContractPackages.cs
+)
 
 findings=0
 scanned=0
@@ -69,6 +74,26 @@ scan_build_file() {
     [ -n "$hit" ] || continue
     number="${hit%%:*}"
     text="${hit#*:}"
+    # An item can split Include and Pack across lines; the continuation is part of the same item.
+    text_with_continuation="$text $(sed -n "$((number + 1)),$((number + 3))p" "$file" | tr '\n' ' ')"
+    case "$text_with_continuation" in
+      # A packaged asset is a build input, but the only one the repository needs from docs/: the
+      # brand icon every package carries on its feed page. It is allowed only while the file is
+      # really there — the check that used to catch this shape by blanket refusal now asserts the
+      # asset exists, so a docs pull request that deletes the icon still fails here instead of at
+      # pack time on a tag. Moving the icon out of docs/ is the better fix and is tracked separately.
+      *'Pack="true"'*)
+        packed="$(printf '%s' "$text" | sed -n 's/.*Include="\([^"]*\)".*/\1/p')"
+        if [ -n "$packed" ] && [ -f "$(dirname "$file")/$packed" ]; then
+          printf 'no-docs-references: note: %s:%s packs %s, which exists\n' \
+            "${file#"${root}"/}" "$number" "$packed"
+          continue
+        fi
+        report "FAIL: ${file#"${root}"/}:${number} packs a docs file that does not exist: ${text}"
+        findings=$((findings + 1))
+        continue
+        ;;
+    esac
     report "FAIL: ${file#"${root}"/}:${number} makes the docs tree a build input: ${text}"
     findings=$((findings + 1))
   done <<<"$hits"
@@ -78,11 +103,13 @@ scan_test_file() {
   local root="$1" file="$2" hit number text
   local candidates rootish=0
   scanned=$((scanned + 1))
-  if [ "${file#"$root"/}" = "${ALLOWED_DOCS_READERS[0]}" ]; then
-    printf 'no-docs-references: note: %s is the allowed docs reader (the guide key-table drift test)\n' \
-      "${file#"$root"/}"
-    return 0
-  fi
+  local allowed
+  for allowed in "${ALLOWED_DOCS_READERS[@]}"; do
+    if [ "${file#"$root"/}" = "$allowed" ]; then
+      printf 'no-docs-references: note: %s is an allowed docs reader\n' "${file#"$root"/}"
+      return 0
+    fi
+  done
   candidates="$(grep -nE "$DOCS_PATH" "$file" || true)"
   [ -n "$candidates" ] || return 0
   if grep -qE "$ROOT_MARKERS" "$file"; then
