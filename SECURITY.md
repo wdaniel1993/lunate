@@ -58,9 +58,11 @@ are read by Lunate and sent only to the provider you configured.
 
 A configured stdio MCP server is a child process that inherits your whole environment — provider
 keys included — for as long as it runs, whether or not its entry declares `env`. The per-server
-trust prompt states this: approving a server is what exposes the environment to it. To reduce
-exposure, declare only the variables a server needs in its `env` and expand trusted values with
-`${VAR}`, so credentials are read from your shell instead of stored in `mcp.json`.
+trust prompt states this: approving a server is what exposes the environment to it. To keep literal
+credentials out of `mcp.json`, declare only the variables a server needs in `env` and expand trusted
+values with `${VAR}`. This does not filter the inherited environment; until a future release narrows
+inheritance, launch Lunate with a minimal environment to keep unrelated secrets from reaching the
+server.
 
 ## What is out of scope
 

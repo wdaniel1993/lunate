@@ -343,10 +343,11 @@ and a project file wins over a user file. Servers start on first use, their tool
 
 A stdio MCP server is a child process and nothing narrows what it receives: it inherits Lunate's
 whole shell environment — provider keys such as `OPENAI_API_KEY` included — whether or not its
-entry declares `env`. The per-server trust prompt says so. To keep exposure down, declare only the
-variables a server needs in `env` and expand trusted values into them with `${VAR}`, so keys are
-read from your shell each run instead of stored in `mcp.json`; future releases will narrow the
-inheritance.
+entry declares `env`. The per-server trust prompt says so. To keep literal credentials out of
+`mcp.json`, declare only the variables a server needs in `env` and expand trusted values with
+`${VAR}`, so keys are read from your shell each run instead of stored in the file. This does not
+filter the inherited environment: until a future release narrows inheritance, launch Lunate with a
+minimal environment to keep unrelated secrets from reaching the server.
 
 Lunate can also be the server: `lunate mcp roslyn` serves the five read-only `cs_*` C# tools over
 stdio to another MCP host, with no approvals or write path behind them.
