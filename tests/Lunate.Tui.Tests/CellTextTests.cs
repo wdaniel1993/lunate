@@ -78,6 +78,43 @@ public sealed class CellTextTests
     ) => Assert.Equal(expected, CellText.SingleLine(text));
 
     [Fact]
+    public void SingleLine_drops_c1_control_bytes() =>
+        // U+009B is C1 CSI: the C0 scrub missed it and the sequence arrived intact.
+        Assert.Equal("a32m red", CellText.SingleLine("a\u009b32m red"));
+
+    [Fact]
+    public void Clip_drops_control_bytes_and_keeps_the_printable_remainder() =>
+        // OSC 52 clipboard write, BEL-terminated: the escape bytes go, the visible remnants stay.
+        Assert.Equal(
+            "]52;c;Q2xpY2JvYXJkpwned",
+            CellText.Clip("\u001b]52;c;Q2xpY2JvYXJk\u0007pwned", 30)
+        );
+
+    [Fact]
+    public void Clip_drops_c1_control_bytes() =>
+        Assert.Equal("a2Jb", CellText.Clip("a\u009b2Jb", 20));
+
+    [Fact]
+    public void Clip_expands_a_tab_to_one_space() =>
+        Assert.Equal("a b c", CellText.Clip("a\tb\tc", 10));
+
+    [Fact]
+    public void Wrap_drops_control_bytes_and_expands_tabs()
+    {
+        IReadOnlyList<string> lines = CellText.Wrap("\u001b]52;c;AAA\u0007clear\there", 20);
+
+        Assert.Equal(["]52;c;AAAclear here"], lines);
+        Assert.All(
+            lines,
+            line =>
+                Assert.True(
+                    !line.Any(static c => char.IsControl(c) || (c >= '\u007f' && c <= '\u009f')),
+                    $"'{line}' still carries a control byte"
+                )
+        );
+    }
+
+    [Fact]
     public void Wrap_returns_text_that_fits_unchanged() =>
         Assert.Equal(["abc"], CellText.Wrap("abc", 5));
 

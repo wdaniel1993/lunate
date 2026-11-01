@@ -67,9 +67,10 @@ public sealed class UserEchoRendererTests
     }
 
     [Fact]
-    public void A_tab_survives_the_echo()
+    public void A_tab_renders_as_one_space_in_the_echo()
     {
-        Assert.Equal("> a\tb\n\n", Render("a\tb", width: 40));
+        // The scrub boundary expands a tab like every other committed string (#447).
+        Assert.Equal("> a b\n\n", Render("a\tb", width: 40));
     }
 
     [Fact]

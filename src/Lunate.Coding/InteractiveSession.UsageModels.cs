@@ -57,43 +57,34 @@ internal sealed partial class InteractiveSession
                 if (_warnedDecisionProfiles.Add(profileName))
                 {
                     Notify(
-                        $"decision profile '{profileName}' is unavailable; decision suggestions are off: {exception.Message}",
+                        $"decision profile '{profileName}' is unavailable; the decision layer is off: {exception.Message}",
                         NoticeLevel.Warning
                     );
                 }
             }
         }
 
-        // The decision profile is configured in the decisions block, not as a usage.
-        if (_settings.Decisions.Profile is { } decisionProfile)
+        // The decision profile is configured in the decisions block, not as a usage; every
+        // frontend resolves it through the same shared seam.
+        if (
+            DecisionUsageModels.ResolveDecisionModel(
+                _settings,
+                () => (_auth, _providerEntries),
+                _catalog,
+                _environment,
+                _factory,
+                notice => Notify(notice.Message, notice.Level),
+                _warnedDecisionProfiles
+            ) is
+            { } decisionModel
+        )
         {
-            try
-            {
-                usages["decision"] = GetClient(
-                    ModelSelectionResolver.ResolveChatModel(
-                        decisionProfile,
-                        _settings,
-                        _providerEntries,
-                        _catalog
-                    )
-                );
-            }
-            catch (Exception exception)
-                when (exception
-                        is UnknownModelException
-                            or InvalidDataException
-                            or InvalidOperationException
-                            or ArgumentException
-                )
-            {
-                if (_warnedDecisionProfiles.Add(decisionProfile))
-                {
-                    Notify(
-                        $"decision profile '{decisionProfile}' is unavailable; decision suggestions are off: {exception.Message}",
-                        NoticeLevel.Warning
-                    );
-                }
-            }
+            // A resolution that lands on a profile another usage already carries shares that
+            // client, the one-client-per-profile rule the composition cache keeps.
+            usages["decision"] =
+                usages.Values.FirstOrDefault(client =>
+                    client.ProfileName == decisionModel.ProfileName
+                ) ?? decisionModel;
         }
 
         return usages;
@@ -117,35 +108,15 @@ internal sealed partial class InteractiveSession
         }
     }
 
-    private IReadOnlyDictionary<string, UsageModelClient>? ResolveRoutingProfiles()
-    {
-        if (_settings.Decisions.Routing == DecisionMode.Off)
-        {
-            return null;
-        }
-
-        var profiles = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal);
-        foreach (string profileName in _settings.Decisions.RoutingProfiles)
-        {
-            ResolvedModelProfile profile = ModelSelectionResolver.ResolveChatModel(
-                profileName,
-                _settings,
-                _providerEntries,
-                _catalog
-            );
-            profiles.Add(
-                profileName,
-                new UsageModelClient(
-                    new DeferredChatClient(() => CreateUsageClient(profile)),
-                    profile.Profile.Name,
-                    profile.Provider.Name,
-                    profile.Model
-                )
-            );
-        }
-
-        return profiles;
-    }
+    private IReadOnlyDictionary<string, UsageModelClient>? ResolveRoutingProfiles() =>
+        DecisionUsageModels.ResolveRoutingProfiles(
+            _settings,
+            _providerEntries,
+            _auth,
+            _catalog,
+            _environment,
+            _factory
+        );
 
     private IChatClient CreateUsageClient(ResolvedModelProfile profile)
     {
