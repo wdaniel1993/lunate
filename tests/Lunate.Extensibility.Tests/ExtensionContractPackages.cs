@@ -19,8 +19,6 @@ namespace Lunate.Extensibility.Tests;
 /// </remarks>
 public sealed class ExtensionContractPackages
 {
-    private const string PreviewVersion = "0.2.0-preview.1";
-
     private const string StabilityPromise = "no API stability promise before 1.0";
 
     /// <summary>The contract assemblies a shipped preview package must never carry in its own lib.</summary>
@@ -34,10 +32,14 @@ public sealed class ExtensionContractPackages
     [Fact]
     public void The_stable_packages_version_with_the_api()
     {
+        // The API version in Directory.Build.props is the number ExtensionApi.Current names; the
+        // published version is that plus the tag's prerelease suffix, so an RC tag publishes
+        // 1.15.0-rc.1 and only a final tag publishes the stable 1.15.0.
+        Assert.Equal(ExtensionApi.Current, ReleaseVersions.Api);
         string[] stable = ["Lunate.Contracts", "Lunate.Extensibility.Abstractions"];
         foreach (string id in stable)
         {
-            Assert.Equal(ExtensionApi.Current, VersionOf(id));
+            Assert.Equal(ReleaseVersions.Contract, VersionOf(id));
         }
     }
 
@@ -48,9 +50,9 @@ public sealed class ExtensionContractPackages
         foreach (string id in preview)
         {
             string version = VersionOf(id);
-            Assert.StartsWith("0.2.0-preview.", version, StringComparison.Ordinal);
-            Assert.EndsWith(".1", version, StringComparison.Ordinal);
-            Assert.Equal(PreviewVersion, version);
+            // The preview pair carries the product version while it is a prerelease and
+            // <version>-preview.1 otherwise; either way it is never a stable version.
+            Assert.Equal(ReleaseVersions.Preview, version);
             Assert.Contains(
                 StabilityPromise,
                 Metadata(id, "Description"),
@@ -183,7 +185,9 @@ public sealed class ExtensionContractPackages
     ];
 
     private static string VersionOf(string id) =>
-        Load(id).Root!.Element("PropertyGroup")!.Element("Version")!.Value!;
+        ReleaseVersions.Resolve(
+            Load(id).Root!.Element("PropertyGroup")!.Element("Version")!.Value!
+        );
 
     private static string Metadata(string id, string elementName)
     {

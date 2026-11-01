@@ -13,7 +13,7 @@
     <PropertyGroup>
         <IsPackable>true</IsPackable>
         <PackageId>Lunate.Extensibility.Testing</PackageId>
-        <Version>0.2.0-preview.1</Version>
+        <Version>$(PreviewVersion)</Version>
         <Description>
             The extension test kit of Lunate: ExtensionTestHost, the scripted approver and
             trust prompt, event recording, session assertions and the wire conformance runner

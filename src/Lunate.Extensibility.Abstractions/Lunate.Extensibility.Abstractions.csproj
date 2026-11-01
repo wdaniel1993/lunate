@@ -12,7 +12,7 @@
             matched by ExtensionApiGate against this version. It is a prerequisite of the
             packaged-extension template, which installs it from NuGet.
         -->
-        <Version>1.15.0</Version>
+        <Version>$(ContractVersion)</Version>
         <PackageId>Lunate.Extensibility.Abstractions</PackageId>
         <IsPackable>true</IsPackable>
         <Description>

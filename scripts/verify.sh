@@ -674,10 +674,15 @@ XML
   do
     dotnet pack "$contract_project" -c "$CONFIGURATION" -o "$contract_feed" --nologo -nodeReuse:false
   done
-  # The stable pair is versioned with ExtensionApi, the preview pair 0.2.0-preview.<n> — neither is
-  # the repository <Version>, so each is read from the csproj that owns it.
-  contract_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj)"
-  preview_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Lunate.Agent/Lunate.Agent.csproj)"
+  # The contract pair carries the API version plus the tag's prerelease suffix, the preview pair the
+  # product version while it is a prerelease and <version>-preview.1 otherwise — never a constant,
+  # and never readable from the csproj, where these are $(ContractVersion) and $(PreviewVersion).
+  # One derivation (`scripts/release-versions.sh`) decides both here and in the pack-only job.
+  repo_version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "${SCRIPT_DIR}/../Directory.Build.props")"
+  while IFS='=' read -r key value; do printf -v "derived_${key}" '%s' "${value}"; done \
+    < <(bash "${SCRIPT_DIR}/release-versions.sh" "v${repo_version}")
+  contract_version="${derived_CONTRACTS}"
+  preview_version="${derived_PREVIEW}"
   "${SCRIPT_DIR}/check-package-metadata.sh" \
     "${contract_feed}/Lunate.Contracts.${contract_version}.nupkg" --id Lunate.Contracts
   "${SCRIPT_DIR}/check-package-metadata.sh" \

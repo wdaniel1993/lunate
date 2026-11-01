@@ -42,9 +42,11 @@ public sealed class ExtensionTemplateTests
                         StringComparison.Ordinal
                     ) == true
             );
+            // The template pins the contract version the tag publishes: stable on a final tag,
+            // 1.15.0-rc.N on an RC — a pin to a version the tag does not publish installs nowhere.
             Assert.Equal(
-                Lunate.Extensibility.Abstractions.ExtensionApi.Current,
-                (string?)reference.Attribute("Version")
+                ReleaseVersions.Contract,
+                ReleaseVersions.Resolve((string?)reference.Attribute("Version") ?? string.Empty)
             );
         }
     }

@@ -19,11 +19,24 @@
         <RootNamespace>TemplateExtension.Tests</RootNamespace>
     </PropertyGroup>
 
+    <!--
+        The kit a copied template installs follows the release the same way the contract pin does:
+        the product version while it is a prerelease (an RC publishes 0.2.0-rc.N, never the stable
+        pair beside it), <version>-preview.1 on a final tag. Outside this repository there is no
+        release context, so the last published preview is the only thing that can exist.
+    -->
+    <PropertyGroup Condition="'$(LunateTestingVersion)' == ''">
+        <LunateTestingVersion Condition="'$(PreviewVersion)' != ''"
+            >$(PreviewVersion)</LunateTestingVersion>
+        <LunateTestingVersion Condition="'$(PreviewVersion)' == ''"
+            >0.2.0-preview.1</LunateTestingVersion>
+    </PropertyGroup>
+
     <ItemGroup>
         <PackageReference
             Condition="'$(LunateUseNuGetContracts)' == 'true'"
             Include="Lunate.Extensibility.Testing"
-            Version="0.2.0-preview.1"
+            Version="$(LunateTestingVersion)"
         />
     </ItemGroup>
 
