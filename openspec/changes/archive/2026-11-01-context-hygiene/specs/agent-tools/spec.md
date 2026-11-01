@@ -44,7 +44,7 @@
 
 ### Requirement: Tool output truncation
 
-Every tool result SHALL be admitted through one path before it enters the model's history. A result whose model-facing text exceeds `output.spillThresholdTokens` (default 2,000 estimated tokens, where a token is estimated as UTF-8 bytes / 4) or `output.toolResultLimit` characters SHALL have its full model-facing text written to the session's spill file and SHALL be sent as a bounded preview plus a pointer. The preview SHALL keep at most the first 10 and last 10 lines within 2,000 characters and the pointer SHALL state the omitted character count, the estimated tokens, the line count and the absolute spill path (all counts culture-invariant) and SHALL tell the model to read the file with `offset` and `limit`. The spill file SHALL live at `<sessions-dir>/<session-id>/tool-output/<run>-<seq>.txt`, owner-only, LF, UTF-8 without BOM, with a 64 MB ceiling; `read` SHALL serve it for the owning session and for a resume of that session. A result at or under both limits SHALL pass through unchanged. Without a session no file SHALL be written, and the text SHALL be bounded by `output.toolResultLimit` with the head/tail marker. A failed write SHALL never fail the tool: the result is still delivered and the failure is a notice. Cut points SHALL never split a UTF-16 surrogate pair; limits smaller than the marker SHALL degrade gracefully without throwing.
+Every tool result SHALL be admitted through one path before it enters the model's history. A result whose model-facing text exceeds `output.spillThresholdTokens` (default 2,000 estimated tokens, where a token is estimated as UTF-8 bytes / 4) or `output.toolResultLimit` characters (default 30,000) SHALL have its full model-facing text written to the session's spill file and SHALL be sent as a bounded preview plus a pointer. The preview SHALL keep at most the first 10 and last 10 lines within 2,000 characters and the pointer SHALL state the omitted character count, the estimated tokens, the line count and the absolute spill path (all counts culture-invariant) and SHALL tell the model to read the file with `offset` and `limit`. The spill file SHALL live at `<sessions-dir>/<session-id>/tool-output/<run>-<seq>.txt`, owner-only, LF, UTF-8 without BOM, with a 64 MB ceiling; `read` SHALL serve it for the owning session and for a resume of that session. For a session-owned spill file, `read` SHALL return one bounded page at a time, with the complete model-facing result at or below the estimated token bound selected by `output.spillThresholdTokens` using the spill step's UTF-8-bytes-divided-by-four estimate. Each page SHALL contain an exact contiguous text slice from the file and SHALL carry an explicit next offset or line in its result when more content remains; the model SHALL continue with another `read` call using that continuation, not a separate continuation tool or a pointer telling it to find the rest in a file. A read of a known spill file under the session's `tool-output/` directory SHALL be exempt from spill admission. The exemption SHALL match the resolved absolute path of a known spill file, not an arbitrary path prefix. No page from such a read SHALL be replaced by a spill pointer. A result at or under both limits SHALL pass through unchanged. Without a session, or when the spill write fails or the text is too large to spill, `ToolOutput.Truncate` SHALL bound the text by `output.toolResultLimit` (default 30,000 characters): output at or under the limit SHALL pass through unchanged; longer output SHALL keep the first half and last half of the budget with a marker stating the omitted character count (culture-invariant) and, when a spill file was written, its absolute path. A failed write SHALL never fail the tool: the result is still delivered and the failure is a notice. Cut points SHALL never split a UTF-16 surrogate pair; limits smaller than the marker SHALL degrade gracefully without throwing.
 
 #### Scenario: Short output passes through
 
@@ -62,7 +62,7 @@ Every tool result SHALL be admitted through one path before it enters the model'
 
 - **GIVEN** a session run and a tool result larger than the configured threshold
 - **WHEN** the result is admitted
-- **THEN** the full text is written to a file in the session's own directory, the pointer names that absolute path, and `read` on it returns the full content
+- **THEN** the full text is written to a file in the session's own directory, the pointer names that absolute path, and successive `read` calls using each returned continuation make the full content reachable
 
 #### Scenario: A result over the token threshold spills under the character cap
 
@@ -80,7 +80,7 @@ Every tool result SHALL be admitted through one path before it enters the model'
 
 - **GIVEN** a spill file written by the session's run
 - **WHEN** the model calls `read` on the path from the marker
-- **THEN** the call succeeds and returns the full text, and a `read` of a path outside the session's `tool-output` directory is still refused
+- **THEN** the call succeeds and returns a bounded page carrying its continuation when more content remains, and a `read` of a path outside the session's `tool-output` directory is still refused
 
 #### Scenario: A resumed session can read it too
 
@@ -98,13 +98,13 @@ Every tool result SHALL be admitted through one path before it enters the model'
 
 - **GIVEN** a `--no-session` run and a result over both limits
 - **WHEN** the result is admitted
-- **THEN** no file is written and the in-band text keeps the head/tail marker
+- **THEN** no file is written and the in-band text keeps the head/tail marker in its count-only form
 
 #### Scenario: A failed spill never fails the tool
 
 - **GIVEN** a session directory that cannot be written
 - **WHEN** a result over the threshold is admitted
-- **THEN** the tool result is still delivered and the failure is reported as a notice, not a tool error
+- **THEN** the tool result is still delivered with the count-only marker and the failure is reported as a notice, not a tool error
 
 #### Scenario: Cut points never split surrogate pairs
 
