@@ -74,6 +74,7 @@ public sealed partial class AgentHarness
             }
 
             SeedReadLedger(_history);
+            SeedMaskingMetadata(_history);
             _images.ValidateReferences(ImageReferences(_history));
 
             if (session.ActiveCompaction is { } compaction)
@@ -289,6 +290,24 @@ public sealed partial class AgentHarness
                 nameof(AgentHarnessOptions.ProjectionBatchTurns),
                 options.ProjectionBatchTurns,
                 "ProjectionBatchTurns must be at least 1."
+            );
+        }
+
+        if (options.ProjectionMaskTurns < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.ProjectionMaskTurns),
+                options.ProjectionMaskTurns,
+                "ProjectionMaskTurns must be at least 1."
+            );
+        }
+
+        if (options.ProjectionMaskErrorTurns < options.ProjectionMaskTurns)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.ProjectionMaskErrorTurns),
+                options.ProjectionMaskErrorTurns,
+                "ProjectionMaskErrorTurns must be at least ProjectionMaskTurns so error results are kept longer."
             );
         }
 

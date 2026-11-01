@@ -38,6 +38,18 @@ internal sealed partial class InteractiveSession
                 _settings.ProjectionBatchTurns.ToString(CultureInfo.InvariantCulture)
             )
         );
+        lines.Add(
+            Row(
+                "projection.maskTurns",
+                _settings.ProjectionMaskTurns.ToString(CultureInfo.InvariantCulture)
+            )
+        );
+        lines.Add(
+            Row(
+                "projection.maskErrorTurns",
+                _settings.ProjectionMaskErrorTurns.ToString(CultureInfo.InvariantCulture)
+            )
+        );
         lines.Add(Row("tui.theme", _settings.Tui.Theme));
         lines.Add(Row("tui.keys", KeysText(_settings.Tui.Keys)));
         lines.Add(Row("startupHeader", BooleanLiteral(_settings.StartupHeader)));
@@ -86,6 +98,12 @@ internal sealed partial class InteractiveSession
             "toolDetails" => ToolDetailsLiteral(_settings.ToolDetails),
             "toolResultLimit" => LimitText(_settings.ToolOutputLimit),
             "projection.batchTurns" => _settings.ProjectionBatchTurns.ToString(
+                CultureInfo.InvariantCulture
+            ),
+            "projection.maskTurns" => _settings.ProjectionMaskTurns.ToString(
+                CultureInfo.InvariantCulture
+            ),
+            "projection.maskErrorTurns" => _settings.ProjectionMaskErrorTurns.ToString(
                 CultureInfo.InvariantCulture
             ),
             "tui.theme" => _settings.Tui.Theme,
@@ -241,6 +259,8 @@ internal sealed partial class InteractiveSession
                 or "toolDetails"
                 or "toolResultLimit"
                 or "projection.batchTurns"
+                or "projection.maskTurns"
+                or "projection.maskErrorTurns"
                 or "tui.theme"
                 or "tui.keys"
                 or "startupHeader"

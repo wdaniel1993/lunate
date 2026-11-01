@@ -90,8 +90,13 @@ public sealed partial class AgentHarness
 
             ChatMessage replacement = message.Clone();
             replacement.Contents = contents;
-            _historyUtf8 +=
-                CompactionReducer.Utf8Length(replacement) - CompactionReducer.Utf8Length(message);
+            long removed =
+                CompactionReducer.Utf8Length(message) - CompactionReducer.Utf8Length(replacement);
+            if (removed > 0)
+            {
+                Interlocked.Add(ref _readStubSavedTokens, removed / 4);
+                _historyUtf8 -= removed;
+            }
             _history[index] = replacement;
         }
     }
