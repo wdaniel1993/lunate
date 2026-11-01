@@ -99,6 +99,59 @@ public sealed class BashGuardTests
     }
 
     [Fact]
+    public void A_missing_target_is_masked_with_a_tmpfs_and_never_created_on_the_host()
+    {
+        using var temp = new TempDirectory();
+        string state = Path.Combine(temp.Root, "state");
+        string prefix = Path.Combine(temp.Root, "prefix");
+        var target = new GuardTarget(state, Path.Combine(state, "auth.json"), prefix, temp.Root);
+        GuardProbe probe = Fake.Unix(
+            macOs: false,
+            bwrap: "/usr/bin/bwrap",
+            authExists: false,
+            directoryExists: path => path != state && path != prefix
+        );
+        var guard = new BashGuard(target, probe);
+
+        var launch = guard.Wrap(Shell, Path.Combine(temp.Root, "ws"));
+
+        var args = string.Join(' ', launch.ArgumentsPrefix);
+        Assert.Contains($"--tmpfs {state}", args);
+        Assert.Contains($"--tmpfs {prefix}", args);
+        Assert.DoesNotContain($"--ro-bind {state} {state}", args);
+
+        // The guard must not create what it denies: a refusal elsewhere in the session relies on
+        // nothing appearing where the store was pointed.
+        Assert.False(Directory.Exists(state));
+        Assert.False(Directory.Exists(prefix));
+    }
+
+    [Fact]
+    public void A_missing_state_root_makes_the_landlock_fallback_unavailable()
+    {
+        using var temp = new TempDirectory();
+        string state = Path.Combine(temp.Root, "state");
+        var target = new GuardTarget(
+            state,
+            Path.Combine(state, "auth.json"),
+            Path.Combine(temp.Root, "prefix"),
+            temp.Root
+        );
+        GuardProbe probe = Fake.Unix(
+            macOs: false,
+            setpriv: "/usr/bin/setpriv",
+            directoryExists: path => path != state
+        );
+        var guard = new BashGuard(target, probe);
+
+        var launch = guard.Wrap(Shell, Path.Combine(temp.Root, "ws"));
+
+        Assert.False(launch.Wrapped);
+        Assert.Equal("unavailable", launch.Mechanism);
+        Assert.Contains("Landlock cannot deny writes under it", launch.Notice ?? "");
+    }
+
+    [Fact]
     public void Bwrap_that_cannot_start_is_detected_and_reports_the_apparmor_restriction()
     {
         using var temp = new TempDirectory();
@@ -520,7 +573,8 @@ internal static class Fake
         IReadOnlyList<string>? localChildren = null,
         bool authExists = false,
         bool shellExists = true,
-        bool isWindows = false
+        bool isWindows = false,
+        Func<string, bool>? directoryExists = null
     )
     {
         string? byName(string name) =>
@@ -542,7 +596,7 @@ internal static class Fake
                     ? shellExists
                     : sandboxExec && path == "/usr/bin/sandbox-exec"
                         || authExists && path.EndsWith("auth.json", StringComparison.Ordinal),
-            DirectoryExists: _ => true,
+            DirectoryExists: directoryExists ?? (_ => true),
             GetEnvironmentVariable: _ => null,
             ReadTextFile: _ =>
                 apparmorRestrictsUserns is not { } value ? null
