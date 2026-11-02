@@ -1,5 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <!--
+        A copy of this template does not see the repository's Directory.Build.props, so the three
+        properties every SDK project needs live here (the props file inside this repository declares
+        the same values, so an in-repository build is unchanged). #464: `dotnet build` on the copy
+        failed with NETSDK1013 before.
+    -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <!--
         The contract reaches a template as packages (the stable pair pinned to the version
         ExtensionApi.Current names) and as projects while the template sits inside this
         repository, where the packages a feed serves may not exist yet. LunateUseNuGetContracts

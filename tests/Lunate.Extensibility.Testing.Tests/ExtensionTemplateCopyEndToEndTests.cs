@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility.Testing;
@@ -121,7 +122,9 @@ public sealed class ExtensionTemplateCopyEndToEndTests
         string? previewVersion = null
     )
     {
-        string testing = previewVersion is null ? string.Empty : $" -p:LunateTestingVersion={previewVersion}";
+        string testing = previewVersion is null
+            ? string.Empty
+            : $" -p:LunateTestingVersion={previewVersion}";
         Dotnet(
             $"""build "{project}" -c {Configuration} -p:LunateUseNuGetContracts=true """
                 + $"""-p:LunateContractsVersion={contractVersion}{testing} """
@@ -194,7 +197,11 @@ public sealed class ExtensionTemplateCopyEndToEndTests
         {
             if (!skip.Contains(Path.GetFileName(directory)))
             {
-                CopyDirectory(directory, Path.Combine(destination, Path.GetFileName(directory)), skip);
+                CopyDirectory(
+                    directory,
+                    Path.Combine(destination, Path.GetFileName(directory)),
+                    skip
+                );
             }
         }
     }
@@ -222,7 +229,11 @@ public sealed class ExtensionTemplateCopyEndToEndTests
                 )
                 .RootElement.Clone();
 
-        public Task<ToolResult> ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)
+        public Task<ToolResult> ExecuteAsync(
+            JsonElement args,
+            ToolContext ctx,
+            CancellationToken ct
+        )
         {
             string text = args.TryGetProperty("text", out JsonElement value)
                 ? value.GetString() ?? string.Empty
