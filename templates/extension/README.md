@@ -9,6 +9,10 @@ cp -r templates/extension my-extension
 Then rename `TemplateExtension` and the project, update `extension.json`, and keep the test project
 as the place where your extension's behavior is proven.
 
+The two project files are self-contained: they declare `TargetFramework`, `ImplicitUsings` and
+`Nullable` themselves, so a copy builds outside this repository, where the repository's
+`Directory.Build.props` does not follow.
+
 ## Layout
 
 ```text

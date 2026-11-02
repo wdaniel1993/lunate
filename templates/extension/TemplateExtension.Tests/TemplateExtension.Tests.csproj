@@ -1,5 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <!--
+        Same self-containedness as the extension project (#464): a copied template does not see
+        the repository's Directory.Build.props, so the properties every SDK project needs live here.
+    -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <!--
         Same switch as the extension itself: the kit reaches a copied template as the preview
         package (Lunate.Extensibility.Testing, self-contained), and as projects inside this
         repository. The kit carries the assemblies the projects below the extension name —
@@ -17,6 +27,18 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <RootNamespace>TemplateExtension.Tests</RootNamespace>
+    </PropertyGroup>
+
+    <!--
+        The contract pin the child build (the CopyTemplateExtension target below) forwards: the
+        extension project owns the version logic and repeats it here, because an empty global
+        property would shadow the child's own fallback.
+    -->
+    <PropertyGroup>
+        <LunateContractsVersion Condition="'$(ContractVersion)' != ''"
+            >$(ContractVersion)</LunateContractsVersion>
+        <LunateContractsVersion Condition="'$(ContractVersion)' == ''"
+            >1.15.0</LunateContractsVersion>
     </PropertyGroup>
 
     <!--
@@ -68,7 +90,7 @@
         <MSBuild
             Projects="$(MSBuildThisFileDirectory)../TemplateExtension/TemplateExtension.csproj"
             Targets="Build"
-            Properties="Configuration=$(Configuration);LunateUseNuGetContracts=$(LunateUseNuGetContracts)"
+            Properties="Configuration=$(Configuration);LunateContractsVersion=$(LunateContractsVersion);LunateUseNuGetContracts=$(LunateUseNuGetContracts)"
         />
         <ItemGroup>
             <TemplateExtensionFiles Include="$(MSBuildThisFileDirectory)../TemplateExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />

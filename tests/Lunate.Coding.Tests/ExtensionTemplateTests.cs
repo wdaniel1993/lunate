@@ -152,10 +152,12 @@ public sealed class ExtensionTemplateTests
 
     /// <summary>
     /// The template must be compiled by something, or it rots exactly where it is most expensive:
-    /// the file every extension author copies. No test builds it (that would restore and write build
-    /// output from a test process), so the solution does — <c>scripts/verify.sh</c> builds
-    /// <c>lunate.slnx</c> on every leg — and this test keeps both projects listed, because removing
-    /// them is a silent edit that leaves every other test green.
+    /// the file every extension author copies. The solution builds it — <c>scripts/verify.sh</c>
+    /// builds <c>lunate.slnx</c> on every leg — and the copy-build path gets its own end-to-end
+    /// proof in <c>ExtensionTemplateCopyEndToEndTests</c> (a copy outside the repository, built
+    /// from the packed contract packages), which this test keeps out of this repository's tree:
+    /// both projects must stay listed, because removing them is a silent edit that leaves every
+    /// other test green.
     /// </summary>
     [Fact]
     public void The_solution_lists_the_template_so_the_gate_compiles_it()
