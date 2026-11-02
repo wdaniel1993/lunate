@@ -89,7 +89,17 @@ jobs:
           brew tap wdaniel1993/tap
           HOMEBREW_NO_AUTO_UPDATE=1 brew install wdaniel1993/tap/lunate
           "$(brew --prefix)/bin/lunate" --version | tee brew-version.txt
-          grep -F "${TAG#v}" brew-version.txt
+          # The tap is a stable channel: a release candidate must not become what `brew install`
+          # serves, so the formula tracks the last stable release and this step proves the channel
+          # still installs a working lunate. Only a stable tag has to match the formula exactly.
+          case "$TAG" in
+            *-rc.*)
+              echo "::notice::Homebrew serves the stable channel; $TAG is a prerelease, so the formula stays at $(cat brew-version.txt)"
+              ;;
+            *)
+              grep -F "${TAG#v}" brew-version.txt
+              ;;
+          esac
         env:
           TAG: ${{ inputs.tag }}
 
