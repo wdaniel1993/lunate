@@ -45,6 +45,22 @@ public sealed class ModelRoutingDecisionTests
     }
 
     [Fact]
+    public async Task Routing_uses_profile_descriptions_as_choice_criteria()
+    {
+        DecisionRun run = await RunAsync(
+            DecisionMode.Enforce,
+            """{"results":{"routing":{"answer":"fast","probabilities":{"default":0.1,"fast":0.9}}}}"""
+        );
+
+        string request = run.Decision.Requests.Single().Messages[1].Text;
+        Assert.Contains(
+            "\"criteria\":{\"default\":\"General chat\",\"fast\":\"Short latency\"}",
+            request,
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
     public async Task Low_confidence_decision_keeps_the_configured_profile()
     {
         DecisionRun run = await RunAsync(
@@ -179,8 +195,11 @@ public sealed class ModelRoutingDecisionTests
                 },
                 RoutingProfiles = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
                 {
-                    ["default"] = Model(configured, "default"),
-                    ["fast"] = Model(fast, "fast"),
+                    ["default"] = Model(configured, "default") with
+                    {
+                        Description = "General chat",
+                    },
+                    ["fast"] = Model(fast, "fast") with { Description = "Short latency" },
                 },
             }
         );
