@@ -292,7 +292,7 @@ public sealed class SystemOneDecisionClientTests
                 header => header.Value.ToArray(),
                 StringComparer.OrdinalIgnoreCase
             );
-            ContentEncoding = request.Content.Headers.ContentEncoding.ToArray();
+            ContentEncoding = request.Content!.Headers.ContentEncoding.ToArray();
             RequestBody = await request.Content!.ReadAsStringAsync(cancellationToken);
             return new HttpResponseMessage(statusCode)
             {
