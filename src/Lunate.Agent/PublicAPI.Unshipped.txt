@@ -125,6 +125,8 @@ Lunate.Agent.AgentHarnessOptions.RoutingMode.get -> Lunate.Agent.DecisionMode
 Lunate.Agent.AgentHarnessOptions.RoutingMode.init -> void
 Lunate.Agent.AgentHarnessOptions.RoutingProfiles.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Agent.UsageModelClient!>?
 Lunate.Agent.AgentHarnessOptions.RoutingProfiles.init -> void
+Lunate.Agent.AgentHarnessOptions.RoutingMinConfidence.get -> double
+Lunate.Agent.AgentHarnessOptions.RoutingMinConfidence.init -> void
 Lunate.Agent.AgentHarnessOptions.ApprovalsThreshold.get -> double
 Lunate.Agent.AgentHarnessOptions.ApprovalsThreshold.init -> void
 Lunate.Agent.AgentHarnessOptions.DecideTool.get -> bool
