@@ -61,6 +61,46 @@ public sealed class ModelRoutingDecisionTests
     }
 
     [Fact]
+    public async Task Choice_order_sensitive_model_uses_noul_questions_and_margin()
+    {
+        DecisionRun run = await RunAsync(
+            DecisionMode.Enforce,
+            """{"results":{"routing:default":{"answer":"yes","probabilities":{"yes":0.8,"no":0.2}},"routing:fast":{"answer":"yes","probabilities":{"yes":0.55,"no":0.45}}}}""",
+            choiceOrderSensitive: true
+        );
+
+        Assert.Single(run.Configured.Requests);
+        Assert.Empty(run.Fast.Requests);
+        DecisionEvaluated decision = Assert.Single(run.Events.OfType<DecisionEvaluated>());
+        Assert.Equal("default", decision.Answer);
+        Assert.Equal("noul-per-profile", decision.Strategy);
+        Assert.Equal("confidence-below-threshold", decision.Outcome);
+        Assert.Equal(0.25, decision.Confidence!.Value, precision: 12);
+        string request = run.Decision.Requests.Single().Messages[1].Text;
+        Assert.Contains("\"id\":\"routing:default\"", request, StringComparison.Ordinal);
+        Assert.Contains("\"id\":\"routing:fast\"", request, StringComparison.Ordinal);
+        Assert.Contains("\"kind\":\"yes/no\"", request, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Noul_margin_at_threshold_routes_the_winning_profile()
+    {
+        DecisionRun run = await RunAsync(
+            DecisionMode.Enforce,
+            """{"results":{"routing:default":{"answer":"yes","probabilities":{"yes":0.8,"no":0.2}},"routing:fast":{"answer":"yes","probabilities":{"yes":0.3,"no":0.7}}}}""",
+            choiceOrderSensitive: true
+        );
+
+        Assert.Empty(run.Configured.Requests);
+        Assert.Single(run.Fast.Requests);
+        DecisionEvaluated decision = Assert.Single(run.Events.OfType<DecisionEvaluated>());
+        Assert.Equal("default", decision.Answer);
+        Assert.Equal("noul-per-profile", decision.Strategy);
+        Assert.Equal(0.5, decision.Confidence);
+        Assert.Equal("routed", decision.Outcome);
+    }
+
+    [Fact]
     public async Task Missing_routing_descriptions_warn_only_once_per_harness()
     {
         const string response =
@@ -81,7 +121,7 @@ public sealed class ModelRoutingDecisionTests
                 UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
                 {
                     ["chat"] = Model(configured, "default"),
-                    ["decision"] = Model(decision, "decision"),
+                    ["decision"] = Model(decision, "decision", choiceOrderSensitive),
                 },
                 RoutingProfiles = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
                 {
@@ -193,7 +233,8 @@ public sealed class ModelRoutingDecisionTests
     private static async Task<DecisionRun> RunAsync(
         DecisionMode mode,
         string decisionResponse,
-        double routingMinConfidence = 0.5
+        double routingMinConfidence = 0.5,
+        bool choiceOrderSensitive = false
     )
     {
         var configured = new ScriptedChatClient().Enqueue(
@@ -245,12 +286,19 @@ public sealed class ModelRoutingDecisionTests
         return new DecisionRun(await AgentTestSupport.Run(harness), configured, fast, decision);
     }
 
-    private static UsageModelClient Model(ScriptedChatClient client, string profile) =>
+    private static UsageModelClient Model(
+        ScriptedChatClient client,
+        string profile,
+        bool choiceOrderSensitive = false
+    ) =>
         new(
             client,
             profile,
             "openai",
             new ModelInfo($"{profile}-model", "openai", null, 64000, SupportsTools: true)
+            {
+                ChoiceOrderSensitive = choiceOrderSensitive,
+            }
         );
 
     private sealed record DecisionRun(
