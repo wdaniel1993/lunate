@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <RootNamespace>Lunate.Ai.SystemOne</RootNamespace>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Lunate.Ai.Decisions/Lunate.Ai.Decisions.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Lunate.Coding.Tests" />
+        <InternalsVisibleTo Include="Lunate.Agent.Tests" />
+        <InternalsVisibleTo Include="lunate" />
+    </ItemGroup>
+</Project>

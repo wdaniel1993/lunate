@@ -7,11 +7,11 @@
 #
 # Output, one KEY=VALUE per line:
 #   TOOL=0.2.0-rc.1            the `lunate` tool and the Subagents bundle (the product version)
-#   CONTRACTS=1.15.0-rc.1      Lunate.Contracts and Lunate.Extensibility.Abstractions (the API
+#   CONTRACTS=1.16.0-rc.1      Lunate.Contracts and Lunate.Extensibility.Abstractions (the API
 #                              version from Directory.Build.props, plus the tag's suffix)
 #   PREVIEW=0.2.0-rc.1         Lunate.Agent and Lunate.Extensibility.Testing: the product version
 #                              while it is a prerelease, otherwise <version>-preview.1
-#   TEMPLATE=1.15.0-rc.1       the contract version a copied template pins
+#   TEMPLATE=1.16.0-rc.1       the contract version a copied template pins
 #
 # `.github/workflows/pack.yml` runs --self-test before packing, then compares the packed file names
 # against the derivation for the tree's own version: a package that packs under a different version
@@ -68,9 +68,9 @@ self_test() {
 
     # An RC tag: nothing stable leaves the pipeline.
     check "RC" v0.2.0-rc.1 TOOL 0.2.0-rc.1
-    check "RC" v0.2.0-rc.1 CONTRACTS 1.15.0-rc.1
+    check "RC" v0.2.0-rc.1 CONTRACTS 1.16.0-rc.1
     check "RC" v0.2.0-rc.1 PREVIEW 0.2.0-rc.1
-    check "RC" v0.2.0-rc.1 TEMPLATE 1.15.0-rc.1
+    check "RC" v0.2.0-rc.1 TEMPLATE 1.16.0-rc.1
 
     # The invariant, stated as such: every version derived from an RC tag carries a prerelease.
     checks=$((checks + 1))
@@ -85,9 +85,9 @@ self_test() {
     done < <(derive v0.2.0-rc.1)
 
     # A final tag: the contracts are stable, the previews carry the preview marker.
-    check "final" v0.2.0 CONTRACTS 1.15.0
+    check "final" v0.2.0 CONTRACTS 1.16.0
     check "final" v0.2.0 PREVIEW 0.2.0-preview.1
-    check "final" v0.2.0 TEMPLATE 1.15.0
+    check "final" v0.2.0 TEMPLATE 1.16.0
     check "final" v0.2.0 TOOL 0.2.0
 
     # No template may pin a Lunate package to a literal version: the pin has to follow the release,

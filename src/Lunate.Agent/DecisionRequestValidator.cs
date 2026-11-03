@@ -49,6 +49,7 @@ internal static class DecisionRequestValidator
                     minimum: 2,
                     maximum: int.MaxValue
                 ),
+                DecisionQuestionKind.Box => ValidateBoxQuestion(question),
                 _ => throw new ArgumentException(
                     $"Question '{question.Id}' has an unsupported kind.",
                     nameof(request)
@@ -58,64 +59,17 @@ internal static class DecisionRequestValidator
             JsonElement state = question.JsonPath is { } path
                 ? ResolveJsonPath(request.State, path, question.Id)
                 : request.State;
+            if (question.Kind == DecisionQuestionKind.Box && !ContainsImagePart(state))
+            {
+                throw new ArgumentException(
+                    $"Box question '{question.Id}' requires an image part in its state.",
+                    nameof(request)
+                );
+            }
             prepared.Add(new PreparedDecisionQuestion(question, answers, state));
         }
 
         return prepared;
-    }
-
-    public static DecisionAnswer ValidateResult(
-        PreparedDecisionQuestion question,
-        string? answer,
-        IReadOnlyDictionary<string, double> probabilities,
-        string modelId,
-        string method
-    )
-    {
-        if (!question.Answers.Contains(answer, StringComparer.Ordinal))
-        {
-            throw Invalid(question.Question.Id, "the chosen answer is not defined by the question");
-        }
-
-        if (probabilities.Count != question.Answers.Count)
-        {
-            throw Invalid(
-                question.Question.Id,
-                "the distribution must contain every defined answer exactly once"
-            );
-        }
-
-        List<DecisionProbability> distribution = [];
-        double sum = 0d;
-        foreach (string definedAnswer in question.Answers)
-        {
-            if (!probabilities.TryGetValue(definedAnswer, out double probability))
-            {
-                throw Invalid(
-                    question.Question.Id,
-                    $"the distribution is missing '{definedAnswer}'"
-                );
-            }
-
-            if (!double.IsFinite(probability) || probability is < 0d or > 1d)
-            {
-                throw Invalid(
-                    question.Question.Id,
-                    $"probability for '{definedAnswer}' must be finite and between 0 and 1"
-                );
-            }
-
-            sum += probability;
-            distribution.Add(new DecisionProbability(definedAnswer, probability));
-        }
-
-        if (Math.Abs(sum - 1d) > 0.000001d)
-        {
-            throw Invalid(question.Question.Id, "the probabilities must sum to 1 within 0.000001");
-        }
-
-        double chosenProbability = probabilities[answer!];
-        return new DecisionAnswer(answer!, chosenProbability, distribution, modelId, method);
     }
 
     private static IReadOnlyList<string> ValidateAnswers(
@@ -151,6 +105,52 @@ internal static class DecisionRequestValidator
         }
 
         return answers.ToArray();
+    }
+
+    private static IReadOnlyList<string> ValidateBoxQuestion(DecisionQuestion question)
+    {
+        if (question.Answers is { Count: > 0 })
+        {
+            throw new ArgumentException(
+                $"Box question '{question.Id}' must not define a set of answers.",
+                nameof(question)
+            );
+        }
+
+        return [];
+    }
+
+    public static bool ContainsImagePart(JsonElement state)
+    {
+        if (
+            state.ValueKind == JsonValueKind.Object
+            && state.TryGetProperty("type", out JsonElement type)
+            && type.ValueKind == JsonValueKind.String
+            && string.Equals(type.GetString(), "image", StringComparison.Ordinal)
+            && state.TryGetProperty("mimeType", out JsonElement mimeType)
+            && mimeType.ValueKind == JsonValueKind.String
+            && mimeType.GetString()!.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+            && (
+                state.TryGetProperty("data", out JsonElement data)
+                    && data.ValueKind == JsonValueKind.String
+                    && !string.IsNullOrWhiteSpace(data.GetString())
+                || state.TryGetProperty("url", out JsonElement url)
+                    && url.ValueKind == JsonValueKind.String
+                    && !string.IsNullOrWhiteSpace(url.GetString())
+            )
+        )
+        {
+            return true;
+        }
+
+        return state.ValueKind switch
+        {
+            JsonValueKind.Object => state
+                .EnumerateObject()
+                .Any(property => ContainsImagePart(property.Value)),
+            JsonValueKind.Array => state.EnumerateArray().Any(ContainsImagePart),
+            _ => false,
+        };
     }
 
     private static JsonElement ResolveJsonPath(JsonElement state, string path, string questionId)
@@ -201,9 +201,6 @@ internal static class DecisionRequestValidator
 
         return current;
     }
-
-    private static InvalidDataException Invalid(string questionId, string reason) =>
-        new($"Decision question '{questionId}' is off-contract: {reason}.");
 }
 
 internal sealed record PreparedDecisionQuestion(

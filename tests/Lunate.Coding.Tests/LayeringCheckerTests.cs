@@ -33,6 +33,26 @@ public sealed class LayeringCheckerTests
     }
 
     [Fact]
+    [Trait("Category", "Architecture")]
+    public void FindViolations_allows_the_decision_layer_edges()
+    {
+        var violations = LayeringChecker.FindViolations([
+            ("Lunate.Agent", "Lunate.Ai.Decisions"),
+            ("Lunate.Ai.SystemOne", "Lunate.Ai.Decisions"),
+        ]);
+
+        Assert.Empty(violations);
+    }
+
+    [Fact]
+    public void FindViolations_rejects_agent_to_systemone()
+    {
+        var violations = LayeringChecker.FindViolations([("Lunate.Agent", "Lunate.Ai.SystemOne")]);
+
+        Assert.Single(violations);
+    }
+
+    [Fact]
     public void FindPackageViolations_reports_disallowed_runtime_package()
     {
         var violations = LayeringChecker.FindPackageViolations([

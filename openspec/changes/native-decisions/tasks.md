@@ -12,28 +12,28 @@
 
 ## 2. Project split (before any System One code)
 
-- [ ] New `Lunate.Ai.Decisions` (internal): `IDecisionClient` with
+- [x] New `Lunate.Ai.Decisions` (internal): `IDecisionClient` with
       `GetDecisionAsync(request, options, ct)`, `GetService(Type)`/`GetService<T>()`,
       `DelegatingDecisionClient`, `DecisionClientBuilder`, `UseOpenTelemetry()`; depends only on
       `Microsoft.Extensions.AI.Abstractions`.
-- [ ] The chat-model adapter moves here as `ChatDecisionClient : IDecisionClient` over an `IChatClient`.
+- [x] The chat-model adapter moves here as `ChatDecisionClient : IDecisionClient` over an `IChatClient`.
 - [ ] New `Lunate.Ai.SystemOne` (internal): the System One HTTP client `IDecisionClient`, quirk data,
       fixtures; referenced only by composition.
-- [ ] `Lunate.Agent`'s primitive and validator depend only on `IDecisionClient`; mapping to and from
+- [x] `Lunate.Agent`'s primitive and validator depend only on `IDecisionClient`; mapping to and from
       `Lunate.Contracts` at the agent boundary.
-- [ ] `Lunate.Contracts` unchanged for now and references neither project.
-- [ ] `LayeringChecker` edges and tests: Decisions → MEAI.Abstractions; SystemOne → Decisions;
+- [x] `Lunate.Contracts` unchanged for now and references neither project.
+- [x] `LayeringChecker` edges and tests: Decisions → MEAI.Abstractions; SystemOne → Decisions;
       Agent → Decisions; nothing else → SystemOne; Contracts → neither.
 
 ## 3. Contract 1.16.0 (lockstep)
 
-- [ ] `DecisionQuestionKind.Box`; `DecisionAnswer.Box` (`DecisionBox(Top, Bottom, Left, Right,
+- [x] `DecisionQuestionKind.Box`; `DecisionAnswer.Box` (`DecisionBox(Top, Bottom, Left, Right,
       Confidence)`); box validation (fractions in [0,1], `top<bottom`, `left<right`, confidence in
       [0,1], wrong-kind rejected).
-- [ ] `DecisionResult.Confidence` — the computed value (see 5), so extensions see what the router uses.
-- [ ] Image state validation gated by the model's input modalities, refusal naming the capability.
+- [x] `DecisionResult.Confidence` — the computed value (see 5), so extensions see what the router uses.
+- [x] Image state validation gated by the model's input modalities, refusal naming the capability.
 - [ ] `INativeDecisionClient` stays and forwards to `IDecisionClient`, so 1.15.0 consumers keep working.
-- [ ] Version bump and contract tests at the new version.
+- [x] Version bump and contract tests at the new version.
 
 ## 4. System One client
 

@@ -803,6 +803,10 @@ Lunate.Contracts.DecisionAnswer.Deconstruct(out string! Answer, out double Proba
 Lunate.Contracts.DecisionAnswer.Distribution.get -> System.Collections.Generic.IReadOnlyList<Lunate.Contracts.DecisionProbability!>!
 Lunate.Contracts.DecisionAnswer.Distribution.init -> void
 Lunate.Contracts.DecisionAnswer.Equals(Lunate.Contracts.DecisionAnswer? other) -> bool
+Lunate.Contracts.DecisionAnswer.Confidence.get -> double
+Lunate.Contracts.DecisionAnswer.Confidence.init -> void
+Lunate.Contracts.DecisionAnswer.Box.get -> Lunate.Contracts.DecisionBox?
+Lunate.Contracts.DecisionAnswer.Box.init -> void
 Lunate.Contracts.DecisionAnswer.ModelId.get -> string!
 Lunate.Contracts.DecisionAnswer.ModelId.init -> void
 Lunate.Contracts.DecisionAnswer.Method.get -> string!
@@ -812,6 +816,21 @@ Lunate.Contracts.DecisionAnswer.Probability.init -> void
 Lunate.Contracts.DecisionAnswer.Answer.get -> string!
 Lunate.Contracts.DecisionAnswer.Answer.init -> void
 Lunate.Contracts.DecisionAnswer.<Clone>$() -> Lunate.Contracts.DecisionAnswer!
+Lunate.Contracts.DecisionBox
+Lunate.Contracts.DecisionBox.DecisionBox(double Top, double Bottom, double Left, double Right, double Confidence) -> void
+Lunate.Contracts.DecisionBox.Deconstruct(out double Top, out double Bottom, out double Left, out double Right, out double Confidence) -> void
+Lunate.Contracts.DecisionBox.Equals(Lunate.Contracts.DecisionBox? other) -> bool
+Lunate.Contracts.DecisionBox.Top.get -> double
+Lunate.Contracts.DecisionBox.Top.init -> void
+Lunate.Contracts.DecisionBox.Bottom.get -> double
+Lunate.Contracts.DecisionBox.Bottom.init -> void
+Lunate.Contracts.DecisionBox.Left.get -> double
+Lunate.Contracts.DecisionBox.Left.init -> void
+Lunate.Contracts.DecisionBox.Right.get -> double
+Lunate.Contracts.DecisionBox.Right.init -> void
+Lunate.Contracts.DecisionBox.Confidence.get -> double
+Lunate.Contracts.DecisionBox.Confidence.init -> void
+Lunate.Contracts.DecisionBox.<Clone>$() -> Lunate.Contracts.DecisionBox!
 Lunate.Contracts.DecisionProbability
 Lunate.Contracts.DecisionProbability.DecisionProbability(string! Answer, double Probability) -> void
 Lunate.Contracts.DecisionProbability.Deconstruct(out string! Answer, out double Probability) -> void
@@ -840,6 +859,7 @@ Lunate.Contracts.DecisionQuestionKind
 Lunate.Contracts.DecisionQuestionKind.Choice = 1 -> Lunate.Contracts.DecisionQuestionKind
 Lunate.Contracts.DecisionQuestionKind.Score = 2 -> Lunate.Contracts.DecisionQuestionKind
 Lunate.Contracts.DecisionQuestionKind.YesNo = 0 -> Lunate.Contracts.DecisionQuestionKind
+Lunate.Contracts.DecisionQuestionKind.Box = 3 -> Lunate.Contracts.DecisionQuestionKind
 Lunate.Contracts.DecisionRequest
 Lunate.Contracts.DecisionRequest.DecisionRequest(System.Text.Json.JsonElement State, System.Collections.Generic.IReadOnlyList<Lunate.Contracts.DecisionQuestion!>! Questions) -> void
 Lunate.Contracts.DecisionRequest.Deconstruct(out System.Text.Json.JsonElement State, out System.Collections.Generic.IReadOnlyList<Lunate.Contracts.DecisionQuestion!>! Questions) -> void
@@ -860,6 +880,8 @@ Lunate.Contracts.INativeDecisionClient
 Lunate.Contracts.INativeDecisionClient.GetDecisionAsync(Lunate.Contracts.DecisionRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
 static Lunate.Contracts.DecisionAnswer.operator !=(Lunate.Contracts.DecisionAnswer? left, Lunate.Contracts.DecisionAnswer? right) -> bool
 static Lunate.Contracts.DecisionAnswer.operator ==(Lunate.Contracts.DecisionAnswer? left, Lunate.Contracts.DecisionAnswer? right) -> bool
+static Lunate.Contracts.DecisionBox.operator !=(Lunate.Contracts.DecisionBox? left, Lunate.Contracts.DecisionBox? right) -> bool
+static Lunate.Contracts.DecisionBox.operator ==(Lunate.Contracts.DecisionBox? left, Lunate.Contracts.DecisionBox? right) -> bool
 static Lunate.Contracts.DecisionProbability.operator !=(Lunate.Contracts.DecisionProbability? left, Lunate.Contracts.DecisionProbability? right) -> bool
 static Lunate.Contracts.DecisionProbability.operator ==(Lunate.Contracts.DecisionProbability? left, Lunate.Contracts.DecisionProbability? right) -> bool
 static Lunate.Contracts.DecisionQuestion.operator !=(Lunate.Contracts.DecisionQuestion? left, Lunate.Contracts.DecisionQuestion? right) -> bool
@@ -871,6 +893,9 @@ static Lunate.Contracts.DecisionResponse.operator ==(Lunate.Contracts.DecisionRe
 override Lunate.Contracts.DecisionAnswer.Equals(object? obj) -> bool
 override Lunate.Contracts.DecisionAnswer.GetHashCode() -> int
 override Lunate.Contracts.DecisionAnswer.ToString() -> string!
+override Lunate.Contracts.DecisionBox.Equals(object? obj) -> bool
+override Lunate.Contracts.DecisionBox.GetHashCode() -> int
+override Lunate.Contracts.DecisionBox.ToString() -> string!
 override Lunate.Contracts.DecisionProbability.Equals(object? obj) -> bool
 override Lunate.Contracts.DecisionProbability.GetHashCode() -> int
 override Lunate.Contracts.DecisionProbability.ToString() -> string!

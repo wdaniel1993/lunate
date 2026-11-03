@@ -14,12 +14,13 @@ public sealed record DecisionQuestion(
     string? JsonPath = null
 );
 
-/// <summary>The three question kinds supported by the decision primitive.</summary>
+/// <summary>The four question kinds supported by the decision primitive.</summary>
 public enum DecisionQuestionKind
 {
     YesNo,
     Choice,
     Score,
+    Box,
 }
 
 /// <summary>The ordered probability assigned to one defined answer.</summary>
@@ -32,6 +33,22 @@ public sealed record DecisionAnswer(
     IReadOnlyList<DecisionProbability> Distribution,
     string ModelId,
     string Method
+)
+{
+    /// <summary>The computed confidence used by routing and decision consumers.</summary>
+    public double Confidence { get; init; }
+
+    /// <summary>The normalized image rectangle for a box question; null for other kinds.</summary>
+    public DecisionBox? Box { get; init; }
+}
+
+/// <summary>A normalized image rectangle and the model's confidence in its placement.</summary>
+public sealed record DecisionBox(
+    double Top,
+    double Bottom,
+    double Left,
+    double Right,
+    double Confidence
 );
 
 /// <summary>Validated answers keyed by question id.</summary>
