@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Lunate.Ai.Decisions;
 using Lunate.Contracts;
+using InternalDecisionAnswer = Lunate.Ai.Decisions.DecisionAnswer;
+using InternalDecisionRequest = Lunate.Ai.Decisions.DecisionRequest;
 using InternalDecisionQuestion = Lunate.Ai.Decisions.DecisionQuestion;
 using InternalDecisionQuestionKind = Lunate.Ai.Decisions.DecisionQuestionKind;
 
@@ -34,14 +36,14 @@ internal sealed class NativeDecisionClientForwarder(IDecisionClient inner, strin
             .ToArray();
         DecisionResult response = await inner
             .GetDecisionAsync(
-                new DecisionRequest(modelId, request.State, questions),
+                new InternalDecisionRequest(modelId, request.State, questions),
                 new DecisionOptions(ModelId: modelId),
                 cancellationToken
             )
             .ConfigureAwait(false);
 
         Dictionary<string, object> results = new(StringComparer.Ordinal);
-        foreach ((string id, DecisionAnswer answer) in response.Results)
+        foreach ((string id, InternalDecisionAnswer answer) in response.Results)
         {
             Dictionary<string, object> mapped = new(StringComparer.Ordinal)
             {
