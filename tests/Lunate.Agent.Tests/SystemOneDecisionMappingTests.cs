@@ -84,6 +84,7 @@ public sealed class SystemOneDecisionMappingTests
         );
         // The formula is exact; the spec's 0.35 example is rounded relative to its stated inputs.
         Assert.Equal(0.355, result.Results["urgency"].Confidence, 10);
+        Assert.Equal(1.43, result.Results["urgency"].ExpectedScore);
     }
 
     [Fact]
