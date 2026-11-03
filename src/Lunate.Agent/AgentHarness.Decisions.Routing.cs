@@ -80,6 +80,16 @@ public sealed partial class AgentHarness
             );
             DecisionAnswer answer = response.Results[questionId];
             DecisionProbability mostProbable = answer.Distribution.MaxBy(item => item.Probability)!;
+            bool shadow = _options.RoutingMode == DecisionMode.Shadow;
+            bool confident = answer.Confidence >= _options.RoutingMinConfidence;
+            UsageModelClient? routedModel =
+                shadow || !confident
+                    ? configuredModel
+                    : _options.RoutingProfiles[mostProbable.Answer];
+            string outcome =
+                shadow ? "shadow"
+                : confident ? "routed"
+                : "confidence-below-threshold";
             channel.Emit(
                 new DecisionEvaluated(
                     runId,
@@ -91,13 +101,13 @@ public sealed partial class AgentHarness
                 {
                     QuestionId = questionId,
                     Answer = mostProbable.Answer,
+                    Distribution = answer.Distribution,
+                    Confidence = answer.Confidence,
+                    ConfidenceThreshold = _options.RoutingMinConfidence,
+                    Outcome = outcome,
                 }
             );
-            return _options.RoutingMode == DecisionMode.Shadow
-                ? configuredModel
-                : answer.Confidence >= _options.RoutingMinConfidence
-                    ? _options.RoutingProfiles[mostProbable.Answer]
-                    : configuredModel;
+            return routedModel;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
