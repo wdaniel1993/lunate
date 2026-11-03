@@ -236,6 +236,29 @@ public sealed class SystemOneDecisionClientTests
         Assert.Equal(0, handler.RequestCount);
     }
 
+    [Fact]
+    public async Task GetDecisionAsync_gzips_bodies_above_64_kib()
+    {
+        using RecordingHandler handler = new(
+            """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}"""
+        );
+        using HttpClient httpClient = new(handler);
+        SystemOneDecisionClient client = new(
+            httpClient,
+            new SystemOnePreset(new Uri("https://example.test/api/v1/systemone"))
+        );
+        using JsonDocument state = JsonDocument.Parse(
+            JsonSerializer.Serialize(new string('x', 65 * 1024))
+        );
+
+        await client.GetDecisionAsync(
+            CreateRequest(state.RootElement.Clone()),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal("gzip", handler.ContentEncoding!.Single());
+    }
+
     private static DecisionRequest CreateRequest(JsonElement? providedState = null)
     {
         using JsonDocument state = JsonDocument.Parse("{}");
@@ -255,6 +278,7 @@ public sealed class SystemOneDecisionClientTests
         public Uri? RequestUri { get; private set; }
         public int RequestCount { get; private set; }
         public Dictionary<string, string[]>? RequestHeaders { get; private set; }
+        public string[]? ContentEncoding { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -268,6 +292,7 @@ public sealed class SystemOneDecisionClientTests
                 header => header.Value.ToArray(),
                 StringComparer.OrdinalIgnoreCase
             );
+            ContentEncoding = request.Content.Headers.ContentEncoding.ToArray();
             RequestBody = await request.Content!.ReadAsStringAsync(cancellationToken);
             return new HttpResponseMessage(statusCode)
             {
