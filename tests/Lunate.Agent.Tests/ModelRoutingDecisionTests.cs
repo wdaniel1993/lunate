@@ -87,7 +87,7 @@ public sealed class ModelRoutingDecisionTests
     {
         DecisionRun run = await RunAsync(
             DecisionMode.Enforce,
-            """{"results":{"routing:default":{"answer":"yes","probabilities":{"yes":0.8,"no":0.2}},"routing:fast":{"answer":"yes","probabilities":{"yes":0.3,"no":0.7}}}}""",
+            """{"results":{"routing:default":{"answer":"no","probabilities":{"yes":0.3,"no":0.7}},"routing:fast":{"answer":"yes","probabilities":{"yes":0.8,"no":0.2}}}}""",
             choiceOrderSensitive: true
         );
 
