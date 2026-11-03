@@ -59,10 +59,10 @@
       above it the argmax route is used; transcript records distribution, confidence and outcome.
 - [x] Approval mapping documented: `p ≥ t` ⇔ `confidence ≥ 2t − 1`, so existing thresholds are
       unchanged.
-- [ ] Routing profiles carry a `description` used as the option's criteria; missing description warns
+- [x] Routing profiles carry a `description` used as the option's criteria; missing description warns
       once; strategy chosen by the catalog entry: one `choice` by default, one `noul` per profile when
       `choiceOrderSensitive` (jev-1.13); provenance names the strategy.
-- [ ] The noul strategy gates on the winner's margin over the runner-up; a close call keeps the
+- [x] The noul strategy gates on the winner's margin over the runner-up; a close call keeps the
       configured chat profile.
 
 ## 6. Approval gate questions
