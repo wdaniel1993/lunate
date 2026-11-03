@@ -14,6 +14,10 @@ internal sealed class DecisionTransportException(
 
     private static string CreateMessage(HttpStatusCode statusCode, string providerMessage, string? field)
     {
+        if (statusCode == HttpStatusCode.RequestEntityTooLarge)
+        {
+            return $"Decision state exceeds the 32 MiB request limit: {providerMessage}";
+        }
         if (
             statusCode == HttpStatusCode.BadRequest
             && providerMessage.Contains("max_tokens_exceeded", StringComparison.OrdinalIgnoreCase)
