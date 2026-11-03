@@ -349,6 +349,34 @@ public sealed class ModelCatalogTests
     }
 
     [Fact]
+    public void Choice_order_sensitivity_loads_from_catalog_metadata()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string userFile = WriteUserFile(
+                directory,
+                """
+                {
+                  "schemaVersion": 2,
+                  "models": [
+                    { "id": "typesafe/jev-1.13", "provider": "openrouter", "contextWindow": 32000, "supportsTools": false, "choiceOrderSensitive": true }
+                  ]
+                }
+                """
+            );
+
+            ModelInfo model = ModelCatalog.Load(userFile).Find("typesafe/jev-1.13")!;
+
+            Assert.True(model.ChoiceOrderSensitive);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
     public void A_user_override_replaces_the_built_in_reasoning_style()
     {
         string directory = CreateTempDirectory();
