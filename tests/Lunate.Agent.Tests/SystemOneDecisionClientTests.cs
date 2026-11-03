@@ -38,7 +38,10 @@ public sealed class SystemOneDecisionClientTests
             ]
         );
 
-        DecisionResult result = await client.GetDecisionAsync(request);
+        DecisionResult result = await client.GetDecisionAsync(
+            request,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         using JsonDocument sent = JsonDocument.Parse(handler.RequestBody!);
         Assert.Equal("https://example.test/api/v1/systemone", handler.RequestUri!.ToString());
