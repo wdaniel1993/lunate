@@ -68,7 +68,10 @@ public sealed class DecisionApprovalTests
     public async Task Decision_allow_does_not_override_user_deny()
     {
         DecisionRun run = await RunApprovalAsync(
-            DecisionApprovalResponse.Create(affirmativeProbability: 0.2),
+            DecisionApprovalResponse.Create(
+                "writes_outside_workspace",
+                affirmativeProbability: 0.2
+            ),
             DecisionMode.Enforce,
             userApproval: false,
             apiType: "native"
@@ -220,7 +223,7 @@ public sealed class DecisionApprovalTests
         List<AgentEvent> events = await AgentTestSupport.Run(harness);
 
         Assert.Equal(3, decision.Requests.Count);
-        Assert.Single(events.OfType<DecisionFailed>());
+        Assert.Equal(4, events.OfType<DecisionFailed>().Count());
         Assert.Equal(4, events.OfType<DecisionEvaluated>().Count());
         Assert.Equal(2, approver.Requests.Count);
         Assert.Equal(2, executions);
