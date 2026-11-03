@@ -57,7 +57,7 @@
       uses the provider value; recorded in provenance next to the distribution.
 - [x] `decisions.routingMinConfidence` (default 0.5): below it the configured chat profile stays; at or
       above it the argmax route is used; transcript records distribution, confidence and outcome.
-- [ ] Approval mapping documented: `p ≥ t` ⇔ `confidence ≥ 2t − 1`, so existing thresholds are
+- [x] Approval mapping documented: `p ≥ t` ⇔ `confidence ≥ 2t − 1`, so existing thresholds are
       unchanged.
 - [ ] Routing profiles carry a `description` used as the option's criteria; missing description warns
       once; strategy chosen by the catalog entry: one `choice` by default, one `noul` per profile when
