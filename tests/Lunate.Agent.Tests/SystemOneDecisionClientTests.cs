@@ -212,6 +212,30 @@ public sealed class SystemOneDecisionClientTests
         Assert.Equal(0, handler.RequestCount);
     }
 
+    [Fact]
+    public async Task GetDecisionAsync_rejects_non_finite_state_numbers()
+    {
+        using RecordingHandler handler = new(
+            """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}"""
+        );
+        using HttpClient httpClient = new(handler);
+        SystemOneDecisionClient client = new(
+            httpClient,
+            new SystemOnePreset(new Uri("https://example.test/api/v1/systemone"))
+        );
+        using JsonDocument state = JsonDocument.Parse("""{"quantity":1e9999}""");
+
+        InvalidDataException exception = await Assert.ThrowsAsync<InvalidDataException>(
+            () => client.GetDecisionAsync(
+                CreateRequest(state.RootElement.Clone()),
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Contains("finite", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(0, handler.RequestCount);
+    }
+
     private static DecisionRequest CreateRequest(JsonElement? providedState = null)
     {
         using JsonDocument state = JsonDocument.Parse("{}");
