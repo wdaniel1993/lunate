@@ -53,7 +53,7 @@
 
 ## 5. Confidence and routing
 
-- [ ] Confidence computed from the distribution with TypeSafe's formulas for noul/choice/score; box
+- [x] Confidence computed from the distribution with TypeSafe's formulas for noul/choice/score; box
       uses the provider value; recorded in provenance next to the distribution.
 - [ ] `decisions.routingMinConfidence` (default 0.5): below it the configured chat profile stays; at or
       above it the argmax route is used; transcript records distribution, confidence and outcome.
