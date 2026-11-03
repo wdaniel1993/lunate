@@ -41,7 +41,16 @@ internal sealed class SystemOneDecisionClient(
                     modelId,
                     "native"
                 );
-                return parsed with { Usage = mapped.Usage };
+                Dictionary<string, DecisionAnswer> results = parsed.Results.ToDictionary(
+                    result => result.Key,
+                    result => result.Value,
+                    StringComparer.Ordinal
+                );
+                foreach ((string id, double expectedScore) in mapped.ExpectedScores)
+                {
+                    results[id] = results[id] with { ExpectedScore = expectedScore };
+                }
+                return parsed with { Results = results, Usage = mapped.Usage };
             }
 
             if (!IsRetryable(response.StatusCode) || attempt == 2)

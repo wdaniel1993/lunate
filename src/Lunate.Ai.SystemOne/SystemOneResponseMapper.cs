@@ -3,7 +3,11 @@ using Lunate.Ai.Decisions;
 
 namespace Lunate.Ai.SystemOne;
 
-internal sealed record SystemOneResponse(string ResultsJson, DecisionUsage? Usage);
+internal sealed record SystemOneResponse(
+    string ResultsJson,
+    DecisionUsage? Usage,
+    IReadOnlyDictionary<string, double> ExpectedScores
+);
 
 internal static class SystemOneResponseMapper
 {
@@ -21,6 +25,7 @@ internal static class SystemOneResponseMapper
         }
 
         Dictionary<string, object> results = new(StringComparer.Ordinal);
+        Dictionary<string, double> expectedScores = new(StringComparer.Ordinal);
         foreach (DecisionQuestion question in request.Questions)
         {
             if (!answers.TryGetProperty(question.Id, out JsonElement answer))
@@ -40,12 +45,22 @@ internal static class SystemOneResponseMapper
                 );
             }
 
-            results.Add(question.Id, MapAnswer(answer, question));
+            if (question.Kind == DecisionQuestionKind.Score)
+            {
+                MappedScore score = MapScore(answer, question);
+                results.Add(question.Id, score.Answer);
+                expectedScores.Add(question.Id, score.ExpectedScore);
+            }
+            else
+            {
+                results.Add(question.Id, MapAnswer(answer, question));
+            }
         }
 
         return new SystemOneResponse(
             JsonSerializer.Serialize(new { results }),
-            MapUsage(root)
+            MapUsage(root),
+            expectedScores
         );
     }
 
@@ -54,7 +69,6 @@ internal static class SystemOneResponseMapper
         {
             DecisionQuestionKind.Noul => MapNoul(answer),
             DecisionQuestionKind.Choice => MapChoice(answer),
-            DecisionQuestionKind.Score => MapScore(answer, question),
             DecisionQuestionKind.Box => MapBox(answer),
             _ => throw new ArgumentOutOfRangeException(nameof(question), question.Kind, null),
         };
@@ -91,7 +105,7 @@ internal static class SystemOneResponseMapper
         return new { answer = choice.GetString(), probabilities };
     }
 
-    private static object MapScore(JsonElement answer, DecisionQuestion question)
+    private static MappedScore MapScore(JsonElement answer, DecisionQuestion question)
     {
         if (
             !answer.TryGetProperty("legend", out JsonElement legend)
@@ -128,7 +142,8 @@ internal static class SystemOneResponseMapper
             .Where(normalized.ContainsKey)
             .MaxBy(label => normalized[label].GetDouble())
                        ?? throw new InvalidDataException("System One score answer has no levels.");
-        return new { answer = chosen, probabilities = normalized };
+        double expectedScore = RequiredFiniteNumber(answer, "score");
+        return new MappedScore(new { answer = chosen, probabilities = normalized }, expectedScore);
     }
 
     private static object MapBox(JsonElement answer)
@@ -185,4 +200,6 @@ internal static class SystemOneResponseMapper
         DecisionQuestionKind.Box => "box",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
+
+    private sealed record MappedScore(object Answer, double ExpectedScore);
 }
