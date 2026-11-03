@@ -30,7 +30,9 @@ internal sealed class NativeDecisionClientForwarder(IDecisionClient inner, strin
                     Lunate.Contracts.DecisionQuestionKind.Box => InternalDecisionQuestionKind.Box,
                     _ => throw new InvalidOperationException("The decision question kind is unsupported."),
                 },
-                question.Answers,
+                question.Kind == Lunate.Contracts.DecisionQuestionKind.YesNo
+                    ? ["yes", "no"]
+                    : question.Answers,
                 JsonPath: question.JsonPath
             ))
             .ToArray();
