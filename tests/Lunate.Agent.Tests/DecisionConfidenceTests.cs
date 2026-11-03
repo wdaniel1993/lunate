@@ -11,7 +11,16 @@ public sealed class DecisionConfidenceTests
     [InlineData(1d, 1d)]
     public async Task Noul_confidence_is_distance_from_half(double yesProbability, double expected)
     {
-        string response = $$"""{"model":"jev-1.14","answers":{"q":{"type":"noul","noul":{{JsonSerializer.Serialize(yesProbability)}}}}}""";
+        string response = JsonSerializer.Serialize(
+            new
+            {
+                model = "jev-1.14",
+                answers = new Dictionary<string, object>
+                {
+                    ["q"] = new { type = "noul", noul = yesProbability },
+                },
+            }
+        );
         using SystemOneRecordingHandler handler = new(response);
         using HttpClient httpClient = new(handler);
         SystemOneDecisionClient client = new(
