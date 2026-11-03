@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using Lunate.Ai.Decisions;
 
@@ -7,8 +7,6 @@ namespace Lunate.Ai.SystemOne;
 internal sealed class SystemOneDecisionClient(HttpClient httpClient, SystemOnePreset preset)
     : IDecisionClient
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
     public async Task<DecisionResult> GetDecisionAsync(
         DecisionRequest request,
         DecisionOptions? options = null,
@@ -19,13 +17,12 @@ internal sealed class SystemOneDecisionClient(HttpClient httpClient, SystemOnePr
         DecisionRequestValidator.Validate(request);
 
         string modelId = options?.ModelId ?? request.ModelId;
+        byte[] body = SystemOneRequestMapper.Serialize(request, modelId);
         using HttpRequestMessage message = new(HttpMethod.Post, preset.Endpoint)
         {
-            Content = JsonContent.Create(
-                SystemOneRequestMapper.Create(request, modelId),
-                options: JsonOptions
-            ),
+            Content = new ByteArrayContent(body),
         };
+        message.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
         if (SystemOneRequestMapper.ContainsImagePart(request.State))
         {
             if (preset.ImageHeaders is { } imageHeaders)
