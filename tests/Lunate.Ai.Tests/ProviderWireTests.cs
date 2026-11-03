@@ -247,6 +247,34 @@ public sealed class ProviderWireTests
         Assert.Equal(["anthropic-real-key"], wire.HeaderValues("x-api-key"));
     }
 
+    [Fact]
+    public async Task A_native_transport_can_reuse_the_shared_header_and_credential_handlers()
+    {
+        using var environment = new EnvironmentScope(("OPENAI_API_KEY", "wire-probe-openai-key"));
+        CapturingWire wire = CapturingWire.OpenAi();
+        ChatClientFactory factory = wire.Factory();
+        using HttpClient client = factory.CreateProviderHttpClient(
+            OpenAiModel,
+            apiKey: null,
+            context: null,
+            ProviderApiFamily.OpenAiChat
+        );
+
+        using HttpRequestMessage request = new(
+            HttpMethod.Post,
+            "https://example.test/v1/systemone"
+        );
+        using HttpResponseMessage response = await client.SendAsync(
+            request,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(wire.Last);
+        Assert.StartsWith("lunate/", wire.Last.Headers.UserAgent.ToString());
+        Assert.Equal("Bearer wire-probe-openai-key", wire.HeaderValues("Authorization").Single());
+    }
+
     internal static readonly ModelInfo OpenAiModel = new("gpt-wire", "openai", null, 128_000, true);
 }
 
