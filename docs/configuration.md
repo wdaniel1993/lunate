@@ -26,7 +26,8 @@ shown are the documented defaults the store applies when a key is missing.
 | `decisions.approvalsThreshold` | number | 0.5 | user | A finite probability from 0 through 1: what a deny recommendation must reach to escalate the approval ask. |
 | `decisions.profile` | string | unset | user | The decision profile the layer runs on; without it the layer is unavailable and nothing is offered, never erroring. |
 | `decisions.questions` | string | off | user | Adds a probability marker beside the top option of a question; always display-only, the user still chooses. Values: `off`, `suggest`. |
-| `decisions.routing` | string | off | user | The model-routing consumer; picks the most probable profile without consulting any threshold. Values: `off`, `shadow`, `enforce`. |
+| `decisions.routing` | string | off | user | The model-routing consumer; applies the most probable profile only when its confidence meets routingMinConfidence, otherwise keeps the configured chat profile. Values: `off`, `shadow`, `enforce`. |
+| `decisions.routingMinConfidence` | number | 0.5 | user | A finite confidence threshold from 0 through 1; routing changes the configured chat profile only at or above this value. |
 | `decisions.routingProfiles` | string array | [] | user | Two to 255 unique configured profile names the router may select among; routing requires at least two. |
 | `decisions.tool` | string | off | user | Offers the `decide` tool, only when `decisions.profile` resolves as well. Values: `off`, `on`. |
 | `favorites` | string array | [] | user | The ordered favourite model ids, at most eight unique entries; schema 2 and later. |
@@ -75,6 +76,12 @@ shown are the documented defaults the store applies when a key is missing.
 | `usages.subagents` | string | unset | user, project | The profile child runs use. |
 | `verify` | string | block | user | How staged writes behave when a write verifier refuses the content: refuse, write and report unverified, or skip verifier selection. File-only; no environment override. Values: `block`, `warn`, `off`. |
 <!-- /docs-sync: settings -->
+
+## Decision confidence and approval thresholds
+
+For a binary decision with probability `p`, confidence is `|2p - 1|`. An existing approval
+probability threshold `t` of at least `0.5` maps to `2t - 1` in confidence, so the default threshold
+`0.5` remains `0`; the approval gate keeps the same behavior while using confidence consistently.
 
 ## Custom provider entry v2
 
