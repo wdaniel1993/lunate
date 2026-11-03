@@ -155,6 +155,23 @@ public sealed class SettingsDecisionsTests
         );
     }
 
+    [Theory]
+    [InlineData("-0.1")]
+    [InlineData("1.1")]
+    [InlineData("\"high\"")]
+    public void An_invalid_routing_confidence_threshold_is_refused_naming_the_field(string bad)
+    {
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            Resolve(Json($$""" "decisions": { "routingMinConfidence": {{bad}} } """), _ => null)
+        );
+
+        Assert.Contains(
+            "'decisions.routingMinConfidence' must be a finite number from 0 through 1",
+            exception.Message,
+            StringComparison.Ordinal
+        );
+    }
+
     [Fact]
     public void Tool_accepts_only_off_and_on()
     {
