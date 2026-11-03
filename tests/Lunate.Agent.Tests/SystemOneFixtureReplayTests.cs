@@ -40,6 +40,7 @@ public sealed class SystemOneFixtureReplayTests
         );
 
         Assert.Equal("yes", result.Results["is_bug"].Answer);
+        Assert.Equal("typesafe/jev-1.14-20261014", result.Results["is_bug"].ModelId);
         Assert.Equal("payments", result.Results["team"].Answer);
         Assert.Equal("blocking revenue", result.Results["urgency"].Answer);
         Assert.Equal(2, result.Results["urgency"].ExpectedScore);
