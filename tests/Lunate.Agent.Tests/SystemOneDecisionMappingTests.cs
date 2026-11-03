@@ -31,7 +31,7 @@ public sealed class SystemOneDecisionMappingTests
     public async Task Choice_exchange_uses_an_object_criteria_and_maps_probabilities()
     {
         using SystemOneRecordingHandler handler = new(
-            """{"answers":{"team":{"type":"choice","choice":"payments","probabilities":{"payments":0.77,"frontend":0.23}}}}"""
+            """{"model":"typesafe/jev-1.14","answers":{"team":{"type":"choice","choice":"payments","probabilities":{"payments":0.77,"frontend":0.23}}}}"""
         );
         using HttpClient httpClient = new(handler);
         SystemOneDecisionClient client = CreateClient(httpClient);
@@ -68,7 +68,7 @@ public sealed class SystemOneDecisionMappingTests
     public async Task Score_exchange_uses_ordered_array_criteria_and_legend_distribution()
     {
         using SystemOneRecordingHandler handler = new(
-            """{"answers":{"urgency":{"type":"score","score":1.43,"legend":{"0":"reject","1":"weak","2":"strong"},"probabilities":{"0":0,"1":0.57,"2":0.43},"confidence":0.99}}}"""
+            """{"model":"typesafe/jev-1.14","answers":{"urgency":{"type":"score","score":1.43,"legend":{"0":"reject","1":"weak","2":"strong"},"probabilities":{"0":0,"1":0.57,"2":0.43},"confidence":0.99}}}"""
         );
         using HttpClient httpClient = new(handler);
         SystemOneDecisionClient client = CreateClient(httpClient);
@@ -112,7 +112,7 @@ public sealed class SystemOneDecisionMappingTests
     public async Task Box_exchange_maps_fractional_region_and_provider_confidence()
     {
         using SystemOneRecordingHandler handler = new(
-            """{"answers":{"logo":{"type":"box","box":{"top":0.05,"bottom":0.44,"left":0.41,"right":0.54},"confidence":0.16}}}"""
+            """{"model":"typesafe/jev-1.14","answers":{"logo":{"type":"box","box":{"top":0.05,"bottom":0.44,"left":0.41,"right":0.54},"confidence":0.16}}}"""
         );
         using HttpClient httpClient = new(handler);
         SystemOneDecisionClient client = CreateClient(httpClient);
