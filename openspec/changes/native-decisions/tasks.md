@@ -67,13 +67,13 @@
 
 ## 6. Approval gate questions
 
-- [ ] Replace the single approve/deny question with four atomic noul questions in one request:
+- [x] Replace the single approve/deny question with four atomic noul questions in one request:
       `writes_outside_workspace`, `network_access`, `irreversible_deletion`, `credential_exposure`.
-- [ ] State: `tool`, `arguments`, `workspace_root`, `risk_tier`, `untrusted_content`; untrusted content
+- [x] State: `tool`, `arguments`, `workspace_root`, `risk_tier`, `untrusted_content`; untrusted content
       never in instructions or criteria.
-- [ ] Combine in code against one `decisions.approvalsThreshold` in confidence (default `2t − 1` of the
+- [x] Combine in code against one `decisions.approvalsThreshold` in confidence (default `2t − 1` of the
       old probability threshold); any signal at or above it escalates; shadow records every answer.
-- [ ] Test: each single signal escalates on its own; an adversarial argument string stays data.
+- [x] Test: each single signal escalates on its own; an adversarial argument string stays data.
 
 ## 7. State size and truncation
 

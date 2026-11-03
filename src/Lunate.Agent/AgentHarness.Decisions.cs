@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Lunate.Ai;
 using Lunate.Contracts;
@@ -55,6 +56,7 @@ public sealed partial class AgentHarness
                 supportsImages: DecisionClientResolver.SupportsImageInput(model.Model)
             );
 
+            string? stateWarning = DecisionStateSizeWarning(request.State);
             foreach ((string questionId, DecisionAnswer answer) in response.Results)
             {
                 channel.Emit(
@@ -68,8 +70,10 @@ public sealed partial class AgentHarness
                     {
                         QuestionId = questionId,
                         Answer = answer.Answer,
+                        Warning = stateWarning,
                     }
                 );
+                stateWarning = null;
             }
 
             return response;
@@ -94,107 +98,17 @@ public sealed partial class AgentHarness
         }
     }
 
-    private async Task<ApprovalDecisionResult> EvaluateApprovalDecisionAsync(
-        string runId,
-        ApprovalRequest request,
-        AgentEventChannel channel,
-        CancellationToken ct
-    )
+    private static string? DecisionStateSizeWarning(JsonElement state)
     {
-        UsageModelClient? model = ResolveUsageModel("decision");
-        if (model is null)
+        long estimatedTokens = state.GetRawText().Length / 4L;
+        if (estimatedTokens <= 28_000)
         {
-            channel.Emit(new DecisionUnavailable(runId) { QuestionId = "approval" });
-            return new ApprovalDecisionResult(null);
+            return null;
         }
 
-        bool native =
-            model.Model.ApiType == "native" && DecisionClientResolver.HasNativeClient(model.Client);
-        if (!native)
-        {
-            RequireCapability(
-                model.Model,
-                model.Model.Capabilities?.Features,
-                "structured-output",
-                "feature"
-            );
-        }
-
-        string modelId = model.Model.Id;
-        string method = native ? "native" : "adapter";
-        var state = JsonSerializer.SerializeToElement(
-            new
-            {
-                tool = request.Tool.Name,
-                risk = request.Tool.Risk.ToString(),
-                description = request.Tool.Description,
-                workspace = request.WorkspaceRoot,
-                arguments = request.Args,
-            }
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"Decision state is estimated above {estimatedTokens:N0} tokens (4 characters per token); it exceeds the default 32,000-token per-question budget. Long context is opt-in and can be slower and less accurate."
         );
-        var decisionRequest = new DecisionRequest(
-            state,
-            [
-                new DecisionQuestion(
-                    "approval",
-                    "Should this tool call be approved?",
-                    DecisionQuestionKind.Choice,
-                    ["approve", "deny"]
-                ),
-            ]
-        );
-
-        try
-        {
-            DecisionResponse response = await DecisionEngine.EvaluateAsync(
-                decisionRequest,
-                model.Client,
-                modelId,
-                method,
-                ct,
-                (usage, resolvedModelId, decisionMethod, probability) =>
-                    AccumulateUsage(
-                        runId,
-                        channel,
-                        usage,
-                        resolvedModelId,
-                        UsageAttribution("decision", model, decisionMethod, probability)
-                    ),
-                supportsImages: DecisionClientResolver.SupportsImageInput(model.Model)
-            );
-            DecisionAnswer answer = response.Results["approval"];
-            var evaluated = new DecisionEvaluated(
-                runId,
-                answer.ModelId,
-                answer.Method,
-                answer.Answer,
-                answer.Probability
-            )
-            {
-                QuestionId = "approval",
-                Answer = answer.Answer,
-            };
-            channel.Emit(evaluated);
-            return new ApprovalDecisionResult(evaluated);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (InvalidDataException exception)
-        {
-            const string questionId = "approval";
-            string reason = exception.Message;
-            channel.Emit(new DecisionFailed(runId, modelId, reason) { QuestionId = questionId });
-            return new ApprovalDecisionResult(null);
-        }
-        catch (Exception)
-        {
-            const string reason = "provider request failed";
-            channel.Emit(new DecisionFailed(runId, modelId, reason) { QuestionId = "approval" });
-            return new ApprovalDecisionResult(null);
-        }
     }
-
-    private sealed record ApprovalDecisionResult(DecisionEvaluated? Evaluation);
 }

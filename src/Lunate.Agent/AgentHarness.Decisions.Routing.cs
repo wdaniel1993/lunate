@@ -86,7 +86,12 @@ public sealed partial class AgentHarness
                 shadow ? "shadow"
                 : confident ? "routed"
                 : "confidence-below-threshold";
-            string? warning = MissingDescriptionWarning();
+            string? warning = DecisionStateSizeWarning(state);
+            string? descriptionWarning = MissingDescriptionWarning();
+            if (descriptionWarning is not null)
+            {
+                warning = warning is null ? descriptionWarning : warning + " " + descriptionWarning;
+            }
 
             channel.Emit(
                 new DecisionEvaluated(

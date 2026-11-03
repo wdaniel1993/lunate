@@ -128,6 +128,76 @@ public sealed class DecideToolTests
     }
 
     [Fact]
+    public async Task Large_decision_state_warns_that_long_context_is_opt_in()
+    {
+        JsonElement state = JsonSerializer.SerializeToElement(
+            new { payload = new string('x', 112_004) }
+        );
+        var chat = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call(
+                    "decide-call",
+                    "decide",
+                    LoopScripts.Args(
+                        ("state", state),
+                        (
+                            "questions",
+                            new object[]
+                            {
+                                new
+                                {
+                                    id = "safe",
+                                    text = "Is this safe?",
+                                    kind = "yes/no",
+                                },
+                            }
+                        )
+                    )
+                ),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("done"), LoopScripts.Stop());
+        var decision = new ScriptedChatClient().Enqueue(
+            LoopScripts.Text(
+                """{"results":{"safe":{"answer":"yes","probabilities":{"yes":0.8,"no":0.2}}}}"""
+            ),
+            LoopScripts.Stop()
+        );
+        var harness = new AgentHarness(
+            chat,
+            new ToolRegistry(),
+            new AgentHarnessOptions
+            {
+                DecideTool = true,
+                UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+                {
+                    ["chat"] = new(
+                        chat,
+                        "chat-profile",
+                        "openai",
+                        new ModelInfo("chat-model", "openai", null, 64000, SupportsTools: true)
+                    ),
+                    ["decision"] = new(
+                        decision,
+                        "decision-profile",
+                        "openai",
+                        new ModelInfo("decision-model", "openai", null, 64000, SupportsTools: false)
+                    ),
+                },
+            }
+        );
+
+        List<AgentEvent> events = await AgentTestSupport.Run(harness);
+
+        string warning = Assert.Single(events.OfType<DecisionEvaluated>()).Warning!;
+        Assert.Contains("28,004", warning, StringComparison.Ordinal);
+        Assert.Contains("4 characters per token", warning, StringComparison.Ordinal);
+        Assert.Contains("32,000-token per-question budget", warning, StringComparison.Ordinal);
+        Assert.Contains("Long context is opt-in", warning, StringComparison.Ordinal);
+        Assert.Contains("slower and less accurate", warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Decide_tool_is_not_offered_without_a_decision_profile()
     {
         var chat = new ScriptedChatClient().Enqueue(LoopScripts.Stop());
