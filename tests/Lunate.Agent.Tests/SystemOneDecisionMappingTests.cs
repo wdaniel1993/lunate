@@ -6,6 +6,27 @@ namespace Lunate.Agent.Tests;
 
 public sealed class SystemOneDecisionMappingTests
 {
+    [Theory]
+    [InlineData("\"plain text\"")]
+    [InlineData("[\"first\",\"second\"]")]
+    public async Task State_json_is_passed_through_without_restructuring(string stateJson)
+    {
+        using SystemOneRecordingHandler handler = new(
+            """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}"""
+        );
+        using HttpClient httpClient = new(handler);
+        SystemOneDecisionClient client = CreateClient(httpClient);
+        using JsonDocument state = JsonDocument.Parse(stateJson);
+
+        await client.GetDecisionAsync(
+            SystemOneDecisionTestData.CreateRequest(state.RootElement.Clone()),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        using JsonDocument sent = JsonDocument.Parse(handler.RequestBody!);
+        Assert.Equal(state.RootElement.GetRawText(), sent.RootElement.GetProperty("state").GetRawText());
+    }
+
     [Fact]
     public async Task Choice_exchange_uses_an_object_criteria_and_maps_probabilities()
     {
