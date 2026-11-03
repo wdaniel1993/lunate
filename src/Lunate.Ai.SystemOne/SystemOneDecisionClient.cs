@@ -57,7 +57,7 @@ internal sealed class SystemOneDecisionClient(HttpClient httpClient, SystemOnePr
         {
             body = SystemOneRequestContent.Gzip(body);
         }
-        using HttpRequestMessage message = new(HttpMethod.Post, preset.Endpoint)
+        HttpRequestMessage message = new(HttpMethod.Post, preset.Endpoint)
         {
             Content = new ByteArrayContent(body),
         };
