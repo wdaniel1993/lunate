@@ -107,6 +107,30 @@ public sealed class SystemOneDecisionClientTests
     }
 
     [Fact]
+    public async Task GetDecisionAsync_maps_413_to_named_body_limit_error()
+    {
+        using SystemOneRecordingHandler handler = new(
+            """{"detail":{"message":"request body too large"}}""",
+            HttpStatusCode.RequestEntityTooLarge
+        );
+        using HttpClient httpClient = new(handler);
+        SystemOneDecisionClient client = new(
+            httpClient,
+            new SystemOnePreset(new Uri("https://example.test/api/v1/systemone"))
+        );
+
+        DecisionTransportException exception = await Assert.ThrowsAsync<DecisionTransportException>(
+            () => client.GetDecisionAsync(
+                SystemOneDecisionTestData.CreateRequest(),
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Contains("32 MiB request limit", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(1, handler.RequestCount);
+    }
+
+    [Fact]
     public async Task GetDecisionAsync_applies_preset_image_headers_for_image_state()
     {
         using SystemOneRecordingHandler handler = new(
