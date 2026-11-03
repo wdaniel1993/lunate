@@ -127,4 +127,4 @@
 - [x] Existing decision-layer tests green with a native profile replacing the adapter.
 - [x] Layering graph test and the Contracts isolation test.
 - [x] Live smoke: OpenRouter and OpenCode (skip without a key).
-- [ ] `verify.sh` green and PR CI green.
+- [x] `verify.sh` green and PR CI green.
