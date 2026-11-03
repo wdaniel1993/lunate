@@ -360,6 +360,7 @@ internal static class AcpMode
             DecisionMode = effective.Decisions.Approvals,
             RoutingMode = effective.Decisions.Routing,
             RoutingProfiles = routingProfiles,
+            RoutingMinConfidence = effective.Decisions.RoutingMinConfidence,
             ApprovalsThreshold = effective.Decisions.ApprovalsThreshold,
             DecideTool = effective.Decisions.Tool,
             UsageModels = usageModels,

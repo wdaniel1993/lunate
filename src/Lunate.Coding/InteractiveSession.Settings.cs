@@ -72,6 +72,7 @@ internal sealed partial class InteractiveSession
         lines.Add(
             Row("decisions.routing", _settings.Decisions.Routing.ToString().ToLowerInvariant())
         );
+        lines.Add(Row("decisions.routingMinConfidence", _settings.Decisions.RoutingMinConfidence.ToString(CultureInfo.InvariantCulture)));
         lines.Add(Row("decisions.routingProfiles", ListValue(_settings.Decisions.RoutingProfiles)));
         lines.Add(Row("decisions.tool", BooleanLiteral(_settings.Decisions.Tool)));
         lines.Add(
@@ -121,6 +122,7 @@ internal sealed partial class InteractiveSession
                 CultureInfo.InvariantCulture
             ),
             "decisions.routing" => _settings.Decisions.Routing.ToString().ToLowerInvariant(),
+            "decisions.routingMinConfidence" => _settings.Decisions.RoutingMinConfidence.ToString(CultureInfo.InvariantCulture),
             "decisions.routingProfiles" => ListValue(_settings.Decisions.RoutingProfiles),
             "decisions.tool" => BooleanLiteral(_settings.Decisions.Tool),
             "decisions.questions" => _settings.Decisions.Questions.ToString().ToLowerInvariant(),
@@ -271,6 +273,7 @@ internal sealed partial class InteractiveSession
                 or "decisions.approvals"
                 or "decisions.approvalsThreshold"
                 or "decisions.routing"
+                or "decisions.routingMinConfidence"
                 or "decisions.routingProfiles"
                 or "decisions.tool"
                 or "decisions.questions"

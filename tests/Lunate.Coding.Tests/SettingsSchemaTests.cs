@@ -59,6 +59,7 @@ public sealed partial class SettingsSchemaTests
         ["decisions.approvals"] = "off",
         ["decisions.approvalsThreshold"] = 0.5,
         ["decisions.routing"] = "off",
+        ["decisions.routingMinConfidence"] = 0.5,
         ["decisions.routingProfiles"] = new[] { WildcardId, "probe-two" },
         ["decisions.tool"] = "off",
         ["decisions.questions"] = "off",

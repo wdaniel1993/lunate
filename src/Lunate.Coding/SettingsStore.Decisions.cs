@@ -58,6 +58,12 @@ public static partial class SettingsStore
                         ),
                     };
                     break;
+                case "routingMinConfidence":
+                    decisions = decisions with
+                    {
+                        RoutingMinConfidence = ReadRoutingMinConfidence(property.Value, problems),
+                    };
+                    break;
                 case "routingProfiles":
                     decisions = decisions with
                     {
@@ -130,6 +136,22 @@ public static partial class SettingsStore
 
         problems.Add("'decisions.approvalsThreshold' must be a finite number from 0 through 1");
         return DecisionsSettings.DefaultApprovalsThreshold;
+    }
+
+    private static double ReadRoutingMinConfidence(JsonElement value, List<string> problems)
+    {
+        if (
+            value.ValueKind == JsonValueKind.Number
+            && value.TryGetDouble(out double threshold)
+            && double.IsFinite(threshold)
+            && threshold is >= 0 and <= 1
+        )
+        {
+            return threshold;
+        }
+
+        problems.Add("'decisions.routingMinConfidence' must be a finite number from 0 through 1");
+        return DecisionsSettings.DefaultRoutingMinConfidence;
     }
 
     private static DecisionQuestionsMode ReadQuestionsMode(JsonElement value, List<string> problems)
