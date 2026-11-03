@@ -144,6 +144,28 @@ public sealed class SystemOneDecisionClientTransportTests
         Assert.Equal(2, handler.RequestCount);
     }
 
+    [Fact]
+    public async Task GetDecisionAsync_stops_after_three_transient_attempts()
+    {
+        using SystemOneRateLimitHandler handler = new();
+        using HttpClient httpClient = new(handler);
+        SystemOneDecisionClient client = new(
+            httpClient,
+            new SystemOnePreset(new Uri("https://example.test/api/v1/systemone")),
+            jitterSource: () => 0,
+            delayAsync: (_, _) => Task.CompletedTask
+        );
+
+        await Assert.ThrowsAsync<DecisionTransportException>(
+            () => client.GetDecisionAsync(
+                SystemOneDecisionTestData.CreateRequest(),
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Equal(3, handler.RequestCount);
+    }
+
     private static SystemOneDecisionClient CreateClient(HttpClient httpClient) =>
         new(httpClient, new SystemOnePreset(new Uri("https://example.test/api/v1/systemone")));
 }

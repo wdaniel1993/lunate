@@ -121,3 +121,24 @@ internal sealed class SystemOneRetryAfterHandler(TimeSpan retryAfter) : HttpMess
         return Task.FromResult(response);
     }
 }
+
+internal sealed class SystemOneRateLimitHandler : HttpMessageHandler
+{
+    public int RequestCount { get; private set; }
+
+    protected override Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken
+    )
+    {
+        RequestCount++;
+        HttpResponseMessage response = new(HttpStatusCode.TooManyRequests)
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json"),
+        };
+        response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(
+            TimeSpan.Zero
+        );
+        return Task.FromResult(response);
+    }
+}
