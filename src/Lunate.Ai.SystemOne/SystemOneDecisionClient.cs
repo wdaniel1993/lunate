@@ -18,11 +18,20 @@ internal sealed class SystemOneDecisionClient(HttpClient httpClient, SystemOnePr
 
         string modelId = options?.ModelId ?? request.ModelId;
         byte[] body = SystemOneRequestMapper.Serialize(request, modelId);
+        bool isCompressed = body.Length > 64 * 1024;
+        if (isCompressed)
+        {
+            body = SystemOneRequestContent.Gzip(body);
+        }
         using HttpRequestMessage message = new(HttpMethod.Post, preset.Endpoint)
         {
             Content = new ByteArrayContent(body),
         };
         message.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        if (isCompressed)
+        {
+            message.Content.Headers.ContentEncoding.Add("gzip");
+        }
         if (SystemOneRequestMapper.ContainsImagePart(request.State))
         {
             if (preset.ImageHeaders is { } imageHeaders)
