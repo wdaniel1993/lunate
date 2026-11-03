@@ -54,6 +54,10 @@ public sealed class ModelRoutingDecisionTests
 
         Assert.Single(run.Configured.Requests);
         Assert.Empty(run.Fast.Requests);
+        DecisionEvaluated decision = Assert.Single(run.Events.OfType<DecisionEvaluated>());
+        Assert.Equal("confidence-below-threshold", decision.Outcome);
+        Assert.Equal(0.4, decision.Confidence);
+        Assert.Equal(0.5, decision.Threshold);
     }
 
     [Fact]
@@ -66,6 +70,23 @@ public sealed class ModelRoutingDecisionTests
 
         Assert.Empty(run.Configured.Requests);
         Assert.Single(run.Fast.Requests);
+        DecisionEvaluated decision = Assert.Single(run.Events.OfType<DecisionEvaluated>());
+        Assert.Equal("routed", decision.Outcome);
+        Assert.Equal(0.5, decision.Confidence);
+        Assert.Equal(0.5, decision.Threshold);
+        Assert.Collection(
+            decision.Distribution!,
+            item =>
+            {
+                Assert.Equal("default", item.Answer);
+                Assert.Equal(0.25, item.Probability);
+            },
+            item =>
+            {
+                Assert.Equal("fast", item.Answer);
+                Assert.Equal(0.75, item.Probability);
+            }
+        );
     }
 
     [Fact]
