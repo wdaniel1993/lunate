@@ -95,7 +95,9 @@ public sealed partial class AgentHarness
             );
             return _options.RoutingMode == DecisionMode.Shadow
                 ? configuredModel
-                : _options.RoutingProfiles[mostProbable.Answer];
+                : answer.Confidence >= _options.RoutingMinConfidence
+                    ? _options.RoutingProfiles[mostProbable.Answer]
+                    : configuredModel;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

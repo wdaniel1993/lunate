@@ -236,6 +236,18 @@ public sealed partial class AgentHarness
             );
         }
 
+        if (
+            !double.IsFinite(options.RoutingMinConfidence)
+            || options.RoutingMinConfidence is < 0 or > 1
+        )
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.RoutingMinConfidence),
+                options.RoutingMinConfidence,
+                "The routing confidence threshold must be a finite probability from 0 through 1."
+            );
+        }
+
         if (options.RoutingProfiles is { Count: > 255 })
         {
             throw new ArgumentException(
