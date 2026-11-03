@@ -67,10 +67,10 @@ public sealed partial class AgentHarness
             new
             {
                 tool = request.Tool.Name,
-                arguments = ParseArguments(request.Args),
+                arguments = request.Args.Clone(),
                 workspace_root = request.WorkspaceRoot,
                 risk_tier = request.Tool.Risk.ToString().ToLowerInvariant(),
-                untrusted_content = request.Args,
+                untrusted_content = request.Args.GetRawText(),
             }
         );
         Dictionary<string, IReadOnlyDictionary<string, string>> criteria =
@@ -170,19 +170,6 @@ public sealed partial class AgentHarness
         {
             EmitApprovalFailures(runId, modelId, "provider request failed", channel);
             return new ApprovalDecisionResult(null, null);
-        }
-    }
-
-    private static JsonElement ParseArguments(string arguments)
-    {
-        try
-        {
-            using JsonDocument document = JsonDocument.Parse(arguments);
-            return document.RootElement.Clone();
-        }
-        catch (JsonException)
-        {
-            return JsonSerializer.SerializeToElement(arguments);
         }
     }
 

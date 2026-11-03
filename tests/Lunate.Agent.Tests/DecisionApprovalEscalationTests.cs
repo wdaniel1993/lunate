@@ -142,7 +142,11 @@ public sealed class DecisionApprovalEscalationTests
             JsonElement state = question.GetProperty("state");
             Assert.Equal("write", state.GetProperty("tool").GetString());
             Assert.Equal("write", state.GetProperty("risk_tier").GetString());
-            Assert.Equal(adversarial, state.GetProperty("untrusted_content").GetString());
+            Assert.Contains(
+                adversarial,
+                state.GetProperty("untrusted_content").GetString(),
+                StringComparison.Ordinal
+            );
             Assert.Equal(
                 adversarial,
                 state.GetProperty("arguments").GetProperty("command").GetString()
