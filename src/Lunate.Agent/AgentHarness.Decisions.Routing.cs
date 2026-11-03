@@ -52,7 +52,7 @@ public sealed partial class AgentHarness
                 profile => profile.Value.Description!,
                 StringComparer.Ordinal
             );
-        IReadOnlyDictionary<string, string>? criteria =
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? criteria =
             profileCriteria.Count == 0
                 ? null
                 : new Dictionary<string, IReadOnlyDictionary<string, string>>(
