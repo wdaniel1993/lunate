@@ -68,8 +68,9 @@ public sealed class SystemOneFixtureReplayTests
         );
 
         Assert.Equal(0.16, result.Results["logo"].Confidence);
-        Assert.Equal(0.05, result.Results["logo"].Box!.Top);
-        Assert.Equal(0.44, result.Results["logo"].Box.Bottom);
+        DecisionBox box = result.Results["logo"].Box!;
+        Assert.Equal(0.05, box.Top);
+        Assert.Equal(0.44, box.Bottom);
     }
 
     [Fact]
