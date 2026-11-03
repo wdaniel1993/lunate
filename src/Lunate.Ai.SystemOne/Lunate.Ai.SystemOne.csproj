@@ -10,6 +10,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Coding.Tests" />
+        <InternalsVisibleTo Include="Lunate.Agent.Tests" />
         <InternalsVisibleTo Include="lunate" />
     </ItemGroup>
 </Project>
