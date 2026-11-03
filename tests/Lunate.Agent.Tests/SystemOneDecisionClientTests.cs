@@ -162,6 +162,31 @@ public sealed class SystemOneDecisionClientTests
         Assert.DoesNotContain("TypeSafe-Danger-Zone-Images", handler.RequestHeaders!.Keys);
     }
 
+    [Fact]
+    public async Task GetDecisionAsync_rejects_a_body_above_32_mib_before_sending()
+    {
+        using RecordingHandler handler = new(
+            """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}"""
+        );
+        using HttpClient httpClient = new(handler);
+        SystemOneDecisionClient client = new(
+            httpClient,
+            new SystemOnePreset(new Uri("https://example.test/api/v1/systemone"))
+        );
+        using JsonDocument state = JsonDocument.Parse(
+            JsonSerializer.Serialize(new string('x', 32 * 1024 * 1024))
+        );
+
+        await Assert.ThrowsAsync<InvalidDataException>(
+            () => client.GetDecisionAsync(
+                CreateRequest(state.RootElement.Clone()),
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Equal(0, handler.RequestCount);
+    }
+
     private static DecisionRequest CreateRequest(JsonElement? providedState = null)
     {
         using JsonDocument state = JsonDocument.Parse("{}");
