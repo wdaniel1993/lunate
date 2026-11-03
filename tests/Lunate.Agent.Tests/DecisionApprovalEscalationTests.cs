@@ -5,7 +5,7 @@ namespace Lunate.Agent.Tests;
 
 public sealed class DecisionApprovalEscalationTests
 {
-    private static readonly string DenyResponse = AtomicResponse(
+    private static readonly string DenyResponse = DecisionApprovalResponse.Create(
         "writes_outside_workspace",
         affirmativeProbability: 0.87
     );
