@@ -58,19 +58,58 @@ public sealed class SystemOneDecisionClientTests
         Assert.Equal(0.82, result.Results["safe"].Confidence, 10);
     }
 
-    private sealed class RecordingHandler(string responseBody) : HttpMessageHandler
+    [Fact]
+    public async Task GetDecisionAsync_maps_max_tokens_error_to_state_size_failure()
+    {
+        using RecordingHandler handler = new(
+            """{"error":{"code":"max_tokens_exceeded","message":"max_tokens_exceeded"}}""",
+            HttpStatusCode.BadRequest
+        );
+        using HttpClient httpClient = new(handler);
+        SystemOneDecisionClient client = new(
+            httpClient,
+            new Uri("https://example.test/api/v1/systemone")
+        );
+
+        DecisionTransportException exception = await Assert.ThrowsAsync<DecisionTransportException>(
+            () => client.GetDecisionAsync(
+                CreateRequest(),
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Contains("state too large for this model", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(1, handler.RequestCount);
+    }
+
+    private static DecisionRequest CreateRequest()
+    {
+        using JsonDocument state = JsonDocument.Parse("{}");
+        return new DecisionRequest(
+            "typesafe/jev-1.14",
+            state.RootElement.Clone(),
+            [new DecisionQuestion("safe", "Is the call safe?", DecisionQuestionKind.Noul, ["yes", "no"])]
+        );
+    }
+
+    private sealed class RecordingHandler(
+        string responseBody,
+        HttpStatusCode statusCode = HttpStatusCode.OK
+    ) : HttpMessageHandler
     {
         public string? RequestBody { get; private set; }
         public Uri? RequestUri { get; private set; }
+        public int RequestCount { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken
         )
         {
+            RequestCount++;
             RequestUri = request.RequestUri;
             RequestBody = await request.Content!.ReadAsStringAsync(cancellationToken);
-            return new HttpResponseMessage(HttpStatusCode.OK)
+            return new HttpResponseMessage(statusCode)
             {
                 Content = new StringContent(responseBody, Encoding.UTF8, "application/json"),
             };
