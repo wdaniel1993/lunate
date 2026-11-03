@@ -53,7 +53,7 @@ public sealed class DecisionApprovalEscalationTests
     {
         DecisionRun run = await RunAsync(
             new RecordingApprover(decision: true),
-            secondDecision: AtomicResponse(null, affirmativeProbability: 0.1)
+            secondDecision: DecisionApprovalResponse.Create(affirmativeProbability: 0.1)
         );
 
         RecordingApprover approver = Assert.IsType<RecordingApprover>(run.Approver);
@@ -106,7 +106,7 @@ public sealed class DecisionApprovalEscalationTests
     {
         DecisionRun run = await RunAsync(
             new RecordingApprover(decision: true),
-            decisionResponse: AtomicResponse(signal, affirmativeProbability: 0.87)
+            decisionResponse: DecisionApprovalResponse.Create(signal, affirmativeProbability: 0.87)
         );
 
         Assert.Single(run.Decision.Requests);
@@ -158,36 +158,6 @@ public sealed class DecisionApprovalEscalationTests
                 StringComparison.Ordinal
             );
         }
-    }
-
-    private static string AtomicResponse(string? affirmativeSignal, double affirmativeProbability)
-    {
-        string[] signalIds =
-        [
-            "writes_outside_workspace",
-            "network_access",
-            "irreversible_deletion",
-            "credential_exposure",
-        ];
-        var results = new Dictionary<string, object>(StringComparer.Ordinal);
-        foreach (string signal in signalIds)
-        {
-            double yesProbability = signal == affirmativeSignal ? affirmativeProbability : 0.1;
-            results.Add(
-                signal,
-                new
-                {
-                    answer = yesProbability >= 0.5 ? "yes" : "no",
-                    probabilities = new Dictionary<string, double>(StringComparer.Ordinal)
-                    {
-                        ["yes"] = yesProbability,
-                        ["no"] = 1 - yesProbability,
-                    },
-                }
-            );
-        }
-
-        return JsonSerializer.Serialize(new { results });
     }
 
     private static async Task<DecisionRun> RunAsync(
