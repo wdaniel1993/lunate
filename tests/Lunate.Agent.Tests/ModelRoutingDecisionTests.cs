@@ -56,7 +56,7 @@ public sealed class ModelRoutingDecisionTests
         Assert.Empty(run.Fast.Requests);
         DecisionEvaluated decision = Assert.Single(run.Events.OfType<DecisionEvaluated>());
         Assert.Equal("confidence-below-threshold", decision.Outcome);
-        Assert.Equal(0.4, decision.Confidence);
+        Assert.Equal(0.4, decision.Confidence!.Value, precision: 12);
         Assert.Equal(0.5, decision.ConfidenceThreshold);
     }
 
