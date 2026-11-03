@@ -136,6 +136,32 @@ public sealed class SystemOneDecisionClientTests
         Assert.Equal("true", handler.RequestHeaders!["TypeSafe-Danger-Zone-Images"].Single());
     }
 
+    [Fact]
+    public async Task GetDecisionAsync_omits_preset_image_headers_for_text_state()
+    {
+        using RecordingHandler handler = new(
+            """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}"""
+        );
+        using HttpClient httpClient = new(handler);
+        SystemOneDecisionClient client = new(
+            httpClient,
+            new SystemOnePreset(
+                new Uri("https://example.test/api/v1/systemone"),
+                new Dictionary<string, string>
+                {
+                    ["TypeSafe-Danger-Zone-Images"] = "true",
+                }
+            )
+        );
+
+        await client.GetDecisionAsync(
+            CreateRequest(),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.DoesNotContain("TypeSafe-Danger-Zone-Images", handler.RequestHeaders!.Keys);
+    }
+
     private static DecisionRequest CreateRequest(JsonElement? providedState = null)
     {
         using JsonDocument state = JsonDocument.Parse("{}");
