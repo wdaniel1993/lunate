@@ -94,6 +94,14 @@ public sealed class InteractiveSessionRoutingCostTests
         host.Console.SendEnter();
         await host.WaitUntilAsync(() => host.Events.OfType<RunFinished>().Any());
         Assert.Single(host.Events.OfType<DecisionEvaluated>());
+        string decisionTranscript = await InteractiveSessionCommandTests.WaitForScrollbackAsync(
+            host,
+            "decision routing"
+        );
+        Assert.Contains("confidence 80%", decisionTranscript, StringComparison.Ordinal);
+        Assert.Contains("minimum 50%", decisionTranscript, StringComparison.Ordinal);
+        Assert.Contains("outcome routed", decisionTranscript, StringComparison.Ordinal);
+        Assert.Contains("default=10%, fast=90%", decisionTranscript, StringComparison.Ordinal);
         host.Console.SendText("/cost");
         host.Console.SendEnter();
         string report = await InteractiveSessionCommandTests.WaitForScrollbackAsync(
