@@ -28,9 +28,12 @@ internal sealed class SystemOneDecisionClient(HttpClient httpClient, SystemOnePr
         };
         if (SystemOneRequestMapper.ContainsImagePart(request.State))
         {
-            foreach ((string name, string value) in preset.ImageHeaders ?? [])
+            if (preset.ImageHeaders is { } imageHeaders)
             {
-                message.Headers.TryAddWithoutValidation(name, value);
+                foreach ((string name, string value) in imageHeaders)
+                {
+                    message.Headers.TryAddWithoutValidation(name, value);
+                }
             }
         }
 
