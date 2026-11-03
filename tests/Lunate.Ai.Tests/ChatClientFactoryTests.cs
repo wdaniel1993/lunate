@@ -436,7 +436,7 @@ public sealed class ChatClientFactoryTests
         AnthropicClient client = ChatClientFactory.CreateAnthropicClient(model);
 
         Assert.Equal(0, client.MaxRetries);
-        Assert.Equal(ChatClientFactory.PlaceholderCredential, client.ApiKey);
+        Assert.Equal(ChatClientFactory.SentinelCredential, client.ApiKey);
         Assert.Equal(model.Endpoint!.AbsoluteUri, client.BaseUrl);
     }
 
@@ -450,7 +450,9 @@ public sealed class ChatClientFactoryTests
 
         AnthropicClient client = ChatClientFactory.CreateAnthropicClient(model);
 
-        Assert.Equal("anthropic-test-key", client.ApiKey);
+        // The SDK object holds the sentinel only; the resolved key reaches the wire through the
+        // credential handler (the handler tests pin the placement).
+        Assert.Equal(ChatClientFactory.SentinelCredential, client.ApiKey);
     }
 
     [Fact]
@@ -467,7 +469,7 @@ public sealed class ChatClientFactoryTests
 
         AnthropicClient client = ChatClientFactory.CreateAnthropicClient(model);
 
-        Assert.Equal(ChatClientFactory.PlaceholderCredential, client.ApiKey);
+        Assert.Equal(ChatClientFactory.SentinelCredential, client.ApiKey);
     }
 
     [Fact]
@@ -882,7 +884,9 @@ public sealed class ChatClientFactoryTests
             name => name == "work" ? "work-key" : null
         );
 
-        Assert.Equal("work-key", client.ApiKey);
+        // Resolution still goes through the named key source; the SDK object only holds the
+        // sentinel, and a missing key is the same resolution error as before.
+        Assert.Equal(ChatClientFactory.SentinelCredential, client.ApiKey);
     }
 
     [Fact]
@@ -902,7 +906,7 @@ public sealed class ChatClientFactoryTests
             name => name == "anthropic" ? "stored-key" : null
         );
 
-        Assert.Equal(ChatClientFactory.PlaceholderCredential, client.ApiKey);
+        Assert.Equal(ChatClientFactory.SentinelCredential, client.ApiKey);
     }
 
     [Fact]

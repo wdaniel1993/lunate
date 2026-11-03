@@ -470,6 +470,8 @@ Lunate.Ai.ModelInfo.ApiType.get -> string?
 Lunate.Ai.ModelInfo.ApiType.init -> void
 Lunate.Ai.ModelInfo.ApiFamily.get -> string?
 Lunate.Ai.ModelInfo.ApiFamily.init -> void
+Lunate.Ai.ModelInfo.CredentialPlacement.get -> string?
+Lunate.Ai.ModelInfo.CredentialPlacement.init -> void
 Lunate.Ai.ModelInfo.AuthRef.get -> string?
 Lunate.Ai.ModelInfo.AuthRef.init -> void
 Lunate.Ai.ModelInfo.Capabilities.get -> Lunate.Ai.ModelCapabilityDescriptor?
@@ -487,6 +489,8 @@ Lunate.Ai.ModelInfo.MaxOutput.init -> void
 Lunate.Ai.ModelInfo.ModelInfo(string! Id, string! Provider, System.Uri? Endpoint, int ContextWindow, bool SupportsTools, string? AuthRef = null, string? Reasoning = null) -> void
 Lunate.Ai.ModelInfo.Pricing.get -> Lunate.Ai.ModelPricing?
 Lunate.Ai.ModelInfo.Pricing.init -> void
+Lunate.Ai.ModelInfo.ProviderHeaders.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Lunate.Ai.ModelInfo.ProviderHeaders.init -> void
 Lunate.Ai.ModelInfo.Provider.get -> string!
 Lunate.Ai.ModelInfo.Provider.init -> void
 Lunate.Ai.ModelInfo.Reasoning.get -> string?

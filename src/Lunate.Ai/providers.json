@@ -7,8 +7,10 @@
     // no client serves would only turn a chosen model into a dead end.
     { "id": "openai", "name": "OpenAI", "adapter": "openai", "baseUrl": "https://api.openai.com/v1", "keyVariable": "OPENAI_API_KEY" },
     // anthropic: the Messages API is the only API the provider documents for serving
-    // (https://docs.anthropic.com/en/api/messages); one family, so no catalog annotation.
-    { "id": "anthropic", "name": "Anthropic", "adapter": "anthropic", "baseUrls": { "anthropic-messages": "https://api.anthropic.com/v1" }, "keyVariable": "ANTHROPIC_API_KEY" },
+    // (https://docs.anthropic.com/en/api/messages); one family, so no catalog annotation. The
+    // credential goes out as x-api-key: the documented header, not the Bearer form the SDK
+    // defaults to; the credential placement handler swaps them on the wire.
+    { "id": "anthropic", "name": "Anthropic", "adapter": "anthropic", "baseUrls": { "anthropic-messages": "https://api.anthropic.com/v1" }, "credentialPlacement": "x-api-key", "keyVariable": "ANTHROPIC_API_KEY" },
     // openrouter: OpenAI-compatible Chat Completions (https://openrouter.ai/docs). The
     // attribution headers the provider documents are declared here and become live when the
     // headers pipeline lands (slice 2); this slice declares them without sending.
@@ -35,9 +37,10 @@
     // xai: OpenAI-compatible Chat Completions (https://docs.x.ai/api).
     { "id": "xai", "name": "xAI", "adapter": "openai-compatible", "baseUrl": "https://api.x.ai/v1", "keyVariable": "XAI_API_KEY" },
     // google: two families. The OpenAI-compatible surface is what the built-in catalog routes
-    // to today; the native Gemini API (https://ai.google.dev/gemini-api/docs) is declared here
-    // per the providers audit but has no client yet (slice 5), so the catalog annotates the
-    // google entries 'openai-chat' and nothing resolves to the native family by default.
-    { "id": "google", "name": "Google", "adapter": "openai-compatible", "baseUrls": { "openai-chat": "https://generativelanguage.googleapis.com/v1beta/openai", "google": "https://generativelanguage.googleapis.com/v1beta" }, "keyVariable": "GOOGLE_API_KEY", "keyVariableAlias": "GEMINI_API_KEY" }
+    // to today, with the bearer the endpoint documents; the native Gemini API
+    // (https://ai.google.dev/gemini-api/docs) takes its key as ?key= (the per-family placement
+    // below), and has no client yet (slice 5), so the catalog annotates the google entries
+    // 'openai-chat' and nothing resolves to the native family by default.
+    { "id": "google", "name": "Google", "adapter": "openai-compatible", "baseUrls": { "openai-chat": "https://generativelanguage.googleapis.com/v1beta/openai", "google": "https://generativelanguage.googleapis.com/v1beta" }, "credentialPlacement": { "google": { "in": "query", "name": "key" } }, "keyVariable": "GOOGLE_API_KEY", "keyVariableAlias": "GEMINI_API_KEY" }
   ]
 }

@@ -15,7 +15,8 @@ public sealed record ProviderEntry(
     IReadOnlyDictionary<string, string>? Headers = null,
     string? Region = null,
     IReadOnlyDictionary<ProviderApiFamily, Uri>? BaseUrls = null,
-    Uri? ModelsUrl = null
+    Uri? ModelsUrl = null,
+    IReadOnlyDictionary<ProviderApiFamily, CredentialPlacement>? CredentialPlacements = null
 )
 {
     /// <summary>
@@ -44,6 +45,21 @@ public sealed record ProviderEntry(
         : family == DefaultFamily ? BaseUrl
         : null;
 
+    /// <summary>
+    /// The credential placement a family's wire uses: the entry's own declaration, or the kind
+    /// preset's, or the default <see cref="CredentialPlacement.Bearer"/>. An entry's declaration
+    /// wins over the preset's, because the entry is the user's explicit intent.
+    /// </summary>
+    public CredentialPlacement PlacementFor(ProviderApiFamily family)
+    {
+        if (CredentialPlacements?.TryGetValue(family, out CredentialPlacement? declared) == true)
+        {
+            return declared;
+        }
+
+        return ProviderPresets.Find(Kind)?.PlacementFor(family) ?? CredentialPlacement.Bearer;
+    }
+
     internal static bool TryCreate(
         string? name,
         string? kind,
@@ -63,6 +79,7 @@ public sealed record ProviderEntry(
             region,
             baseUrls: null,
             modelsUrl: null,
+            credentialPlacements: null,
             out entry,
             out error
         );
@@ -76,6 +93,33 @@ public sealed record ProviderEntry(
         string? region,
         IReadOnlyDictionary<ProviderApiFamily, Uri>? baseUrls,
         Uri? modelsUrl,
+        out ProviderEntry? entry,
+        out string? error
+    ) =>
+        TryCreate(
+            name,
+            kind,
+            baseUrl,
+            credentialReference,
+            headers,
+            region,
+            baseUrls,
+            modelsUrl,
+            credentialPlacements: null,
+            out entry,
+            out error
+        );
+
+    internal static bool TryCreate(
+        string? name,
+        string? kind,
+        Uri? baseUrl,
+        string? credentialReference,
+        IReadOnlyDictionary<string, string>? headers,
+        string? region,
+        IReadOnlyDictionary<ProviderApiFamily, Uri>? baseUrls,
+        Uri? modelsUrl,
+        IReadOnlyDictionary<ProviderApiFamily, CredentialPlacement>? credentialPlacements,
         out ProviderEntry? entry,
         out string? error
     )
@@ -155,25 +199,20 @@ public sealed record ProviderEntry(
             copiedHeaders = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach ((string header, string reference) in headers)
             {
-                if (
-                    string.IsNullOrWhiteSpace(header)
-                    || header.Any(char.IsControl)
-                    || header.Contains(':')
-                )
+                if (!ProviderHeaderValues.TryValidate(header, reference, out string? headerError))
                 {
-                    error = $"providers.{name}.headers contains an invalid header name";
-                    return false;
-                }
-
-                if (!IsCredentialReference(reference))
-                {
-                    error =
-                        $"providers.{name}.headers.{header} must be an auth:, env:, or helper: reference";
+                    error = $"providers.{name}.headers.{header} {headerError}";
                     return false;
                 }
 
                 copiedHeaders.Add(header, reference);
             }
+        }
+
+        Dictionary<ProviderApiFamily, CredentialPlacement>? copiedPlacements = null;
+        if (credentialPlacements is { Count: > 0 })
+        {
+            copiedPlacements = new(credentialPlacements);
         }
 
         if (region is not null && region is not ("eu" or "us" or "local"))
@@ -190,7 +229,8 @@ public sealed record ProviderEntry(
             copiedHeaders,
             region,
             copiedFamilyUrls,
-            modelsUrl
+            modelsUrl,
+            copiedPlacements
         );
         error = null;
         return true;

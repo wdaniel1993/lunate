@@ -132,6 +132,19 @@ public static class ProviderPresets
 
         Dictionary<string, string>? headers = ParseHeaders(row.Headers, id, source);
 
+        if (
+            !CredentialPlacementFile.TryParseProvider(
+                row.CredentialPlacement,
+                out Dictionary<ProviderApiFamily, CredentialPlacement>? placements,
+                out string? placementError
+            )
+        )
+        {
+            throw new InvalidDataException(
+                $"Provider '{id}' in {source} declares an invalid credentialPlacement: {placementError}"
+            );
+        }
+
         return new ProviderPreset(
             id,
             name,
@@ -141,7 +154,8 @@ public static class ProviderPresets
             string.IsNullOrEmpty(row.KeyVariableAlias) ? null : row.KeyVariableAlias,
             familyUrls,
             modelsUrl,
-            headers
+            headers,
+            placements
         );
     }
 
@@ -205,21 +219,10 @@ public static class ProviderPresets
         var headers = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach ((string headerName, string headerValue) in declared)
         {
-            if (
-                headerName.Length == 0
-                || headerName.Any(char.IsControl)
-                || headerName.Contains(':')
-            )
+            if (!ProviderHeaderValues.TryValidate(headerName, headerValue, out string? error))
             {
                 throw new InvalidDataException(
-                    $"Provider '{id}' in {source} has invalid headers: an invalid header name '{headerName}'."
-                );
-            }
-
-            if (headerValue.Length == 0 || headerValue.Any(char.IsControl))
-            {
-                throw new InvalidDataException(
-                    $"Provider '{id}' in {source} has invalid headers: header '{headerName}' has an empty or control-character value."
+                    $"Provider '{id}' in {source} declares invalid headers for '{headerName}': {error}"
                 );
             }
 
@@ -288,6 +291,8 @@ public static class ProviderPresets
         public string? ModelsUrl { get; set; }
 
         public Dictionary<string, string>? Headers { get; set; }
+
+        public JsonElement? CredentialPlacement { get; set; }
 
         public string? KeyVariable { get; set; }
 

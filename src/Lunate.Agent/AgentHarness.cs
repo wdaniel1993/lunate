@@ -156,6 +156,11 @@ public sealed partial class AgentHarness
         CancellationToken ct = default
     ) => RunAsync(new UserInput(userInput), skill: null, runId, ct);
 
+    /// <summary>
+    /// Runs the loop for one user turn, including its images, and streams its events; the stream
+    /// completes when the run ends. Activates the run's request identity for the loop's scope:
+    /// the session's and run's ids are what the provider wire headers resolve over.
+    /// </summary>
     internal async IAsyncEnumerable<AgentEvent> RunAsync(
         UserInput userInput,
         SessionSkillMetadata? skill,
@@ -347,6 +352,13 @@ public sealed partial class AgentHarness
         CancellationToken ct
     )
     {
+        // The run's request identity: the wire headers this run's calls make resolve
+        // {session.id}/{run.id} over it. A child run activates its own pair on its own flow, so
+        // a child session's provider headers name the child.
+        using RequestContext.Scope runContext = RequestContext.Activate(
+            _options.Session?.SessionId,
+            runId
+        );
         try
         {
             await ExecuteRunAsync(runId, userInput, skill, channel, ct);

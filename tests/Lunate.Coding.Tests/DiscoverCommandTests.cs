@@ -109,6 +109,34 @@ public sealed class DiscoverCommandTests
     }
 
     [Fact]
+    public async Task A_declared_preset_headers_and_the_lunate_user_agent_go_out_on_discovery()
+    {
+        using var temp = new TempDirectory();
+        using var handler = new FakeHandler(_ =>
+            Json(HttpStatusCode.OK, """{ "data": [ { "id": "alpha" } ] }""")
+        );
+
+        DiscoverResult result = await DiscoverCommand.RunAsync(
+            "openrouter",
+            Catalog(temp),
+            handler,
+            environment: name => name == "OPENROUTER_API_KEY" ? "key" : null,
+            ct: TestContext.Current.CancellationToken
+        );
+
+        Assert.True(result.Succeeded, result.Error);
+        HttpRequestMessage request = handler.Requests[0];
+        // The provider's documented attribution headers reach discovery the same way they reach
+        // chat, and the request names the client that made it.
+        Assert.StartsWith("lunate/", request.Headers.UserAgent.ToString());
+        Assert.Equal(
+            "https://github.com/wdaniel1993/lunate",
+            request.Headers.GetValues("HTTP-Referer").Single()
+        );
+        Assert.Equal("Lunate", request.Headers.GetValues("X-Title").Single());
+    }
+
+    [Fact]
     public async Task Name_target_uses_the_catalog_endpoint_and_provider()
     {
         using var temp = new TempDirectory();

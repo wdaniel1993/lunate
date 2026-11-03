@@ -5,8 +5,8 @@ namespace Lunate.Ai;
 /// hand-written model entry. <see cref="KeyVariableAlias"/> is an optional second environment
 /// variable accepted for the same provider (for example <c>GEMINI_API_KEY</c> for Google).
 /// A preset may declare per-family URLs (<see cref="BaseUrls"/>, families may share a URL), a
-/// discovery <see cref="ModelsUrl"/>, and <see cref="Headers"/> — headers are declared data and
-/// the headers pipeline sends them; until that lands they are not sent.
+/// discovery <see cref="ModelsUrl"/>, <see cref="Headers"/> (values literal, template or
+/// credential reference) and per-family <see cref="CredentialPlacements"/>.
 /// </summary>
 public sealed record ProviderPreset(
     string Id,
@@ -17,7 +17,8 @@ public sealed record ProviderPreset(
     string? KeyVariableAlias = null,
     IReadOnlyDictionary<ProviderApiFamily, Uri>? BaseUrls = null,
     Uri? ModelsUrl = null,
-    IReadOnlyDictionary<string, string>? Headers = null
+    IReadOnlyDictionary<string, string>? Headers = null,
+    IReadOnlyDictionary<ProviderApiFamily, CredentialPlacement>? CredentialPlacements = null
 )
 {
     /// <summary>
@@ -47,4 +48,12 @@ public sealed record ProviderPreset(
         BaseUrls is { Count: > 0 } ? BaseUrls.GetValueOrDefault(family)
         : family == DefaultFamily ? BaseUrl
         : null;
+
+    /// <summary>
+    /// The credential placement a family's wire uses: the family's own declaration, or the
+    /// default <see cref="CredentialPlacement.Bearer"/> when the preset declares none. The value
+    /// stays in the credential pipeline; a placement is not a secret.
+    /// </summary>
+    public CredentialPlacement PlacementFor(ProviderApiFamily family) =>
+        CredentialPlacements?.GetValueOrDefault(family) ?? CredentialPlacement.Bearer;
 }

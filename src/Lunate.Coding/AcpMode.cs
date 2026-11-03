@@ -325,7 +325,8 @@ internal static class AcpMode
             name => Environment.GetEnvironmentVariable(name),
             clientFactory,
             warn ?? (_ => { }),
-            []
+            [],
+            new RequestContext(session.SessionId)
         );
         IReadOnlyDictionary<string, UsageModelClient>? usageModels = decisionModel is null
             ? null
@@ -385,7 +386,11 @@ internal static class AcpMode
             ),
         };
 
-        return new AgentHarness(clientFactory.Create(model), tools, options);
+        return new AgentHarness(
+            clientFactory.Create(model, new RequestContext(session.SessionId)),
+            tools,
+            options
+        );
 
         (AuthStore, IReadOnlyList<ProviderEntry>) LoadSources()
         {

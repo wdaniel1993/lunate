@@ -74,7 +74,8 @@ internal sealed partial class InteractiveSession
                 _environment,
                 _factory,
                 notice => Notify(notice.Message, notice.Level),
-                _warnedDecisionProfiles
+                _warnedDecisionProfiles,
+                SessionRequestContext()
             ) is
             { } decisionModel
         )
@@ -115,11 +116,13 @@ internal sealed partial class InteractiveSession
             _auth,
             _catalog,
             _environment,
-            _factory
+            _factory,
+            SessionRequestContext()
         );
 
     private IChatClient CreateUsageClient(ResolvedModelProfile profile)
     {
+        RequestContext? context = SessionRequestContext();
         string reference = profile.Provider.CredentialReference;
         if (reference.StartsWith("auth:", StringComparison.Ordinal))
         {
@@ -131,16 +134,16 @@ internal sealed partial class InteractiveSession
                     ?? (preset.KeyVariableAlias is { } alias ? _environment(alias) : null);
             if (!string.IsNullOrWhiteSpace(environmentKey))
             {
-                return _factory.Create(profile.Model, environmentKey);
+                return _factory.Create(profile.Model, environmentKey, context);
             }
 
             string? storedKey = _auth.TryGet(keyName);
             if (!string.IsNullOrWhiteSpace(storedKey))
             {
-                return _factory.Create(profile.Model, storedKey);
+                return _factory.Create(profile.Model, storedKey, context);
             }
 
-            return _factory.Create(profile.Model with { AuthRef = keyName });
+            return _factory.Create(profile.Model with { AuthRef = keyName }, context);
         }
 
         if (reference.StartsWith("env:", StringComparison.Ordinal))
@@ -149,7 +152,7 @@ internal sealed partial class InteractiveSession
             string? environmentKey = _environment(variable);
             if (!string.IsNullOrWhiteSpace(environmentKey))
             {
-                return _factory.Create(profile.Model, environmentKey);
+                return _factory.Create(profile.Model, environmentKey, context);
             }
 
             throw new InvalidOperationException(

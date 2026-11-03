@@ -979,8 +979,12 @@ internal sealed partial class InteractiveSession : IDisposable
     /// </summary>
     private IChatClient CreateSessionClient(ModelInfo model) =>
         HasMissingCredential(model)
-            ? new DeferredChatClient(() => _factory.Create(model))
-            : _factory.Create(model);
+            ? new DeferredChatClient(() => _factory.Create(model, SessionRequestContext()))
+            : _factory.Create(model, SessionRequestContext());
+
+    /// <summary>The session's request identity: the id children and runs resolve their templates against.</summary>
+    private RequestContext? SessionRequestContext() =>
+        _session?.SessionId is { Length: > 0 } sessionId ? new RequestContext(sessionId) : null;
 
     /// <summary>
     /// Whether this terminal session's model has no usable credential, so the deferred client and

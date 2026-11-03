@@ -28,7 +28,8 @@ internal static class DecisionUsageModels
         Func<string, string?> environment,
         IChatClientFactory factory,
         Action<UserNotice> warn,
-        HashSet<string> warned
+        HashSet<string> warned,
+        RequestContext? context = null
     )
     {
         if (settings.Decisions.Profile is not { } profile)
@@ -45,7 +46,7 @@ internal static class DecisionUsageModels
                 providers,
                 catalog
             );
-            return BuildClient(resolved, auth, environment, factory);
+            return BuildClient(resolved, auth, environment, factory, context);
         }
         catch (Exception exception)
             when (exception
@@ -81,7 +82,8 @@ internal static class DecisionUsageModels
         AuthStore auth,
         ModelCatalog catalog,
         Func<string, string?> environment,
-        IChatClientFactory factory
+        IChatClientFactory factory,
+        RequestContext? context = null
     )
     {
         if (settings.Decisions.Routing == DecisionMode.Off)
@@ -98,7 +100,7 @@ internal static class DecisionUsageModels
                 providers,
                 catalog
             );
-            profiles.Add(profileName, BuildClient(profile, auth, environment, factory));
+            profiles.Add(profileName, BuildClient(profile, auth, environment, factory, context));
         }
 
         return profiles;
@@ -108,10 +110,13 @@ internal static class DecisionUsageModels
         ResolvedModelProfile profile,
         AuthStore auth,
         Func<string, string?> environment,
-        IChatClientFactory factory
+        IChatClientFactory factory,
+        RequestContext? context = null
     ) =>
         new(
-            new DeferredChatClient(() => CreateUsageClient(profile, auth, environment, factory)),
+            new DeferredChatClient(() =>
+                CreateUsageClient(profile, auth, environment, factory, context)
+            ),
             profile.Profile.Name,
             profile.Provider.Name,
             profile.Model
@@ -126,7 +131,8 @@ internal static class DecisionUsageModels
         ResolvedModelProfile profile,
         AuthStore auth,
         Func<string, string?> environment,
-        IChatClientFactory factory
+        IChatClientFactory factory,
+        RequestContext? context = null
     )
     {
         string reference = profile.Provider.CredentialReference;
@@ -140,16 +146,16 @@ internal static class DecisionUsageModels
                     ?? (preset.KeyVariableAlias is { } alias ? environment(alias) : null);
             if (!string.IsNullOrWhiteSpace(environmentKey))
             {
-                return factory.Create(profile.Model, environmentKey);
+                return factory.Create(profile.Model, environmentKey, context);
             }
 
             string? storedKey = auth.TryGet(keyName);
             if (!string.IsNullOrWhiteSpace(storedKey))
             {
-                return factory.Create(profile.Model, storedKey);
+                return factory.Create(profile.Model, storedKey, context);
             }
 
-            return factory.Create(profile.Model with { AuthRef = keyName });
+            return factory.Create(profile.Model with { AuthRef = keyName }, context);
         }
 
         if (reference.StartsWith("env:", StringComparison.Ordinal))
@@ -158,7 +164,7 @@ internal static class DecisionUsageModels
             string? environmentKey = environment(variable);
             if (!string.IsNullOrWhiteSpace(environmentKey))
             {
-                return factory.Create(profile.Model, environmentKey);
+                return factory.Create(profile.Model, environmentKey, context);
             }
 
             throw new InvalidOperationException(

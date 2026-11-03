@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Lunate.Ai;
 
 namespace Lunate.Coding;
@@ -39,6 +40,7 @@ internal sealed class ProviderStore
                         entry.Region,
                         entry.BaseUrls,
                         entry.ModelsUrl,
+                        entry.CredentialPlacements,
                         out ProviderEntry? safeEntry,
                         out string? error
                     ) || safeEntry is null
@@ -231,6 +233,18 @@ internal sealed class ProviderStore
             }
         }
 
+        if (
+            !CredentialPlacementFile.TryParseProvider(
+                record.CredentialPlacement,
+                out Dictionary<ProviderApiFamily, CredentialPlacement>? placements,
+                out string? placementError
+            )
+        )
+        {
+            error = $"providers.{record.Name}.credentialPlacement {placementError}";
+            return false;
+        }
+
         return ProviderEntry.TryCreate(
             record.Name,
             record.Kind,
@@ -240,6 +254,7 @@ internal sealed class ProviderStore
             record.Region,
             baseUrls,
             record.ModelsUrl,
+            placements,
             out entry,
             out error
         );
@@ -260,8 +275,69 @@ internal sealed class ProviderStore
                     StringComparer.Ordinal
                 )
                 : null,
-            entry.ModelsUrl
+            entry.ModelsUrl,
+            ToFilePlacement(entry.CredentialPlacements)
         );
+
+    /// <summary>
+    /// The file declaration is always family-keyed: a provider-wide object would mean "every
+    /// family" on read, and a one-family map written that way would silently widen on reload.
+    /// </summary>
+    private static JsonElement? ToFilePlacement(
+        IReadOnlyDictionary<ProviderApiFamily, CredentialPlacement>? placements
+    )
+    {
+        if (placements is not { Count: > 0 })
+        {
+            return null;
+        }
+
+        var keyed = new JsonObject();
+        foreach ((ProviderApiFamily family, CredentialPlacement placement) in placements)
+        {
+            // A value that survives the compact round-trip writes as a compact string; a scheme
+            // needs the object's own field.
+            string? compact = placement.ToCompact();
+            bool compactRoundTrips =
+                compact is not null
+                && CredentialPlacement.TryParseCompact(
+                    compact,
+                    out CredentialPlacement? reparsed,
+                    out _
+                )
+                && reparsed == placement;
+            keyed[ProviderApiFamilies.Name(family)] = compactRoundTrips
+                ? compact
+                : PlacementNode(placement);
+        }
+
+        return ToElement(keyed);
+    }
+
+    /// <summary>A null result is "no declaration": the clone needs no element.</summary>
+    private static JsonElement? ToElement(JsonObject node)
+    {
+        JsonElement element = JsonSerializer.SerializeToElement(node, JsonOptions);
+        return element;
+    }
+
+    private static JsonObject PlacementNode(CredentialPlacement placement)
+    {
+        var form = new JsonObject
+        {
+            ["in"] = placement.Target == CredentialPlacementTarget.Query ? "query" : "header",
+            ["name"] = placement.Name,
+        };
+        if (
+            placement.Target == CredentialPlacementTarget.Header
+            && !string.IsNullOrEmpty(placement.Scheme)
+        )
+        {
+            form["scheme"] = placement.Scheme;
+        }
+
+        return form;
+    }
 
     private static void Write(string path, IEnumerable<ProviderEntry> entries)
     {
@@ -302,6 +378,7 @@ internal sealed class ProviderStore
         IReadOnlyDictionary<string, string>? Headers,
         string? Region,
         IReadOnlyDictionary<string, string>? BaseUrls,
-        Uri? ModelsUrl
+        Uri? ModelsUrl,
+        JsonElement? CredentialPlacement = null
     );
 }

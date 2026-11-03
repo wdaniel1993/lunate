@@ -61,26 +61,41 @@ public sealed class ProviderStoreSettingsTests
     }
 
     [Fact]
-    public void A_literal_header_secret_cannot_be_saved()
+    public void A_literal_header_value_is_declared_data_and_survives_the_store()
     {
+        // The header value model takes literals as declared data ("X-Title": "Lunate"); only
+        // invalid values are refused, and a refusal never echoes the refused value.
+        const string secret = "fixture-only-header-secret";
         using var temp = new TempDirectory();
         string path = temp.File("providers.json");
-        const string secret = "fixture-only-header-secret";
-        ProviderEntry invalid = new(
+        AuthStore auth = AuthStore.Load(temp.File("auth.json"), _ => null);
+        ProviderEntry entry = CreateEntry(
+            "work-openai",
+            new Uri("https://example.test/v1"),
+            "auth:work",
+            new Dictionary<string, string> { ["X-Title"] = "Lunate" },
+            "eu"
+        );
+
+        ProviderStore.Save(path, [entry]);
+        ProviderStore store = ProviderStore.Load(path, auth, []);
+
+        Assert.Equal("Lunate", Assert.Single(store.Entries).Headers!["X-Title"]);
+
+        bool invalidRefused = ProviderEntry.TryCreate(
             "work-openai",
             "openai",
             new Uri("https://example.test/v1"),
             "auth:work",
-            new Dictionary<string, string> { ["X-Api-Key"] = secret }
+            new Dictionary<string, string> { ["X-Broken"] = secret + "\nEvil: 1" },
+            region: null,
+            out _,
+            out string? error
         );
 
-        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            ProviderStore.Save(path, [invalid])
-        );
-
-        Assert.Contains("headers.X-Api-Key", exception.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain(secret, exception.Message, StringComparison.Ordinal);
-        Assert.False(File.Exists(path));
+        Assert.False(invalidRefused);
+        Assert.Contains("X-Broken", error, StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -228,6 +243,78 @@ public sealed class ProviderStoreSettingsTests
         Assert.Contains("work-openai", stdout, StringComparison.Ordinal);
         Assert.DoesNotContain(providerSecret, stdout + stderr, StringComparison.Ordinal);
         Assert.DoesNotContain(headerSecret, stdout + stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Provider_settings_round_trip_a_credential_placement()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("providers.json");
+        string authPath = temp.File("auth.json");
+        AuthStore auth = AuthStore.Load(authPath, _ => null);
+        bool created = ProviderEntry.TryCreate(
+            "go",
+            "opencode-go",
+            baseUrl: null,
+            "auth:go",
+            headers: null,
+            region: null,
+            baseUrls: new Dictionary<ProviderApiFamily, Uri>
+            {
+                [ProviderApiFamily.OpenAiChat] = new("https://go.example.test/openai/v1"),
+                [ProviderApiFamily.Google] = new("https://go.example.test/google/v1beta"),
+            },
+            modelsUrl: null,
+            new Dictionary<ProviderApiFamily, CredentialPlacement>
+            {
+                [ProviderApiFamily.Google] = new("key", CredentialPlacementTarget.Query),
+            },
+            out ProviderEntry? entry,
+            out string? error
+        );
+
+        Assert.True(created, error);
+        ProviderStore.Save(path, [entry!]);
+        ProviderStore store = ProviderStore.Load(path, auth, []);
+
+        // Only the declared family carries the placement; the other keeps the kind preset's
+        // default bearer, and the file never names it twice.
+        ProviderEntry loaded = Assert.Single(store.Entries);
+        Assert.Equal(
+            CredentialPlacementTarget.Query,
+            loaded.CredentialPlacements![ProviderApiFamily.Google].Target
+        );
+        Assert.Single(loaded.CredentialPlacements);
+        Assert.Equal(CredentialPlacement.Bearer, loaded.PlacementFor(ProviderApiFamily.OpenAiChat));
+
+        // The store writes the family-keyed form even for one family: a provider-wide object
+        // would mean "every family" on read and would silently widen on reload.
+        bool wideCreated = ProviderEntry.TryCreate(
+            "wide",
+            "anthropic",
+            new Uri("https://claude.example.test/v1"),
+            "auth:wide",
+            null,
+            null,
+            null,
+            null,
+            new Dictionary<ProviderApiFamily, CredentialPlacement>
+            {
+                [ProviderApiFamily.AnthropicMessages] = CredentialPlacement.XApiKey,
+            },
+            out ProviderEntry? wide,
+            out _
+        );
+        Assert.True(wideCreated);
+        ProviderStore.Save(temp.File("wide.json"), [wide!]);
+        using JsonDocument wideDocument = JsonDocument.Parse(
+            File.ReadAllText(temp.File("wide.json"))
+        );
+        JsonElement widePlacement = wideDocument
+            .RootElement.GetProperty("providers")[0]
+            .GetProperty("credentialPlacement");
+        JsonElement keyed = widePlacement.GetProperty("anthropic-messages");
+        Assert.Equal("x-api-key", keyed.GetString());
     }
 
     private static ProviderEntry CreateEntry(

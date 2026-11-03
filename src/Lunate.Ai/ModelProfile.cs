@@ -117,6 +117,11 @@ internal static class ModelProfileResolver
                 Endpoint = endpoint,
                 ApiFamily = ProviderApiFamilies.Name(family),
                 Capabilities = capabilities,
+                // The entry's declared headers ride on the model: the credential pipeline merges
+                // them with the kind preset's and renders the templates at send time. Values are
+                // references and templates, never resolved secrets.
+                ProviderHeaders = provider.Headers,
+                CredentialPlacement = provider.PlacementFor(family).ToCompact(),
             },
             contextWindow,
             capabilities

@@ -84,23 +84,39 @@ public sealed class ProviderEntryTests
     }
 
     [Fact]
-    public void Literal_header_values_are_rejected_without_echoing_them()
+    public void Literal_header_values_are_accepted_and_templates_resolve_over_the_context()
     {
+        // The header value model accepts literals as declared data; a value with a newline stays
+        // refused without echoing the refused value.
         const string secret = "fixture-only-header-secret";
         bool created = ProviderEntry.TryCreate(
             "openai-account",
             "openai",
             new Uri("https://example.test/v1"),
             "auth:openai",
-            new Dictionary<string, string> { ["X-Api-Key"] = secret },
+            new Dictionary<string, string> { ["X-Title"] = "Lunate" },
             region: null,
-            out _,
-            out string? error
+            out ProviderEntry? literal,
+            out _
         );
 
-        Assert.False(created);
-        Assert.Contains("headers.X-Api-Key", error, StringComparison.Ordinal);
-        Assert.DoesNotContain(secret, error, StringComparison.Ordinal);
+        Assert.True(created);
+        Assert.Equal("Lunate", literal!.Headers!["X-Title"]);
+
+        bool newlineRefused = ProviderEntry.TryCreate(
+            "openai-account",
+            "openai",
+            new Uri("https://example.test/v1"),
+            "auth:openai",
+            new Dictionary<string, string> { ["X-Injected"] = secret + "\nEvil: 1" },
+            region: null,
+            out _,
+            out string? newlineError
+        );
+
+        Assert.False(newlineRefused);
+        Assert.Contains("headers.X-Injected", newlineError, StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, newlineError, StringComparison.Ordinal);
     }
 
     private static ProviderEntry Create(

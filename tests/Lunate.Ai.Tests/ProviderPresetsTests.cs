@@ -25,7 +25,8 @@ public sealed class ProviderPresetsTests
                 BaseUrls: new Dictionary<ProviderApiFamily, Uri>
                 {
                     [ProviderApiFamily.AnthropicMessages] = new("https://api.anthropic.com/v1"),
-                }
+                },
+                CredentialPlacements: EveryFamily(CredentialPlacement.XApiKey)
             ),
             new(
                 "openrouter",
@@ -127,6 +128,12 @@ public sealed class ProviderPresetsTests
                     [ProviderApiFamily.Google] = new(
                         "https://generativelanguage.googleapis.com/v1beta"
                     ),
+                },
+                CredentialPlacements: new Dictionary<ProviderApiFamily, CredentialPlacement>
+                {
+                    // Only the native family declares a placement; the OpenAI-compatible surface
+                    // falls back to the default bearer in PlacementFor.
+                    [ProviderApiFamily.Google] = new("key", CredentialPlacementTarget.Query),
                 }
             ),
         ];
@@ -135,6 +142,11 @@ public sealed class ProviderPresetsTests
         // embedded table is compared structurally.
         Assert.Equivalent(expected, ProviderPresets.All);
     }
+
+    /// <summary>One placement declared provider-wide parses to every family the preset serves.</summary>
+    private static Dictionary<ProviderApiFamily, CredentialPlacement> EveryFamily(
+        CredentialPlacement placement
+    ) => ProviderApiFamilies.All.ToDictionary(family => family, _ => placement);
 
     [Fact]
     public void Google_preset_exposes_the_gemini_key_variable_alias()

@@ -40,6 +40,20 @@ public sealed record ModelInfo(
     /// </summary>
     public string? ApiFamily { get; init; }
 
+    /// <summary>
+    /// The provider headers a resolved profile declares, values as declared — literals,
+    /// <c>{session.id}</c>-style templates or <c>auth:</c>/<c>env:</c>/<c>helper:</c>
+    /// references. Never a resolved secret: a reference resolves at send time, and a template
+    /// resolves over the session's <see cref="RequestContext"/>.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? ProviderHeaders { get; init; }
+
+    /// <summary>
+    /// The credential placement for the model's resolved API family, in the compact form
+    /// (<c>bearer</c>, <c>x-api-key</c>, <c>query:key</c>); null keeps the default bearer.
+    /// </summary>
+    public string? CredentialPlacement { get; init; }
+
     internal bool SupportsTemperature { get; init; }
 
     public string? WireId { get; init; }

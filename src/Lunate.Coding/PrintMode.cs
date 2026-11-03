@@ -683,7 +683,8 @@ internal static class PrintMode
             options.Environment ?? Environment.GetEnvironmentVariable,
             factory,
             warn,
-            []
+            [],
+            SessionContext(session)
         );
         IReadOnlyDictionary<string, UsageModelClient>? decisionUsageModels = decisionModel is null
             ? null
@@ -747,7 +748,15 @@ internal static class PrintMode
             ),
         };
 
-        return new AgentHarness(factory.Create(model), tools, harnessOptions);
+        return new AgentHarness(
+            factory.Create(model, SessionContext(session)),
+            tools,
+            harnessOptions
+        );
+
+        /// <summary>The session's request identity; a fileless run carries no id.</summary>
+        RequestContext? SessionContext(Session? session) =>
+            session is { } active ? new RequestContext(active.SessionId) : null;
 
         (AuthStore, IReadOnlyList<ProviderEntry>) LoadSources()
         {
@@ -776,7 +785,8 @@ internal static class PrintMode
                 auth,
                 catalog,
                 options.Environment ?? Environment.GetEnvironmentVariable,
-                factory
+                factory,
+                SessionContext(session)
             );
         }
 

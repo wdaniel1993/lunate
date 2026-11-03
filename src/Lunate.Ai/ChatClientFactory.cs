@@ -13,6 +13,13 @@ public sealed class ChatClientFactory : IChatClientFactory
 {
     private const string AnthropicProvider = "anthropic";
     internal const string PlaceholderCredential = "unused-local-endpoint";
+
+    /// <summary>
+    /// The non-secret key an SDK client receives at construction: the credential is then placed
+    /// only by <see cref="ProviderCredentialHandler"/>, so the value never sits in an SDK object
+    /// (a log, an error option, a retry) — the wire is the only place it exists.
+    /// </summary>
+    internal const string SentinelCredential = "lunate-sentinel";
     private const string OpenTelemetryOptInVariable = "LUNATE_OTEL";
     private const string OtlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT";
     private const string RecordVariable = "LUNATE_RECORD";
@@ -42,11 +49,12 @@ public sealed class ChatClientFactory : IChatClientFactory
     }
 
     /// <summary>
-    /// Creates the client for the standard resolution path. When <c>LUNATE_REPLAY</c> names a
-    /// fixture and no recording is requested, the pipeline replays it instead of resolving a
-    /// credential or constructing a provider client.
+    /// Creates the client for the standard resolution path: replay allowed, no credential held.
+    /// When <c>LUNATE_REPLAY</c> names a fixture and no recording is requested, the pipeline
+    /// replays it instead of resolving a credential or constructing a provider client.
     /// </summary>
-    public IChatClient Create(ModelInfo model) => Create(model, apiKey: null, replayAllowed: true);
+    public IChatClient Create(ModelInfo model) =>
+        Create(model, apiKey: null, replayAllowed: true, context: null);
 
     /// <summary>
     /// Creates the client with an explicit credential, bypassing the environment/auth-store
@@ -54,13 +62,34 @@ public sealed class ChatClientFactory : IChatClientFactory
     /// only ever reaches the client's request headers. Replay is out of scope for this path.
     /// </summary>
     public IChatClient Create(ModelInfo model, string? apiKey) =>
-        Create(model, apiKey, replayAllowed: false);
+        Create(model, apiKey, replayAllowed: false, context: null);
+
+    /// <summary>
+    /// Creates the client with the session's request identity: headers' {session.id} resolves over
+    /// it; {run.id} resolves over the run the request executes in (the ambient context) or fails
+    /// loudly. The session path stays replayable: when <c>LUNATE_REPLAY</c> names a fixture, the
+    /// pipeline replays it and the request identity applies to no wire.
+    /// </summary>
+    public IChatClient Create(ModelInfo model, RequestContext? context) =>
+        Create(model, apiKey: null, replayAllowed: true, context);
+
+    /// <summary>
+    /// Creates the client with both an explicit credential and the session's request identity:
+    /// the declared extension providers' path, with the run's template context attached.
+    /// </summary>
+    public IChatClient Create(ModelInfo model, string? apiKey, RequestContext? context) =>
+        Create(model, apiKey, replayAllowed: false, context);
 
     /// <param name="replayAllowed">
     /// Whether <c>LUNATE_REPLAY</c> may replace the provider client. Only the standard resolution
     /// path allows it; a caller that already holds a credential gets the provider client.
     /// </param>
-    private IChatClient Create(ModelInfo model, string? apiKey, bool replayAllowed)
+    private IChatClient Create(
+        ModelInfo model,
+        string? apiKey,
+        bool replayAllowed,
+        RequestContext? context
+    )
     {
         ArgumentNullException.ThrowIfNull(model);
 
@@ -75,7 +104,7 @@ public sealed class ChatClientFactory : IChatClientFactory
         if (decorator is not null)
         {
             // Recording wins over replay: with both requested the run records, nothing is replayed.
-            inner = decorator(CreateInnerClient(model, apiKey));
+            inner = decorator(CreateInnerClient(model, apiKey, context));
         }
         else if (replayAllowed && ReplayPathFromEnvironment() is { } replayPath)
         {
@@ -84,7 +113,7 @@ public sealed class ChatClientFactory : IChatClientFactory
         }
         else
         {
-            inner = CreateInnerClient(model, apiKey);
+            inner = CreateInnerClient(model, apiKey, context);
         }
 
         if (string.Equals(model.Provider, AnthropicProvider, StringComparison.OrdinalIgnoreCase))
@@ -107,12 +136,20 @@ public sealed class ChatClientFactory : IChatClientFactory
     }
 
     /// <summary>The provider client: the test seam when installed, the real adapter otherwise.</summary>
-    private IChatClient CreateInnerClient(ModelInfo model, string? apiKey) =>
+    private IChatClient CreateInnerClient(
+        ModelInfo model,
+        string? apiKey,
+        RequestContext? context
+    ) =>
         _providerClientFactory is not null
             ? _providerClientFactory(model, apiKey)
-            : CreateProviderClient(model, apiKey);
+            : CreateProviderClient(model, apiKey, context);
 
-    private IChatClient CreateProviderClient(ModelInfo model, string? apiKey)
+    private IChatClient CreateProviderClient(
+        ModelInfo model,
+        string? apiKey,
+        RequestContext? context
+    )
     {
         ProviderPreset preset =
             ProviderPresets.Find(model.Provider) ?? throw UnsupportedProvider(model.Provider);
@@ -124,27 +161,96 @@ public sealed class ChatClientFactory : IChatClientFactory
             model.Id
         );
 
-        return family switch
+        // An unwired family is a slice error before it is an auth error: the check owns the
+        // message naming the family and the families this slice serves.
+        if (family is not (ProviderApiFamily.OpenAiChat or ProviderApiFamily.AnthropicMessages))
+        {
+            throw NotImplementedFamily(family, model, model.Provider);
+        }
+
+        // Resolved exactly once: the SDK clients get only the sentinel; the credential handler
+        // places the real value on the wire in the declared place.
+        string credential = apiKey ?? ResolveApiKey(model, preset, _namedKeySource);
+        CredentialPlacement placement = ResolvePlacement(model, preset, family);
+        var headersHandler = HeadersHandler(model, preset, context);
+        var credentialHandler = new ProviderCredentialHandler(credential, placement);
+
+        switch (family)
         {
             // The native OpenAI preset keeps the SDK default endpoint; every compatible preset
             // routes to its own base URL unless the entry declares one.
-            ProviderApiFamily.OpenAiChat => CreateOpenAiClient(
-                    model,
-                    preset,
-                    _namedKeySource,
-                    apiKey
-                )
-                .GetChatClient(wireId)
-                .AsIChatClient(),
-            ProviderApiFamily.AnthropicMessages => CreateAnthropicClient(
-                    model,
-                    preset,
-                    _namedKeySource,
-                    apiKey
-                )
-                .AsIChatClient(wireId),
-            _ => throw NotImplementedFamily(family, model, model.Provider),
-        };
+            case ProviderApiFamily.OpenAiChat:
+                return CreateOpenAiClient(model, preset, headersHandler, credentialHandler)
+                    .GetChatClient(wireId)
+                    .AsIChatClient();
+            case ProviderApiFamily.AnthropicMessages:
+                return CreateAnthropicClient(model, preset, headersHandler, credentialHandler)
+                    .AsIChatClient(wireId);
+            default:
+                throw NotImplementedFamily(family, model, model.Provider);
+        }
+    }
+
+    /// <summary>
+    /// The placement the resolved family's wire uses: the entry's declaration (carried on the
+    /// model for its resolved family) wins over the preset's, and an unusable compact form is a
+    /// load-quality error naming the provider, not a silent default.
+    /// </summary>
+    private static CredentialPlacement ResolvePlacement(
+        ModelInfo model,
+        ProviderPreset preset,
+        ProviderApiFamily family
+    )
+    {
+        if (model.CredentialPlacement is not { } declared)
+        {
+            return preset.PlacementFor(family);
+        }
+
+        if (
+            !CredentialPlacement.TryParseCompact(
+                declared,
+                out CredentialPlacement? placement,
+                out string? error
+            )
+        )
+        {
+            throw new InvalidDataException(
+                $"Provider '{model.Provider}' declares an invalid credentialPlacement '{declared}': {error}"
+            );
+        }
+
+        return placement!;
+    }
+
+    /// <summary>
+    /// The wire's declared-header handler of one created client: fresh per call (an SDK refuses a
+    /// handler that is already attached somewhere). The preset's headers go out; the entry's,
+    /// carried on the model, add to and override the same name — the user entry is the explicit
+    /// intent.
+    /// </summary>
+    private ProviderHeadersHandler HeadersHandler(
+        ModelInfo model,
+        ProviderPreset preset,
+        RequestContext? context
+    )
+    {
+        var declared = new List<(string Name, string Raw)>();
+        if (preset.Headers is { Count: > 0 } presetHeaders)
+        {
+            declared.AddRange(
+                presetHeaders
+                    .Where(header => model.ProviderHeaders?.ContainsKey(header.Key) != true)
+                    .Select(header => (header.Key, header.Value))
+            );
+        }
+
+        if (model.ProviderHeaders is { Count: > 0 } entryHeaders)
+        {
+            declared.AddRange(entryHeaders.Select(header => (header.Key, header.Value)));
+        }
+
+        return new ProviderHeadersHandler(declared, context, _namedKeySource, null);
     }
 
     private static NotSupportedException NotImplementedFamily(
@@ -188,36 +294,51 @@ public sealed class ChatClientFactory : IChatClientFactory
                 + "."
         );
 
-    internal static OpenAIClient CreateOpenAiClient(
+    internal OpenAIClient CreateOpenAiClient(
         ModelInfo model,
         Func<string, string?>? namedKeySource = null,
         string? apiKey = null
-    ) => CreateOpenAiClient(model, PresetFor(model), namedKeySource, apiKey);
+    ) => CreateOpenAiClient(model, PresetFor(model), headersHandler: null, credentialHandler: null);
 
-    private static OpenAIClient CreateOpenAiClient(
+    private OpenAIClient CreateOpenAiClient(
         ModelInfo model,
         ProviderPreset? preset,
-        Func<string, string?>? namedKeySource,
-        string? apiKey
+        DelegatingHandler? headersHandler,
+        DelegatingHandler? credentialHandler
     )
     {
-        string credential =
-            apiKey
-            ?? ResolveApiKey(
-                model,
-                preset ?? throw UnsupportedProvider(model.Provider),
-                namedKeySource
-            );
-
+        // The SDK holds the sentinel only: the credential handler places the real value on the
+        // wire, in the declared place, and the SDK object never carries it.
         return new OpenAIClient(
-            new ApiKeyCredential(credential),
-            CreateOpenAiClientOptions(model, preset)
+            new ApiKeyCredential(SentinelCredential),
+            CreateOpenAiClientOptions(
+                model,
+                preset,
+                headersHandler,
+                credentialHandler,
+                BaseTransportFactory
+            )
         );
     }
 
     internal static OpenAIClientOptions CreateOpenAiClientOptions(
         ModelInfo model,
         ProviderPreset? preset = null
+    ) =>
+        CreateOpenAiClientOptions(
+            model,
+            preset,
+            headersHandler: null,
+            credentialHandler: null,
+            null
+        );
+
+    private static OpenAIClientOptions CreateOpenAiClientOptions(
+        ModelInfo model,
+        ProviderPreset? preset,
+        DelegatingHandler? headersHandler,
+        DelegatingHandler? credentialHandler,
+        Func<HttpMessageHandler>? baseTransport
     )
     {
         OpenAIClientOptions options = new() { RetryPolicy = new ClientRetryPolicy(maxRetries: 0) };
@@ -230,42 +351,89 @@ public sealed class ChatClientFactory : IChatClientFactory
             options.Endpoint = endpoint;
         }
 
+        if (headersHandler is not null && credentialHandler is not null)
+        {
+            options.Transport = new HttpClientPipelineTransport(
+                TransportHttpClient(headersHandler, credentialHandler, baseTransport)
+            );
+        }
+
         return options;
     }
+
+    /// <summary>
+    /// The HTTP client a custom transport wraps: no protocol timeouts inside the transport (the
+    /// SDK and the caller own cancellation), handlers ordered headers outermost, credential
+    /// innermost, so the credential lands after the SDK built its request.
+    /// </summary>
+    private static HttpClient TransportHttpClient(
+        DelegatingHandler outer,
+        DelegatingHandler inner,
+        Func<HttpMessageHandler>? baseTransport
+    )
+    {
+        inner.InnerHandler = baseTransport?.Invoke() ?? new HttpClientHandler();
+        outer.InnerHandler = inner;
+        return new HttpClient(outer) { Timeout = Timeout.InfiniteTimeSpan };
+    }
+
+    /// <summary>
+    /// The base handler the factory-shaped transport wraps. Tests set it to observe exactly the
+    /// wire the installed pipeline builds; product code never does.
+    /// </summary>
+    internal Func<HttpMessageHandler>? BaseTransportFactory { get; set; }
 
     internal static AnthropicClient CreateAnthropicClient(
         ModelInfo model,
         Func<string, string?>? namedKeySource = null,
         string? apiKey = null
-    ) => CreateAnthropicClient(model, PresetFor(model), namedKeySource, apiKey);
+    ) =>
+        CreateAnthropicClient(
+            model,
+            PresetFor(model),
+            headersHandler: null,
+            credentialHandler: null
+        );
 
     private static AnthropicClient CreateAnthropicClient(
         ModelInfo model,
         ProviderPreset? preset,
-        Func<string, string?>? namedKeySource,
-        string? apiKey
+        DelegatingHandler? headersHandler,
+        DelegatingHandler? credentialHandler
     )
     {
-        string credential =
-            apiKey
-            ?? ResolveApiKey(
-                model,
-                preset ?? throw UnsupportedProvider(model.Provider),
-                namedKeySource
-            );
-
         if (model.Endpoint is null)
         {
-            return new AnthropicClient { ApiKey = credential, MaxRetries = 0 };
+            return new AnthropicClient
+            {
+                ApiKey = SentinelCredential,
+                MaxRetries = 0,
+                Handlers = WireHandlers(headersHandler, credentialHandler),
+            };
         }
 
         return new AnthropicClient
         {
-            ApiKey = credential,
+            ApiKey = SentinelCredential,
             MaxRetries = 0,
             BaseUrl = model.Endpoint.AbsoluteUri,
+            Handlers = WireHandlers(headersHandler, credentialHandler),
         };
     }
+
+    /// <summary>
+    /// The DelegatingHandler chain the Anthropic SDK attaches as options.Handlers: headers
+    /// outermost (each handler wraps the next, the last wraps the client), credential innermost
+    /// so the placement applies after the SDK built its request. An empty chain keeps the probe
+    /// path's SDK defaults.
+    /// </summary>
+    private static IReadOnlyList<DelegatingHandler> WireHandlers(
+        DelegatingHandler? headersHandler,
+        DelegatingHandler? credentialHandler
+    ) =>
+        headersHandler is null || credentialHandler is null
+            ? []
+            : [headersHandler, credentialHandler];
 
     private static ProviderPreset PresetFor(ModelInfo model) =>
         ProviderPresets.Find(model.Provider) ?? throw UnsupportedProvider(model.Provider);

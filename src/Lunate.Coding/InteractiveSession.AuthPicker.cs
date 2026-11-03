@@ -266,7 +266,7 @@ internal sealed partial class InteractiveSession
     {
         try
         {
-            IChatClient client = _factory.Create(model);
+            IChatClient client = _factory.Create(model, SessionRequestContext());
             await client
                 .GetResponseAsync(
                     [new ChatMessage(ChatRole.User, "Reply with OK.")],

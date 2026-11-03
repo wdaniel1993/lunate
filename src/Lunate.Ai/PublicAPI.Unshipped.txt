@@ -15,11 +15,15 @@ Lunate.Ai.CatalogSnapshot.Warnings.init -> void
 Lunate.Ai.ChatClientFactory
 Lunate.Ai.ChatClientFactory.ChatClientFactory(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool? enableOpenTelemetry = null, System.Func<Lunate.Ai.ModelInfo!, string?, Microsoft.Extensions.AI.IChatClient!>? providerClientFactory = null, System.Func<Microsoft.Extensions.AI.IChatClient!, Microsoft.Extensions.AI.IChatClient!>? recorderDecorator = null, System.Func<string!, string?>? namedKeySource = null) -> void
 Lunate.Ai.ChatClientFactory.Create(Lunate.Ai.ModelInfo! model) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.ChatClientFactory.Create(Lunate.Ai.ModelInfo! model, Lunate.Ai.RequestContext? context) -> Microsoft.Extensions.AI.IChatClient!
 Lunate.Ai.ChatClientFactory.Create(Lunate.Ai.ModelInfo! model, string? apiKey) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.ChatClientFactory.Create(Lunate.Ai.ModelInfo! model, string? apiKey, Lunate.Ai.RequestContext? context) -> Microsoft.Extensions.AI.IChatClient!
 Lunate.Ai.CostCalculator
 Lunate.Ai.IChatClientFactory
 Lunate.Ai.IChatClientFactory.Create(Lunate.Ai.ModelInfo! model) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.IChatClientFactory.Create(Lunate.Ai.ModelInfo! model, Lunate.Ai.RequestContext? context) -> Microsoft.Extensions.AI.IChatClient!
 Lunate.Ai.IChatClientFactory.Create(Lunate.Ai.ModelInfo! model, string? apiKey) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.IChatClientFactory.Create(Lunate.Ai.ModelInfo! model, string? apiKey, Lunate.Ai.RequestContext? context) -> Microsoft.Extensions.AI.IChatClient!
 Lunate.Ai.ModelCapabilityDescriptor (forwarded, contained in Lunate.Contracts)
 Lunate.Ai.ModelCapabilityDescriptor.Apis.get -> System.Collections.Generic.IReadOnlySet<string!>? (forwarded, contained in Lunate.Contracts)
 Lunate.Ai.ModelCapabilityDescriptor.Apis.init -> void (forwarded, contained in Lunate.Contracts)
@@ -112,7 +116,6 @@ Lunate.Ai.ProviderEntry.BaseUrls.get -> System.Collections.Generic.IReadOnlyDict
 Lunate.Ai.ProviderEntry.BaseUrls.init -> void
 Lunate.Ai.ProviderEntry.CredentialReference.get -> string!
 Lunate.Ai.ProviderEntry.CredentialReference.init -> void
-Lunate.Ai.ProviderEntry.Deconstruct(out string! Name, out string! Kind, out System.Uri! BaseUrl, out string! CredentialReference, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Headers, out string? Region, out System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, System.Uri!>? BaseUrls, out System.Uri? ModelsUrl) -> void
 Lunate.Ai.ProviderEntry.DefaultFamily.get -> Lunate.Ai.ProviderApiFamily
 Lunate.Ai.ProviderEntry.Equals(Lunate.Ai.ProviderEntry? other) -> bool
 Lunate.Ai.ProviderEntry.Families.get -> System.Collections.Generic.IReadOnlyList<Lunate.Ai.ProviderApiFamily>!
@@ -124,7 +127,6 @@ Lunate.Ai.ProviderEntry.ModelsUrl.get -> System.Uri?
 Lunate.Ai.ProviderEntry.ModelsUrl.init -> void
 Lunate.Ai.ProviderEntry.Name.get -> string!
 Lunate.Ai.ProviderEntry.Name.init -> void
-Lunate.Ai.ProviderEntry.ProviderEntry(string! Name, string! Kind, System.Uri! BaseUrl, string! CredentialReference, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Headers = null, string? Region = null, System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, System.Uri!>? BaseUrls = null, System.Uri? ModelsUrl = null) -> void
 Lunate.Ai.ProviderEntry.Region.get -> string?
 Lunate.Ai.ProviderEntry.Region.init -> void
 Lunate.Ai.ProviderEntry.UrlFor(Lunate.Ai.ProviderApiFamily family) -> System.Uri?
@@ -137,7 +139,6 @@ Lunate.Ai.ProviderPreset.BaseUrl.get -> System.Uri!
 Lunate.Ai.ProviderPreset.BaseUrl.init -> void
 Lunate.Ai.ProviderPreset.BaseUrls.get -> System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, System.Uri!>?
 Lunate.Ai.ProviderPreset.BaseUrls.init -> void
-Lunate.Ai.ProviderPreset.Deconstruct(out string! Id, out string! Name, out Lunate.Ai.ProviderAdapter Adapter, out System.Uri! BaseUrl, out string! KeyVariable, out string? KeyVariableAlias, out System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, System.Uri!>? BaseUrls, out System.Uri? ModelsUrl, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Headers) -> void
 Lunate.Ai.ProviderPreset.DefaultFamily.get -> Lunate.Ai.ProviderApiFamily
 Lunate.Ai.ProviderPreset.Equals(Lunate.Ai.ProviderPreset? other) -> bool
 Lunate.Ai.ProviderPreset.Families.get -> System.Collections.Generic.IReadOnlyList<Lunate.Ai.ProviderApiFamily>!
@@ -153,7 +154,6 @@ Lunate.Ai.ProviderPreset.ModelsUrl.get -> System.Uri?
 Lunate.Ai.ProviderPreset.ModelsUrl.init -> void
 Lunate.Ai.ProviderPreset.Name.get -> string!
 Lunate.Ai.ProviderPreset.Name.init -> void
-Lunate.Ai.ProviderPreset.ProviderPreset(string! Id, string! Name, Lunate.Ai.ProviderAdapter Adapter, System.Uri! BaseUrl, string! KeyVariable, string? KeyVariableAlias = null, System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, System.Uri!>? BaseUrls = null, System.Uri? ModelsUrl = null, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Headers = null) -> void
 Lunate.Ai.ProviderPreset.UrlFor(Lunate.Ai.ProviderApiFamily family) -> System.Uri?
 Lunate.Ai.ProviderPresets
 Lunate.Ai.ReasoningParameters
@@ -214,3 +214,50 @@ static Lunate.Ai.ProviderPresets.Find(string! id) -> Lunate.Ai.ProviderPreset?
 static Lunate.Ai.ReasoningParameters.Apply(Microsoft.Extensions.AI.ChatOptions! options, Lunate.Ai.ModelInfo! model, Lunate.Ai.ThinkingLevel level) -> void
 static Lunate.Ai.ReasoningParameters.Describe(Lunate.Ai.ModelInfo! model, Lunate.Ai.ThinkingLevel level) -> string!
 static Lunate.Ai.StreamAccumulator.IsUnassembled(Microsoft.Extensions.AI.FunctionCallContent! call) -> bool
+Lunate.Ai.CredentialPlacement
+Lunate.Ai.CredentialPlacement.<Clone>$() -> Lunate.Ai.CredentialPlacement!
+Lunate.Ai.CredentialPlacement.CredentialPlacement(string! Name, Lunate.Ai.CredentialPlacementTarget Target = Lunate.Ai.CredentialPlacementTarget.Header, string! Scheme = "") -> void
+Lunate.Ai.CredentialPlacement.Deconstruct(out string! Name, out Lunate.Ai.CredentialPlacementTarget Target, out string! Scheme) -> void
+Lunate.Ai.CredentialPlacement.Equals(Lunate.Ai.CredentialPlacement? other) -> bool
+Lunate.Ai.CredentialPlacement.Name.get -> string!
+Lunate.Ai.CredentialPlacement.Name.init -> void
+Lunate.Ai.CredentialPlacement.Scheme.get -> string!
+Lunate.Ai.CredentialPlacement.Scheme.init -> void
+Lunate.Ai.CredentialPlacement.Target.get -> Lunate.Ai.CredentialPlacementTarget
+Lunate.Ai.CredentialPlacement.Target.init -> void
+Lunate.Ai.CredentialPlacementTarget
+Lunate.Ai.CredentialPlacementTarget.Header = 0 -> Lunate.Ai.CredentialPlacementTarget
+Lunate.Ai.CredentialPlacementTarget.Query = 1 -> Lunate.Ai.CredentialPlacementTarget
+Lunate.Ai.ModelInfo.CredentialPlacement.get -> string? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.CredentialPlacement.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.ProviderHeaders.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>? (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.ProviderHeaders.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ProviderEntry.CredentialPlacements.get -> System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, Lunate.Ai.CredentialPlacement!>?
+Lunate.Ai.ProviderEntry.CredentialPlacements.init -> void
+Lunate.Ai.ProviderEntry.Deconstruct(out string! Name, out string! Kind, out System.Uri! BaseUrl, out string! CredentialReference, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Headers, out string? Region, out System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, System.Uri!>? BaseUrls, out System.Uri? ModelsUrl, out System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, Lunate.Ai.CredentialPlacement!>? CredentialPlacements) -> void
+Lunate.Ai.ProviderEntry.PlacementFor(Lunate.Ai.ProviderApiFamily family) -> Lunate.Ai.CredentialPlacement!
+Lunate.Ai.ProviderEntry.ProviderEntry(string! Name, string! Kind, System.Uri! BaseUrl, string! CredentialReference, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Headers = null, string? Region = null, System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, System.Uri!>? BaseUrls = null, System.Uri? ModelsUrl = null, System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, Lunate.Ai.CredentialPlacement!>? CredentialPlacements = null) -> void
+Lunate.Ai.ProviderPreset.CredentialPlacements.get -> System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, Lunate.Ai.CredentialPlacement!>?
+Lunate.Ai.ProviderPreset.CredentialPlacements.init -> void
+Lunate.Ai.ProviderPreset.Deconstruct(out string! Id, out string! Name, out Lunate.Ai.ProviderAdapter Adapter, out System.Uri! BaseUrl, out string! KeyVariable, out string? KeyVariableAlias, out System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, System.Uri!>? BaseUrls, out System.Uri? ModelsUrl, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Headers, out System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, Lunate.Ai.CredentialPlacement!>? CredentialPlacements) -> void
+Lunate.Ai.ProviderPreset.PlacementFor(Lunate.Ai.ProviderApiFamily family) -> Lunate.Ai.CredentialPlacement!
+Lunate.Ai.ProviderPreset.ProviderPreset(string! Id, string! Name, Lunate.Ai.ProviderAdapter Adapter, System.Uri! BaseUrl, string! KeyVariable, string? KeyVariableAlias = null, System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, System.Uri!>? BaseUrls = null, System.Uri? ModelsUrl = null, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Headers = null, System.Collections.Generic.IReadOnlyDictionary<Lunate.Ai.ProviderApiFamily, Lunate.Ai.CredentialPlacement!>? CredentialPlacements = null) -> void
+Lunate.Ai.RequestContext
+Lunate.Ai.RequestContext.<Clone>$() -> Lunate.Ai.RequestContext!
+Lunate.Ai.RequestContext.Deconstruct(out string? SessionId, out string? RunId) -> void
+Lunate.Ai.RequestContext.Equals(Lunate.Ai.RequestContext? other) -> bool
+Lunate.Ai.RequestContext.RequestContext(string? SessionId, string? RunId = null) -> void
+Lunate.Ai.RequestContext.RunId.get -> string?
+Lunate.Ai.RequestContext.RunId.init -> void
+Lunate.Ai.RequestContext.SessionId.get -> string?
+Lunate.Ai.RequestContext.SessionId.init -> void
+override Lunate.Ai.CredentialPlacement.Equals(object? obj) -> bool
+override Lunate.Ai.CredentialPlacement.GetHashCode() -> int
+override Lunate.Ai.CredentialPlacement.ToString() -> string!
+override Lunate.Ai.RequestContext.Equals(object? obj) -> bool
+override Lunate.Ai.RequestContext.GetHashCode() -> int
+override Lunate.Ai.RequestContext.ToString() -> string!
+static Lunate.Ai.CredentialPlacement.operator !=(Lunate.Ai.CredentialPlacement? left, Lunate.Ai.CredentialPlacement? right) -> bool
+static Lunate.Ai.CredentialPlacement.operator ==(Lunate.Ai.CredentialPlacement? left, Lunate.Ai.CredentialPlacement? right) -> bool
+static Lunate.Ai.RequestContext.operator !=(Lunate.Ai.RequestContext? left, Lunate.Ai.RequestContext? right) -> bool
+static Lunate.Ai.RequestContext.operator ==(Lunate.Ai.RequestContext? left, Lunate.Ai.RequestContext? right) -> bool

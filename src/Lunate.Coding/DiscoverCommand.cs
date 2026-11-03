@@ -132,18 +132,19 @@ public static class DiscoverCommand
         }
 
         string requestUrl = $"{baseUrl}/models";
-        using var client = new HttpClient(
+        using var client = DiscoveryClient(
             handler ?? new HttpClientHandler(),
-            disposeHandler: handler is null
-        )
-        {
-            Timeout = RequestTimeout,
-        };
+            disposeBase: handler is null,
+            credentialPreset,
+            key,
+            environment ?? Environment.GetEnvironmentVariable,
+            namedKeySource
+        );
 
         HttpResponseMessage response;
         try
         {
-            using var request = CreateRequest(requestUrl, credentialPreset, key);
+            using var request = CreateRequest(requestUrl, credentialPreset);
             response = await client.SendAsync(request, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -276,25 +277,59 @@ public static class DiscoverCommand
         }
     }
 
-    private static HttpRequestMessage CreateRequest(string url, ProviderPreset? preset, string? key)
+    private static HttpRequestMessage CreateRequest(string url, ProviderPreset? preset)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, url);
-        if (string.IsNullOrEmpty(key))
-        {
-            return request;
-        }
-
         if (preset?.Adapter == ProviderAdapter.Anthropic)
         {
-            request.Headers.TryAddWithoutValidation("x-api-key", key);
+            // The one protocol header the chat client's SDK adds on its own; the discovery
+            // request carries the same value.
             request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
-        }
-        else
-        {
-            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {key}");
         }
 
         return request;
+    }
+
+    /// <summary>
+    /// The discovery client sits on the same pipeline as a chat client: the lunate user agent,
+    /// the preset's declared headers (values resolved onto this request's context, which for a
+    /// discovery run names nothing) and the credential in the preset's placement. One place adds
+    /// headers, so discovery cannot forget what the chat path sends.
+    /// </summary>
+    private static HttpClient DiscoveryClient(
+        HttpMessageHandler baseHandler,
+        bool disposeBase,
+        ProviderPreset? preset,
+        string? key,
+        Func<string, string?> environment,
+        Func<string, string?>? namedKeySource
+    )
+    {
+        var headers = new ProviderHeadersHandler(
+            preset?.Headers?.Select(header => (header.Key, header.Value)) ?? [],
+            context: null,
+            namedKeySource: namedKeySource,
+            environment: environment ?? Environment.GetEnvironmentVariable
+        );
+        DelegatingHandler outermost = headers;
+        if (!string.IsNullOrEmpty(key))
+        {
+            // An auth-referenced key is the explicit opt-in that reaches any declared endpoint;
+            // only a preset's own key directions can name a different placement.
+            var credential = new ProviderCredentialHandler(
+                key,
+                preset?.PlacementFor(preset.DefaultFamily) ?? CredentialPlacement.Bearer
+            );
+            credential.InnerHandler = baseHandler;
+            headers.InnerHandler = credential;
+            outermost = headers;
+        }
+        else
+        {
+            headers.InnerHandler = baseHandler;
+        }
+
+        return new HttpClient(outermost, disposeHandler: disposeBase) { Timeout = RequestTimeout };
     }
 
     private static bool IsHttpUrl(string target, out string url)
