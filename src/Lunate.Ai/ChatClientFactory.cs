@@ -432,6 +432,27 @@ public sealed class ChatClientFactory : IChatClientFactory
     /// </summary>
     internal Func<HttpMessageHandler>? BaseTransportFactory { get; set; }
 
+    /// <summary>
+    /// Creates the provider's shared header-and-credential transport for a non-chat API family.
+    /// The caller owns the returned client and supplies the API-specific endpoint and body.
+    /// </summary>
+    internal HttpClient CreateProviderHttpClient(
+        ModelInfo model,
+        string? apiKey,
+        RequestContext? context,
+        ProviderApiFamily family
+    )
+    {
+        ProviderPreset preset = PresetFor(model);
+        string credential = apiKey ?? ResolveApiKey(model, preset, _namedKeySource);
+        CredentialPlacement placement = ResolvePlacement(model, preset, family);
+        return TransportHttpClient(
+            HeadersHandler(model, preset, context),
+            new ProviderCredentialHandler(credential, placement),
+            BaseTransportFactory
+        );
+    }
+
     internal static AnthropicClient CreateAnthropicClient(
         ModelInfo model,
         Func<string, string?>? namedKeySource = null,
