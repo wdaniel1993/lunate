@@ -187,4 +187,7 @@ public sealed record UsageModelClient(
 {
     /// <summary>The provider template kind of <see cref="Model"/>.</summary>
     public string ProviderKind => Model.Provider;
+
+    /// <summary>The user-written description used as this profile's routing criteria.</summary>
+    public string? Description { get; init; }
 }

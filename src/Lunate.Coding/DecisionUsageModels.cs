@@ -120,7 +120,10 @@ internal static class DecisionUsageModels
             profile.Profile.Name,
             profile.Provider.Name,
             profile.Model
-        );
+        )
+        {
+            Description = profile.Profile.Description,
+        };
 
     /// <summary>
     /// Materializes a profile's client from its credential reference: an environment or stored key

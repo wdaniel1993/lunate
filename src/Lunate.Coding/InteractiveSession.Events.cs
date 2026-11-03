@@ -111,6 +111,11 @@ internal sealed partial class InteractiveSession
                 break;
             case DecisionEvaluated decision when !child:
             {
+                if (decision.Warning is { } warning)
+                {
+                    Notify(warning, NoticeLevel.Warning);
+                }
+
                 string routingDetails = string.Empty;
                 if (
                     decision.Distribution is { } distribution

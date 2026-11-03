@@ -13,7 +13,7 @@ public sealed class SettingsDecisionsTests
           "schemaVersion": 2,
           "profiles": {
             "decision-profile": { "provider": "router", "model": "router/model-a" },
-            "routing-one": { "provider": "router", "model": "router/model-a" },
+            "routing-one": { "provider": "router", "model": "router/model-a", "description": "General chat" },
             "routing-two": { "provider": "router", "model": "router/model-b" }
           },
           "decisions": {
@@ -66,6 +66,7 @@ public sealed class SettingsDecisionsTests
         Assert.Equal(DecisionMode.Enforce, settings.Decisions.Routing);
         Assert.Equal(0.8, settings.Decisions.RoutingMinConfidence);
         Assert.Equal(["routing-one", "routing-two"], settings.Decisions.RoutingProfiles);
+        Assert.Equal("General chat", settings.Profiles["routing-one"].Description);
         Assert.True(settings.Decisions.Tool);
         Assert.Equal(DecisionQuestionsMode.Suggest, settings.Decisions.Questions);
     }

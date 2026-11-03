@@ -33,6 +33,7 @@ public sealed partial class AgentHarness
         StringComparer.Ordinal
     );
     private int _runActive;
+    private bool _routingDescriptionWarningEmitted;
     private int _nestedCallCounter;
     private int _spillSequence;
     private SubagentTreeState? _treeState;

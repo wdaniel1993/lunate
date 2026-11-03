@@ -124,6 +124,9 @@ public sealed record DecisionEvaluated(
 
     /// <summary>The routing outcome: routed, confidence-below-threshold, or shadow.</summary>
     public string? Outcome { get; init; }
+
+    /// <summary>A one-time warning about missing routing-profile descriptions.</summary>
+    public string? Warning { get; init; }
 }
 
 /// <summary>A decision consumer was enabled without a configured decision profile.</summary>

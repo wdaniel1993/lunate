@@ -74,6 +74,7 @@ public sealed partial class SettingsSchemaTests
         ["providers.*.model"] = ProbeModel,
         ["providers.*.catalogName"] = "Probe",
         ["profiles.*.apiFamily"] = "openai-chat",
+        ["profiles.*.description"] = "A profile's purpose.",
         ["profiles.*.provider"] = ProbeProvider,
         ["profiles.*.model"] = ProbeModel,
         ["profiles.*.reasoningLevel"] = "low",

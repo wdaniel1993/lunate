@@ -390,6 +390,8 @@ Lunate.Agent.DecisionEvaluated.Distribution.get -> System.Collections.Generic.IR
 Lunate.Agent.DecisionEvaluated.Distribution.init -> void (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.DecisionEvaluated.Outcome.get -> string? (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.DecisionEvaluated.Outcome.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Agent.DecisionEvaluated.Warning.get -> string? (forwarded, contained in Lunate.Contracts)
+Lunate.Agent.DecisionEvaluated.Warning.init -> void (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.DecisionEvaluated.Method.get -> string! (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.DecisionEvaluated.Method.init -> void (forwarded, contained in Lunate.Contracts)
 Lunate.Agent.DecisionEvaluated.ModelId.get -> string! (forwarded, contained in Lunate.Contracts)
@@ -1073,6 +1075,8 @@ Lunate.Agent.UsageModelClient
 Lunate.Agent.UsageModelClient.<Clone>$() -> Lunate.Agent.UsageModelClient!
 Lunate.Agent.UsageModelClient.Client.get -> Microsoft.Extensions.AI.IChatClient!
 Lunate.Agent.UsageModelClient.Client.init -> void
+Lunate.Agent.UsageModelClient.Description.get -> string?
+Lunate.Agent.UsageModelClient.Description.init -> void
 Lunate.Agent.UsageModelClient.Deconstruct(out Microsoft.Extensions.AI.IChatClient! Client, out string! ProfileName, out string! ProviderName, out Lunate.Ai.ModelInfo! Model) -> void
 Lunate.Agent.UsageModelClient.Equals(Lunate.Agent.UsageModelClient? other) -> bool
 Lunate.Agent.UsageModelClient.Model.get -> Lunate.Ai.ModelInfo!

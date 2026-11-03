@@ -107,8 +107,9 @@ public sealed class PrintEventJsonTests
                     Confidence = 0.5d,
                     ConfidenceThreshold = 0.5d,
                     Outcome = "routed",
+                    Warning = "Routing quality depends on descriptions.",
                 },
-                """{"type":"decision_evaluated","runId":"run_1","questionId":"routing","modelId":"model-x","method":"native","answer":"fast","option":"fast","probability":0.75,"distribution":[{"answer":"default","probability":0.25},{"answer":"fast","probability":0.75}],"confidence":0.5,"confidenceThreshold":0.5,"outcome":"routed"}"""
+                """{"type":"decision_evaluated","runId":"run_1","questionId":"routing","modelId":"model-x","method":"native","answer":"fast","option":"fast","probability":0.75,"distribution":[{"answer":"default","probability":0.25},{"answer":"fast","probability":0.75}],"confidence":0.5,"confidenceThreshold":0.5,"outcome":"routed","warning":"Routing quality depends on descriptions."}"""
             },
             {
                 new DecisionUnavailable("run_1"),

@@ -43,6 +43,24 @@ public sealed partial class AgentHarness
         string modelId = model.Model.Id;
         string method = native ? "native" : "adapter";
         string[] profiles = [.. _options.RoutingProfiles!.Keys];
+        var profileCriteria = _options
+            .RoutingProfiles!.Where(profile =>
+                !string.IsNullOrWhiteSpace(profile.Value.Description)
+            )
+            .ToDictionary(
+                profile => profile.Key,
+                profile => profile.Value.Description!,
+                StringComparer.Ordinal
+            );
+        IReadOnlyDictionary<string, string>? criteria =
+            profileCriteria.Count == 0
+                ? null
+                : new Dictionary<string, IReadOnlyDictionary<string, string>>(
+                    StringComparer.Ordinal
+                )
+                {
+                    [questionId] = profileCriteria,
+                };
         var request = new DecisionRequest(
             JsonSerializer.SerializeToElement(
                 new
@@ -76,7 +94,8 @@ public sealed partial class AgentHarness
                         usage,
                         resolvedModelId,
                         UsageAttribution("decision", model, decisionMethod, probability)
-                    )
+                    ),
+                questionCriteria: criteria
             );
             DecisionAnswer answer = response.Results[questionId];
             DecisionProbability mostProbable = answer.Distribution.MaxBy(item => item.Probability)!;
@@ -90,6 +109,25 @@ public sealed partial class AgentHarness
                 shadow ? "shadow"
                 : confident ? "routed"
                 : "confidence-below-threshold";
+            string? warning = null;
+            if (!_routingDescriptionWarningEmitted)
+            {
+                string[] undescribed =
+                [
+                    .. _options
+                        .RoutingProfiles!.Where(profile =>
+                            string.IsNullOrWhiteSpace(profile.Value.Description)
+                        )
+                        .Select(profile => profile.Key),
+                ];
+                if (undescribed.Length > 0)
+                {
+                    warning =
+                        $"Routing quality depends on descriptions for profiles: {string.Join(", ", undescribed)}.";
+                    _routingDescriptionWarningEmitted = true;
+                }
+            }
+
             channel.Emit(
                 new DecisionEvaluated(
                     runId,
@@ -105,6 +143,7 @@ public sealed partial class AgentHarness
                     Confidence = answer.Confidence,
                     ConfidenceThreshold = _options.RoutingMinConfidence,
                     Outcome = outcome,
+                    Warning = warning,
                 }
             );
             return routedModel;

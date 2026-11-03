@@ -210,6 +210,11 @@ internal static class PrintEventJson
             body["outcome"] = outcome;
         }
 
+        if (e.Warning is { } warning)
+        {
+            body["warning"] = warning;
+        }
+
         return body;
     }
 

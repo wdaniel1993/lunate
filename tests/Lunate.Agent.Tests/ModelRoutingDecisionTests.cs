@@ -61,6 +61,44 @@ public sealed class ModelRoutingDecisionTests
     }
 
     [Fact]
+    public async Task Missing_routing_descriptions_warn_only_once_per_harness()
+    {
+        const string response =
+            """{"results":{"routing":{"answer":"default","probabilities":{"default":0.7,"fast":0.3}}}}""";
+        var configured = new ScriptedChatClient()
+            .Enqueue(LoopScripts.Text("configured one"), LoopScripts.Stop())
+            .Enqueue(LoopScripts.Text("configured two"), LoopScripts.Stop());
+        var fast = new ScriptedChatClient();
+        var decision = new ScriptedChatClient()
+            .Enqueue(LoopScripts.Text(response), LoopScripts.Usage(500, 20), LoopScripts.Stop())
+            .Enqueue(LoopScripts.Text(response), LoopScripts.Usage(500, 20), LoopScripts.Stop());
+        var harness = new AgentHarness(
+            configured,
+            new ToolRegistry(),
+            new AgentHarnessOptions
+            {
+                RoutingMode = DecisionMode.Enforce,
+                UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+                {
+                    ["chat"] = Model(configured, "default"),
+                    ["decision"] = Model(decision, "decision"),
+                },
+                RoutingProfiles = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+                {
+                    ["default"] = Model(configured, "default"),
+                    ["fast"] = Model(fast, "fast"),
+                },
+            }
+        );
+
+        List<AgentEvent> first = await AgentTestSupport.Run(harness);
+        List<AgentEvent> second = await AgentTestSupport.Run(harness);
+
+        Assert.Contains("descriptions", Assert.Single(first.OfType<DecisionEvaluated>()).Warning);
+        Assert.Null(Assert.Single(second.OfType<DecisionEvaluated>()).Warning);
+    }
+
+    [Fact]
     public async Task Low_confidence_decision_keeps_the_configured_profile()
     {
         DecisionRun run = await RunAsync(
