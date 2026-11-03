@@ -51,6 +51,8 @@ Lunate.Agent.DecisionEvaluated.Option.get -> string!
 Lunate.Agent.DecisionEvaluated.Option.init -> void
 Lunate.Agent.DecisionEvaluated.Outcome.get -> string?
 Lunate.Agent.DecisionEvaluated.Outcome.init -> void
+Lunate.Agent.DecisionEvaluated.Strategy.get -> string?
+Lunate.Agent.DecisionEvaluated.Strategy.init -> void
 Lunate.Agent.DecisionEvaluated.Warning.get -> string?
 Lunate.Agent.DecisionEvaluated.Warning.init -> void
 Lunate.Agent.DecisionEvaluated.Probability.get -> double
@@ -488,6 +490,8 @@ Lunate.Ai.ModelInfo.Capabilities.get -> Lunate.Ai.ModelCapabilityDescriptor?
 Lunate.Ai.ModelInfo.Capabilities.init -> void
 Lunate.Ai.ModelInfo.ContextWindow.get -> int
 Lunate.Ai.ModelInfo.ContextWindow.init -> void
+Lunate.Ai.ModelInfo.ChoiceOrderSensitive.get -> bool
+Lunate.Ai.ModelInfo.ChoiceOrderSensitive.init -> void
 Lunate.Ai.ModelInfo.Deconstruct(out string! Id, out string! Provider, out System.Uri? Endpoint, out int ContextWindow, out bool SupportsTools, out string? AuthRef, out string? Reasoning) -> void
 Lunate.Ai.ModelInfo.Endpoint.get -> System.Uri?
 Lunate.Ai.ModelInfo.Endpoint.init -> void

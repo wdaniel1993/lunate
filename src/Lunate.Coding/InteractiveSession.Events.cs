@@ -131,7 +131,7 @@ internal sealed partial class InteractiveSession
                         )
                     );
                     routingDetails = FormattableString.Invariant(
-                        $"; confidence {confidence:P0} (minimum {threshold:P0}); outcome {outcome}; distribution [{probabilities}]"
+                        $"; strategy {decision.Strategy}; confidence {confidence:P0} (minimum {threshold:P0}); outcome {outcome}; distribution [{probabilities}]"
                     );
                 }
 

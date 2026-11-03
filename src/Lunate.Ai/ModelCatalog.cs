@@ -254,6 +254,7 @@ public sealed class ModelCatalog
             Capabilities = entry.Capabilities,
             ApiType = entry.ApiType,
             ApiFamily = entry.ApiFamily,
+            ChoiceOrderSensitive = entry.ChoiceOrderSensitive,
             SupportsTemperature = entry.SupportsTemperature,
             WireId = string.IsNullOrEmpty(entry.WireId) ? null : entry.WireId,
         };
@@ -296,6 +297,7 @@ public sealed class ModelCatalog
                         Capabilities = model.Capabilities,
                         ApiType = model.ApiType,
                         ApiFamily = model.ApiFamily,
+                        ChoiceOrderSensitive = model.ChoiceOrderSensitive,
                         WireId = model.WireId,
                     }
                 );
@@ -349,6 +351,8 @@ public sealed class ModelCatalog
         public string? ApiType { get; set; }
 
         public string? ApiFamily { get; set; }
+
+        public bool ChoiceOrderSensitive { get; set; }
 
         public string? WireId { get; set; }
     }

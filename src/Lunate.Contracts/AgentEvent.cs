@@ -125,6 +125,9 @@ public sealed record DecisionEvaluated(
     /// <summary>The routing outcome: routed, confidence-below-threshold, or shadow.</summary>
     public string? Outcome { get; init; }
 
+    /// <summary>The routing strategy: one choice question or one noul question per profile.</summary>
+    public string? Strategy { get; init; }
+
     /// <summary>A one-time warning about missing routing-profile descriptions.</summary>
     public string? Warning { get; init; }
 }

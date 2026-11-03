@@ -49,6 +49,8 @@ Lunate.Ai.ModelInfo.Capabilities.get -> Lunate.Ai.ModelCapabilityDescriptor? (fo
 Lunate.Ai.ModelInfo.Capabilities.init -> void (forwarded, contained in Lunate.Contracts)
 Lunate.Ai.ModelInfo.ContextWindow.get -> int (forwarded, contained in Lunate.Contracts)
 Lunate.Ai.ModelInfo.ContextWindow.init -> void (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.ChoiceOrderSensitive.get -> bool (forwarded, contained in Lunate.Contracts)
+Lunate.Ai.ModelInfo.ChoiceOrderSensitive.init -> void (forwarded, contained in Lunate.Contracts)
 Lunate.Ai.ModelInfo.Deconstruct(out string! Id, out string! Provider, out System.Uri? Endpoint, out int ContextWindow, out bool SupportsTools, out string? AuthRef, out string? Reasoning) -> void (forwarded, contained in Lunate.Contracts)
 Lunate.Ai.ModelInfo.Endpoint.get -> System.Uri? (forwarded, contained in Lunate.Contracts)
 Lunate.Ai.ModelInfo.Endpoint.init -> void (forwarded, contained in Lunate.Contracts)
