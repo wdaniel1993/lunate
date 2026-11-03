@@ -1,11 +1,11 @@
-using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Lunate.Ai.Decisions;
 
 namespace Lunate.Ai.SystemOne;
 
-internal sealed class SystemOneDecisionClient(HttpClient httpClient, Uri endpoint) : IDecisionClient
+internal sealed class SystemOneDecisionClient(HttpClient httpClient, SystemOnePreset preset)
+    : IDecisionClient
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -19,13 +19,23 @@ internal sealed class SystemOneDecisionClient(HttpClient httpClient, Uri endpoin
         DecisionRequestValidator.Validate(request);
 
         string modelId = options?.ModelId ?? request.ModelId;
-        using HttpResponseMessage response = await httpClient
-            .PostAsJsonAsync(
-                endpoint,
+        using HttpRequestMessage message = new(HttpMethod.Post, preset.Endpoint)
+        {
+            Content = JsonContent.Create(
                 SystemOneRequestMapper.Create(request, modelId),
-                JsonOptions,
-                cancellationToken
-            )
+                options: JsonOptions
+            ),
+        };
+        if (SystemOneRequestMapper.ContainsImagePart(request.State))
+        {
+            foreach ((string name, string value) in preset.ImageHeaders ?? [])
+            {
+                message.Headers.TryAddWithoutValidation(name, value);
+            }
+        }
+
+        using HttpResponseMessage response = await httpClient
+            .SendAsync(message, cancellationToken)
             .ConfigureAwait(false);
         string responseBody = await response
             .Content.ReadAsStringAsync(cancellationToken)

@@ -17,7 +17,7 @@ public sealed class SystemOneDecisionClientTests
         using HttpClient httpClient = new(handler);
         SystemOneDecisionClient client = new(
             httpClient,
-            new Uri("https://example.test/api/v1/systemone")
+            new SystemOnePreset(new Uri("https://example.test/api/v1/systemone"))
         );
         using JsonDocument state = JsonDocument.Parse("{\"tool\":\"read\"}");
         DecisionRequest request = new(
@@ -68,7 +68,7 @@ public sealed class SystemOneDecisionClientTests
         using HttpClient httpClient = new(handler);
         SystemOneDecisionClient client = new(
             httpClient,
-            new Uri("https://example.test/api/v1/systemone")
+            new SystemOnePreset(new Uri("https://example.test/api/v1/systemone"))
         );
 
         DecisionTransportException exception = await Assert.ThrowsAsync<DecisionTransportException>(
@@ -92,7 +92,7 @@ public sealed class SystemOneDecisionClientTests
         using HttpClient httpClient = new(handler);
         SystemOneDecisionClient client = new(
             httpClient,
-            new Uri("https://example.test/api/v1/systemone")
+            new SystemOnePreset(new Uri("https://example.test/api/v1/systemone"))
         );
 
         DecisionTransportException exception = await Assert.ThrowsAsync<DecisionTransportException>(
