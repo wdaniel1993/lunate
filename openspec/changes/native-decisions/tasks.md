@@ -17,7 +17,7 @@
       `DelegatingDecisionClient`, `DecisionClientBuilder`, `UseOpenTelemetry()`; depends only on
       `Microsoft.Extensions.AI.Abstractions`.
 - [x] The chat-model adapter moves here as `ChatDecisionClient : IDecisionClient` over an `IChatClient`.
-- [ ] New `Lunate.Ai.SystemOne` (internal): the System One HTTP client `IDecisionClient`, quirk data,
+- [x] New `Lunate.Ai.SystemOne` (internal): the System One HTTP client `IDecisionClient`, quirk data,
       fixtures; referenced only by composition.
 - [x] `Lunate.Agent`'s primitive and validator depend only on `IDecisionClient`; mapping to and from
       `Lunate.Contracts` at the agent boundary.
@@ -32,24 +32,24 @@
       [0,1], wrong-kind rejected).
 - [x] `DecisionResult.Confidence` — the computed value (see 5), so extensions see what the router uses.
 - [x] Image state validation gated by the model's input modalities, refusal naming the capability.
-- [ ] `INativeDecisionClient` stays and forwards to `IDecisionClient`, so 1.15.0 consumers keep working.
+- [x] `INativeDecisionClient` stays and forwards to `IDecisionClient`, so 1.15.0 consumers keep working.
 - [x] Version bump and contract tests at the new version.
 
 ## 4. System One client
 
-- [ ] `SystemOneDecisionClient`: request mapping per kind (score criteria array, choice/noul records),
+- [x] `SystemOneDecisionClient`: request mapping per kind (score criteria array, choice/noul records),
       state pass-through (string, object, array, parts), response mapping per kind (noul complement,
       choice probabilities, score legend + expected score, box fractions), `results` JSON for the
       validator.
-- [ ] Typed `DecisionTransportException` for deterministic 4xx with the provider's message; 422 field
+- [x] Typed `DecisionTransportException` for deterministic 4xx with the provider's message; 422 field
       surfaced; no retry; `max_tokens_exceeded` mapped to "state too large for this model".
-- [ ] Image-only headers from the preset (`TypeSafe-Danger-Zone-Images` for OpenCode) applied only
+- [x] Image-only headers from the preset (`TypeSafe-Danger-Zone-Images` for OpenCode) applied only
       when the request has image parts.
-- [ ] Request rules: 32 MiB body, 64 nesting levels, finite numbers only, identifiers as strings; gzip
+- [x] Request rules: 32 MiB body, 64 nesting levels, finite numbers only, identifiers as strings; gzip
       above 64 KiB; 429/529 backoff with jitter and `retry-after`, at most three attempts.
-- [ ] `SystemOneChatFacade : IChatClient` — chat calls fail with "model X is a decision model"; its
+- [x] `SystemOneChatFacade : IChatClient` — chat calls fail with "model X is a decision model"; its
       `GetService` returns the decision client.
-- [ ] `HttpClient` with the shared header and credential handlers from #474 slice 2.
+- [x] `HttpClient` with the shared header and credential handlers from #474 slice 2.
 
 ## 5. Confidence and routing
 

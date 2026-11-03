@@ -1,0 +1,1 @@
+{"model":"jev-1.13","answers":{"q":{"type":"noul","noul":0.43}},"usage":{"input_tokens":270,"output_tokens":20,"cost":0.00001134,"opencode":{"billing_source":"balance","list_cost":0.00001134,"tokens":{"input":270,"output":20,"reasoning":0,"cache_read":0,"cache_write_5m":0,"cache_write_1h":0}}}}

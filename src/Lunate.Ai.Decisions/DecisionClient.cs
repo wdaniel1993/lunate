@@ -70,7 +70,8 @@ internal sealed record DecisionAnswer(
     string ModelId,
     string Method,
     double Confidence,
-    DecisionBox? Box = null
+    DecisionBox? Box = null,
+    double? ExpectedScore = null
 );
 
 internal sealed record DecisionUsage(
