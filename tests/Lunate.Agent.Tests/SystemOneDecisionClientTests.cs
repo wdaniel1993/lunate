@@ -1,5 +1,3 @@
-using System.Net;
-using System.Text;
 using System.Text.Json;
 using Lunate.Ai.Decisions;
 using Lunate.Ai.SystemOne;
@@ -11,7 +9,7 @@ public sealed class SystemOneDecisionClientTests
     [Fact]
     public async Task GetDecisionAsync_translates_a_noul_exchange()
     {
-        using RecordingHandler handler = new(
+        using SystemOneRecordingHandler handler = new(
             """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}"""
         );
         using HttpClient httpClient = new(handler);
@@ -61,7 +59,7 @@ public sealed class SystemOneDecisionClientTests
     [Fact]
     public async Task GetDecisionAsync_maps_max_tokens_error_to_state_size_failure()
     {
-        using RecordingHandler handler = new(
+        using SystemOneRecordingHandler handler = new(
             """{"error":{"code":"max_tokens_exceeded","message":"max_tokens_exceeded"}}""",
             HttpStatusCode.BadRequest
         );
@@ -73,7 +71,7 @@ public sealed class SystemOneDecisionClientTests
 
         DecisionTransportException exception = await Assert.ThrowsAsync<DecisionTransportException>(
             () => client.GetDecisionAsync(
-                CreateRequest(),
+                SystemOneDecisionTestData.CreateRequest(),
                 cancellationToken: TestContext.Current.CancellationToken
             )
         );
@@ -85,7 +83,7 @@ public sealed class SystemOneDecisionClientTests
     [Fact]
     public async Task GetDecisionAsync_surfaces_the_field_from_a_422_response()
     {
-        using RecordingHandler handler = new(
+        using SystemOneRecordingHandler handler = new(
             """{"error":{"message":"[{\"path\":[\"questions\",\"safe\",\"criteria\"],\"message\":\"Invalid input\"}]"}}""",
             HttpStatusCode.UnprocessableEntity
         );
@@ -97,7 +95,7 @@ public sealed class SystemOneDecisionClientTests
 
         DecisionTransportException exception = await Assert.ThrowsAsync<DecisionTransportException>(
             () => client.GetDecisionAsync(
-                CreateRequest(),
+                SystemOneDecisionTestData.CreateRequest(),
                 cancellationToken: TestContext.Current.CancellationToken
             )
         );
@@ -110,7 +108,7 @@ public sealed class SystemOneDecisionClientTests
     [Fact]
     public async Task GetDecisionAsync_applies_preset_image_headers_for_image_state()
     {
-        using RecordingHandler handler = new(
+        using SystemOneRecordingHandler handler = new(
             """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}"""
         );
         using HttpClient httpClient = new(handler);
@@ -129,7 +127,7 @@ public sealed class SystemOneDecisionClientTests
         );
 
         await client.GetDecisionAsync(
-            CreateRequest(state.RootElement.Clone()),
+            SystemOneDecisionTestData.CreateRequest(state.RootElement.Clone()),
             cancellationToken: TestContext.Current.CancellationToken
         );
 
@@ -139,7 +137,7 @@ public sealed class SystemOneDecisionClientTests
     [Fact]
     public async Task GetDecisionAsync_omits_preset_image_headers_for_text_state()
     {
-        using RecordingHandler handler = new(
+        using SystemOneRecordingHandler handler = new(
             """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}"""
         );
         using HttpClient httpClient = new(handler);
@@ -155,7 +153,7 @@ public sealed class SystemOneDecisionClientTests
         );
 
         await client.GetDecisionAsync(
-            CreateRequest(),
+            SystemOneDecisionTestData.CreateRequest(),
             cancellationToken: TestContext.Current.CancellationToken
         );
 
@@ -165,7 +163,7 @@ public sealed class SystemOneDecisionClientTests
     [Fact]
     public async Task GetDecisionAsync_rejects_a_body_above_32_mib_before_sending()
     {
-        using RecordingHandler handler = new(
+        using SystemOneRecordingHandler handler = new(
             """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}"""
         );
         using HttpClient httpClient = new(handler);
@@ -179,7 +177,7 @@ public sealed class SystemOneDecisionClientTests
 
         await Assert.ThrowsAsync<InvalidDataException>(
             () => client.GetDecisionAsync(
-                CreateRequest(state.RootElement.Clone()),
+                SystemOneDecisionTestData.CreateRequest(state.RootElement.Clone()),
                 cancellationToken: TestContext.Current.CancellationToken
             )
         );
@@ -190,7 +188,7 @@ public sealed class SystemOneDecisionClientTests
     [Fact]
     public async Task GetDecisionAsync_rejects_state_nested_beyond_64_levels()
     {
-        using RecordingHandler handler = new(
+        using SystemOneRecordingHandler handler = new(
             """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}"""
         );
         using HttpClient httpClient = new(handler);
@@ -203,7 +201,7 @@ public sealed class SystemOneDecisionClientTests
 
         InvalidDataException exception = await Assert.ThrowsAsync<InvalidDataException>(
             () => client.GetDecisionAsync(
-                CreateRequest(state.RootElement.Clone()),
+                SystemOneDecisionTestData.CreateRequest(state.RootElement.Clone()),
                 cancellationToken: TestContext.Current.CancellationToken
             )
         );
@@ -215,7 +213,7 @@ public sealed class SystemOneDecisionClientTests
     [Fact]
     public async Task GetDecisionAsync_rejects_non_finite_state_numbers()
     {
-        using RecordingHandler handler = new(
+        using SystemOneRecordingHandler handler = new(
             """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}"""
         );
         using HttpClient httpClient = new(handler);
@@ -227,7 +225,7 @@ public sealed class SystemOneDecisionClientTests
 
         InvalidDataException exception = await Assert.ThrowsAsync<InvalidDataException>(
             () => client.GetDecisionAsync(
-                CreateRequest(state.RootElement.Clone()),
+                SystemOneDecisionTestData.CreateRequest(state.RootElement.Clone()),
                 cancellationToken: TestContext.Current.CancellationToken
             )
         );
@@ -239,7 +237,7 @@ public sealed class SystemOneDecisionClientTests
     [Fact]
     public async Task GetDecisionAsync_gzips_bodies_above_64_kib()
     {
-        using RecordingHandler handler = new(
+        using SystemOneRecordingHandler handler = new(
             """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}"""
         );
         using HttpClient httpClient = new(handler);
@@ -252,52 +250,30 @@ public sealed class SystemOneDecisionClientTests
         );
 
         await client.GetDecisionAsync(
-            CreateRequest(state.RootElement.Clone()),
+            SystemOneDecisionTestData.CreateRequest(state.RootElement.Clone()),
             cancellationToken: TestContext.Current.CancellationToken
         );
 
         Assert.Equal("gzip", handler.ContentEncoding!.Single());
     }
 
-    private static DecisionRequest CreateRequest(JsonElement? providedState = null)
+    [Fact]
+    public async Task GetDecisionAsync_retries_429_and_529_before_success()
     {
-        using JsonDocument state = JsonDocument.Parse("{}");
-        return new DecisionRequest(
-            "typesafe/jev-1.14",
-            providedState ?? state.RootElement.Clone(),
-            [new DecisionQuestion("safe", "Is the call safe?", DecisionQuestionKind.Noul, ["yes", "no"])]
+        using SystemOneTransientHandler handler = new();
+        using HttpClient httpClient = new(handler);
+        SystemOneDecisionClient client = new(
+            httpClient,
+            new SystemOnePreset(new Uri("https://example.test/api/v1/systemone"))
         );
+
+        DecisionResult result = await client.GetDecisionAsync(
+            SystemOneDecisionTestData.CreateRequest(),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal("yes", result.Results["safe"].Answer);
+        Assert.Equal(3, handler.RequestCount);
     }
 
-    private sealed class RecordingHandler(
-        string responseBody,
-        HttpStatusCode statusCode = HttpStatusCode.OK
-    ) : HttpMessageHandler
-    {
-        public string? RequestBody { get; private set; }
-        public Uri? RequestUri { get; private set; }
-        public int RequestCount { get; private set; }
-        public Dictionary<string, string[]>? RequestHeaders { get; private set; }
-        public string[]? ContentEncoding { get; private set; }
-
-        protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken
-        )
-        {
-            RequestCount++;
-            RequestUri = request.RequestUri;
-            RequestHeaders = request.Headers.ToDictionary(
-                header => header.Key,
-                header => header.Value.ToArray(),
-                StringComparer.OrdinalIgnoreCase
-            );
-            ContentEncoding = request.Content!.Headers.ContentEncoding.ToArray();
-            RequestBody = await request.Content!.ReadAsStringAsync(cancellationToken);
-            return new HttpResponseMessage(statusCode)
-            {
-                Content = new StringContent(responseBody, Encoding.UTF8, "application/json"),
-            };
-        }
-    }
 }
