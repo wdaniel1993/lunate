@@ -73,6 +73,7 @@ public sealed partial class AgentHarness
                 untrusted_content = request.Args.GetRawText(),
             }
         );
+        string? stateWarning = DecisionStateSizeWarning(state);
         Dictionary<string, IReadOnlyDictionary<string, string>> criteria =
             ApprovalQuestions.ToDictionary(
                 question => question.Id,
@@ -136,8 +137,10 @@ public sealed partial class AgentHarness
                         Answer = answer.Answer,
                         Distribution = answer.Distribution,
                         Confidence = answer.Confidence,
+                        Warning = stateWarning,
                     }
                 );
+                stateWarning = null;
 
                 double yesProbability = answer
                     .Distribution.Single(item =>

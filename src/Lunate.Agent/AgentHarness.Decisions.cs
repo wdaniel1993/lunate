@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Lunate.Ai;
 using Lunate.Contracts;
@@ -55,6 +56,7 @@ public sealed partial class AgentHarness
                 supportsImages: DecisionClientResolver.SupportsImageInput(model.Model)
             );
 
+            string? stateWarning = DecisionStateSizeWarning(request.State);
             foreach ((string questionId, DecisionAnswer answer) in response.Results)
             {
                 channel.Emit(
@@ -68,8 +70,10 @@ public sealed partial class AgentHarness
                     {
                         QuestionId = questionId,
                         Answer = answer.Answer,
+                        Warning = stateWarning,
                     }
                 );
+                stateWarning = null;
             }
 
             return response;
@@ -92,5 +96,19 @@ public sealed partial class AgentHarness
 
             throw;
         }
+    }
+
+    private static string? DecisionStateSizeWarning(JsonElement state)
+    {
+        long estimatedTokens = state.GetRawText().Length / 4L;
+        if (estimatedTokens <= 28_000)
+        {
+            return null;
+        }
+
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"Decision state is estimated above {estimatedTokens:N0} tokens (4 characters per token); it exceeds the default 32,000-token per-question budget. Long context is opt-in and can be slower and less accurate."
+        );
     }
 }
