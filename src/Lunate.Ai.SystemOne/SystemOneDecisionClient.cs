@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Lunate.Ai.Decisions;
@@ -29,7 +30,10 @@ internal sealed class SystemOneDecisionClient(HttpClient httpClient, Uri endpoin
         string responseBody = await response
             .Content.ReadAsStringAsync(cancellationToken)
             .ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw SystemOneErrorMapper.Create(response.StatusCode, responseBody);
+        }
 
         SystemOneResponse mapped = SystemOneResponseMapper.Map(responseBody, request);
         DecisionResult parsed = DecisionResponseParser.Parse(
