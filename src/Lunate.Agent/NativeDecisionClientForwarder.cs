@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Lunate.Ai.Decisions;
+using Lunate.Contracts;
 using InternalDecisionQuestion = Lunate.Ai.Decisions.DecisionQuestion;
 using InternalDecisionQuestionKind = Lunate.Ai.Decisions.DecisionQuestionKind;
 
