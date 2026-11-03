@@ -107,12 +107,41 @@ public sealed class SystemOneDecisionClientTests
         Assert.Equal(1, handler.RequestCount);
     }
 
-    private static DecisionRequest CreateRequest()
+    [Fact]
+    public async Task GetDecisionAsync_applies_preset_image_headers_for_image_state()
+    {
+        using RecordingHandler handler = new(
+            """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}"""
+        );
+        using HttpClient httpClient = new(handler);
+        SystemOneDecisionClient client = new(
+            httpClient,
+            new SystemOnePreset(
+                new Uri("https://example.test/api/v1/systemone"),
+                new Dictionary<string, string>
+                {
+                    ["TypeSafe-Danger-Zone-Images"] = "true",
+                }
+            )
+        );
+        using JsonDocument state = JsonDocument.Parse(
+            """{"parts":[{"type":"image","mimeType":"image/png","data":"AQ=="}]}"""
+        );
+
+        await client.GetDecisionAsync(
+            CreateRequest(state.RootElement.Clone()),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal("true", handler.RequestHeaders!["TypeSafe-Danger-Zone-Images"].Single());
+    }
+
+    private static DecisionRequest CreateRequest(JsonElement? providedState = null)
     {
         using JsonDocument state = JsonDocument.Parse("{}");
         return new DecisionRequest(
             "typesafe/jev-1.14",
-            state.RootElement.Clone(),
+            providedState ?? state.RootElement.Clone(),
             [new DecisionQuestion("safe", "Is the call safe?", DecisionQuestionKind.Noul, ["yes", "no"])]
         );
     }
@@ -125,6 +154,7 @@ public sealed class SystemOneDecisionClientTests
         public string? RequestBody { get; private set; }
         public Uri? RequestUri { get; private set; }
         public int RequestCount { get; private set; }
+        public Dictionary<string, string[]>? RequestHeaders { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -133,6 +163,11 @@ public sealed class SystemOneDecisionClientTests
         {
             RequestCount++;
             RequestUri = request.RequestUri;
+            RequestHeaders = request.Headers.ToDictionary(
+                header => header.Key,
+                header => header.Value.ToArray(),
+                StringComparer.OrdinalIgnoreCase
+            );
             RequestBody = await request.Content!.ReadAsStringAsync(cancellationToken);
             return new HttpResponseMessage(statusCode)
             {
