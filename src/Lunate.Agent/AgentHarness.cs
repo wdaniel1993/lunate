@@ -33,6 +33,7 @@ public sealed partial class AgentHarness
         StringComparer.Ordinal
     );
     private int _runActive;
+    private bool _routingDescriptionWarningEmitted;
     private int _nestedCallCounter;
     private int _spillSequence;
     private SubagentTreeState? _treeState;
@@ -233,6 +234,18 @@ public sealed partial class AgentHarness
                 nameof(AgentHarnessOptions.ApprovalsThreshold),
                 options.ApprovalsThreshold,
                 "The approval decision threshold must be a finite probability from 0 through 1."
+            );
+        }
+
+        if (
+            !double.IsFinite(options.RoutingMinConfidence)
+            || options.RoutingMinConfidence is < 0 or > 1
+        )
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.RoutingMinConfidence),
+                options.RoutingMinConfidence,
+                "The routing confidence threshold must be a finite probability from 0 through 1."
             );
         }
 

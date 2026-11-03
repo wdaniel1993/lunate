@@ -13,7 +13,7 @@ public sealed class SettingsDecisionsTests
           "schemaVersion": 2,
           "profiles": {
             "decision-profile": { "provider": "router", "model": "router/model-a" },
-            "routing-one": { "provider": "router", "model": "router/model-a" },
+            "routing-one": { "provider": "router", "model": "router/model-a", "description": "General chat" },
             "routing-two": { "provider": "router", "model": "router/model-b" }
           },
           "decisions": {
@@ -21,6 +21,7 @@ public sealed class SettingsDecisionsTests
             "approvals": "shadow",
             "approvalsThreshold": 0.75,
             "routing": "enforce",
+            "routingMinConfidence": 0.8,
             "routingProfiles": ["routing-one", "routing-two"],
             "tool": "on",
             "questions": "suggest"
@@ -48,6 +49,7 @@ public sealed class SettingsDecisionsTests
         Assert.Equal(DecisionMode.Off, defaults.Decisions.Approvals);
         Assert.Equal(0.5, defaults.Decisions.ApprovalsThreshold);
         Assert.Equal(DecisionMode.Off, defaults.Decisions.Routing);
+        Assert.Equal(0.5, defaults.Decisions.RoutingMinConfidence);
         Assert.Empty(defaults.Decisions.RoutingProfiles);
         Assert.False(defaults.Decisions.Tool);
         Assert.Equal(DecisionQuestionsMode.Off, defaults.Decisions.Questions);
@@ -62,7 +64,9 @@ public sealed class SettingsDecisionsTests
         Assert.Equal(DecisionMode.Shadow, settings.Decisions.Approvals);
         Assert.Equal(0.75, settings.Decisions.ApprovalsThreshold);
         Assert.Equal(DecisionMode.Enforce, settings.Decisions.Routing);
+        Assert.Equal(0.8, settings.Decisions.RoutingMinConfidence);
         Assert.Equal(["routing-one", "routing-two"], settings.Decisions.RoutingProfiles);
+        Assert.Equal("General chat", settings.Profiles["routing-one"].Description);
         Assert.True(settings.Decisions.Tool);
         Assert.Equal(DecisionQuestionsMode.Suggest, settings.Decisions.Questions);
     }
@@ -147,6 +151,23 @@ public sealed class SettingsDecisionsTests
 
         Assert.Contains(
             "'decisions.approvalsThreshold' must be a finite number from 0 through 1",
+            exception.Message,
+            StringComparison.Ordinal
+        );
+    }
+
+    [Theory]
+    [InlineData("-0.1")]
+    [InlineData("1.1")]
+    [InlineData("\"high\"")]
+    public void An_invalid_routing_confidence_threshold_is_refused_naming_the_field(string bad)
+    {
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            Resolve(Json($$""" "decisions": { "routingMinConfidence": {{bad}} } """), _ => null)
+        );
+
+        Assert.Contains(
+            "'decisions.routingMinConfidence' must be a finite number from 0 through 1",
             exception.Message,
             StringComparison.Ordinal
         );

@@ -52,7 +52,14 @@
       "default": "off",
       "scope": "user",
       "allowed": ["off", "shadow", "enforce"],
-      "description": "The model-routing consumer; picks the most probable profile without consulting any threshold."
+      "description": "The model-routing consumer; applies the most probable profile only when its confidence meets routingMinConfidence, otherwise keeps the configured chat profile."
+    },
+    {
+      "name": "decisions.routingMinConfidence",
+      "type": "number",
+      "default": "0.5",
+      "scope": "user",
+      "description": "A finite confidence threshold from 0 through 1; routing changes the configured chat profile only at or above this value."
     },
     {
       "name": "decisions.routingProfiles",
@@ -138,6 +145,13 @@
       "default": "unset",
       "scope": "user, project",
       "description": "The profile's context window in tokens; a project profile may lower an already-set value, never raise it."
+    },
+    {
+      "name": "profiles.*.description",
+      "type": "string",
+      "default": "unset",
+      "scope": "user, project",
+      "description": "A short user-written description used as this routing option's criteria; missing descriptions are allowed but reduce routing quality."
     },
     {
       "name": "profiles.*.maxOutput",

@@ -43,23 +43,19 @@ public sealed partial class AgentHarness
         string modelId = model.Model.Id;
         string method = native ? "native" : "adapter";
         string[] profiles = [.. _options.RoutingProfiles!.Keys];
-        var request = new DecisionRequest(
-            JsonSerializer.SerializeToElement(
-                new
-                {
-                    input = messages.LastOrDefault(message => message.Role == ChatRole.User)?.Text,
-                    profiles,
-                }
-            ),
-            [
-                new DecisionQuestion(
-                    questionId,
-                    "Which configured model profile best fits the user's request?",
-                    DecisionQuestionKind.Choice,
-                    profiles
-                ),
-            ]
+        JsonElement state = JsonSerializer.SerializeToElement(
+            new
+            {
+                input = messages.LastOrDefault(message => message.Role == ChatRole.User)?.Text,
+                profiles,
+            }
         );
+        RoutingPlan plan = BuildRoutingPlan(
+            profiles,
+            _options.RoutingProfiles,
+            model.Model.ChoiceOrderSensitive
+        );
+        var request = new DecisionRequest(state, plan.Questions);
 
         try
         {
@@ -76,26 +72,42 @@ public sealed partial class AgentHarness
                         usage,
                         resolvedModelId,
                         UsageAttribution("decision", model, decisionMethod, probability)
-                    )
+                    ),
+                questionCriteria: plan.Criteria
             );
-            DecisionAnswer answer = response.Results[questionId];
-            DecisionProbability mostProbable = answer.Distribution.MaxBy(item => item.Probability)!;
+            RoutingSelection selection = SelectRoutingResult(response, profiles, plan);
+            bool shadow = _options.RoutingMode == DecisionMode.Shadow;
+            bool confident = selection.Confidence >= _options.RoutingMinConfidence;
+            UsageModelClient? routedModel =
+                shadow || !confident
+                    ? configuredModel
+                    : _options.RoutingProfiles[selection.Profile];
+            string outcome =
+                shadow ? "shadow"
+                : confident ? "routed"
+                : "confidence-below-threshold";
+            string? warning = MissingDescriptionWarning();
+
             channel.Emit(
                 new DecisionEvaluated(
                     runId,
-                    answer.ModelId,
-                    answer.Method,
-                    mostProbable.Answer,
-                    mostProbable.Probability
+                    selection.ModelId,
+                    selection.Method,
+                    selection.Profile,
+                    selection.Probability
                 )
                 {
                     QuestionId = questionId,
-                    Answer = mostProbable.Answer,
+                    Answer = selection.Profile,
+                    Distribution = selection.Distribution,
+                    Confidence = selection.Confidence,
+                    ConfidenceThreshold = _options.RoutingMinConfidence,
+                    Outcome = outcome,
+                    Strategy = plan.Strategy,
+                    Warning = warning,
                 }
             );
-            return _options.RoutingMode == DecisionMode.Shadow
-                ? configuredModel
-                : _options.RoutingProfiles[mostProbable.Answer];
+            return routedModel;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -119,4 +131,156 @@ public sealed partial class AgentHarness
             return configuredModel;
         }
     }
+
+    private static RoutingPlan BuildRoutingPlan(
+        string[] profiles,
+        IReadOnlyDictionary<string, UsageModelClient> routingProfiles,
+        bool orderSensitive
+    )
+    {
+        Dictionary<string, IReadOnlyDictionary<string, string>> criteria = new(
+            StringComparer.Ordinal
+        );
+        List<DecisionQuestion> questions = [];
+        if (orderSensitive)
+        {
+            foreach (string profile in profiles)
+            {
+                string id = RoutingQuestionId(profile);
+                questions.Add(
+                    new DecisionQuestion(
+                        id,
+                        $"Does this request fit the '{profile}' profile?",
+                        DecisionQuestionKind.YesNo
+                    )
+                );
+                if (!string.IsNullOrWhiteSpace(routingProfiles[profile].Description))
+                {
+                    criteria[id] = new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["true"] = routingProfiles[profile].Description!,
+                        ["false"] = $"The request does not fit the '{profile}' profile.",
+                    };
+                }
+            }
+
+            return new RoutingPlan(questions, criteria, "noul-per-profile", NoulPerProfile: true);
+        }
+
+        string[] descriptions =
+        [
+            .. profiles.Where(profile =>
+                !string.IsNullOrWhiteSpace(routingProfiles[profile].Description)
+            ),
+        ];
+        if (descriptions.Length > 0)
+        {
+            criteria["routing"] = profiles
+                .Where(profile => !string.IsNullOrWhiteSpace(routingProfiles[profile].Description))
+                .ToDictionary(
+                    profile => profile,
+                    profile => routingProfiles[profile].Description!,
+                    StringComparer.Ordinal
+                );
+        }
+
+        questions.Add(
+            new DecisionQuestion(
+                "routing",
+                "Which configured model profile best fits the user's request?",
+                DecisionQuestionKind.Choice,
+                profiles
+            )
+        );
+        return new RoutingPlan(questions, criteria, "choice", NoulPerProfile: false);
+    }
+
+    private static RoutingSelection SelectRoutingResult(
+        DecisionResponse response,
+        string[] profiles,
+        RoutingPlan plan
+    )
+    {
+        if (!plan.NoulPerProfile)
+        {
+            DecisionAnswer answer = response.Results["routing"];
+            DecisionProbability mostProbable = answer.Distribution.MaxBy(item => item.Probability)!;
+            return new RoutingSelection(
+                mostProbable.Answer,
+                mostProbable.Probability,
+                answer.Confidence,
+                answer.Distribution,
+                answer.ModelId,
+                answer.Method
+            );
+        }
+
+        DecisionAnswer first = response.Results[RoutingQuestionId(profiles[0])];
+        DecisionProbability[] distribution =
+        [
+            .. profiles.Select(profile => new DecisionProbability(
+                profile,
+                response
+                    .Results[RoutingQuestionId(profile)]
+                    .Distribution.Single(item =>
+                        string.Equals(item.Answer, "yes", StringComparison.Ordinal)
+                    )
+                    .Probability
+            )),
+        ];
+        DecisionProbability[] ranked =
+        [
+            .. distribution.OrderByDescending(item => item.Probability),
+        ];
+        return new RoutingSelection(
+            ranked[0].Answer,
+            ranked[0].Probability,
+            ranked[0].Probability - ranked[1].Probability,
+            distribution,
+            first.ModelId,
+            first.Method
+        );
+    }
+
+    private string? MissingDescriptionWarning()
+    {
+        if (_routingDescriptionWarningEmitted)
+        {
+            return null;
+        }
+
+        string[] missing =
+        [
+            .. _options
+                .RoutingProfiles!.Where(profile =>
+                    string.IsNullOrWhiteSpace(profile.Value.Description)
+                )
+                .Select(profile => profile.Key),
+        ];
+        if (missing.Length == 0)
+        {
+            return null;
+        }
+
+        _routingDescriptionWarningEmitted = true;
+        return $"Routing quality depends on descriptions for profiles: {string.Join(", ", missing)}.";
+    }
+
+    private static string RoutingQuestionId(string profile) => "routing:" + profile;
+
+    private sealed record RoutingPlan(
+        IReadOnlyList<DecisionQuestion> Questions,
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> Criteria,
+        string Strategy,
+        bool NoulPerProfile
+    );
+
+    private sealed record RoutingSelection(
+        string Profile,
+        double Probability,
+        double Confidence,
+        IReadOnlyList<DecisionProbability> Distribution,
+        string ModelId,
+        string Method
+    );
 }

@@ -34,6 +34,12 @@ Lunate.Agent.CompactionApplied.ReplacedEntryIds.init -> void
 Lunate.Agent.DecisionEvaluated
 Lunate.Agent.DecisionEvaluated.Answer.get -> string!
 Lunate.Agent.DecisionEvaluated.Answer.init -> void
+Lunate.Agent.DecisionEvaluated.Confidence.get -> double?
+Lunate.Agent.DecisionEvaluated.Confidence.init -> void
+Lunate.Agent.DecisionEvaluated.ConfidenceThreshold.get -> double?
+Lunate.Agent.DecisionEvaluated.ConfidenceThreshold.init -> void
+Lunate.Agent.DecisionEvaluated.Distribution.get -> System.Collections.Generic.IReadOnlyList<Lunate.Contracts.DecisionProbability!>?
+Lunate.Agent.DecisionEvaluated.Distribution.init -> void
 Lunate.Agent.DecisionEvaluated.DecisionEvaluated(string! RunId, string! ModelId, string! Method, string! Option, double Probability) -> void
 Lunate.Agent.DecisionEvaluated.Deconstruct(out string! RunId, out string! ModelId, out string! Method, out string! Option, out double Probability) -> void
 Lunate.Agent.DecisionEvaluated.Equals(Lunate.Agent.DecisionEvaluated? other) -> bool
@@ -43,6 +49,12 @@ Lunate.Agent.DecisionEvaluated.ModelId.get -> string!
 Lunate.Agent.DecisionEvaluated.ModelId.init -> void
 Lunate.Agent.DecisionEvaluated.Option.get -> string!
 Lunate.Agent.DecisionEvaluated.Option.init -> void
+Lunate.Agent.DecisionEvaluated.Outcome.get -> string?
+Lunate.Agent.DecisionEvaluated.Outcome.init -> void
+Lunate.Agent.DecisionEvaluated.Strategy.get -> string?
+Lunate.Agent.DecisionEvaluated.Strategy.init -> void
+Lunate.Agent.DecisionEvaluated.Warning.get -> string?
+Lunate.Agent.DecisionEvaluated.Warning.init -> void
 Lunate.Agent.DecisionEvaluated.Probability.get -> double
 Lunate.Agent.DecisionEvaluated.Probability.init -> void
 Lunate.Agent.DecisionEvaluated.QuestionId.get -> string!
@@ -478,6 +490,8 @@ Lunate.Ai.ModelInfo.Capabilities.get -> Lunate.Ai.ModelCapabilityDescriptor?
 Lunate.Ai.ModelInfo.Capabilities.init -> void
 Lunate.Ai.ModelInfo.ContextWindow.get -> int
 Lunate.Ai.ModelInfo.ContextWindow.init -> void
+Lunate.Ai.ModelInfo.ChoiceOrderSensitive.get -> bool
+Lunate.Ai.ModelInfo.ChoiceOrderSensitive.init -> void
 Lunate.Ai.ModelInfo.Deconstruct(out string! Id, out string! Provider, out System.Uri? Endpoint, out int ContextWindow, out bool SupportsTools, out string? AuthRef, out string? Reasoning) -> void
 Lunate.Ai.ModelInfo.Endpoint.get -> System.Uri?
 Lunate.Ai.ModelInfo.Endpoint.init -> void

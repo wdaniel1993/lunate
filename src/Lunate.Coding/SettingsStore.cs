@@ -18,6 +18,9 @@ public sealed record DecisionsSettings
     /// <summary>The documented default of <see cref="ApprovalsThreshold"/>.</summary>
     public const double DefaultApprovalsThreshold = 0.5;
 
+    /// <summary>The documented default of <see cref="RoutingMinConfidence"/>.</summary>
+    public const double DefaultRoutingMinConfidence = 0.5;
+
     /// <summary>The named profile the decision layer runs on; null leaves the layer unavailable.</summary>
     public string? Profile { get; init; }
 
@@ -35,6 +38,9 @@ public sealed record DecisionsSettings
 
     /// <summary>The named profiles the routing consumer may select (at least two with routing on).</summary>
     public IReadOnlyList<string> RoutingProfiles { get; init; } = [];
+
+    /// <summary>The minimum confidence required to change the configured chat profile.</summary>
+    public double RoutingMinConfidence { get; init; } = DefaultRoutingMinConfidence;
 
     /// <summary>Whether the <c>decide</c> tool is offered; requires <see cref="Profile"/> to resolve.</summary>
     public bool Tool { get; init; }

@@ -704,6 +704,7 @@ internal static class PrintMode
             DecisionMode = settings.Decisions.Approvals,
             RoutingMode = settings.Decisions.Routing,
             RoutingProfiles = routingProfiles,
+            RoutingMinConfidence = settings.Decisions.RoutingMinConfidence,
             ApprovalsThreshold = settings.Decisions.ApprovalsThreshold,
             DecideTool = settings.Decisions.Tool,
             UsageModels = decisionUsageModels,

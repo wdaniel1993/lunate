@@ -110,12 +110,38 @@ internal sealed partial class InteractiveSession
 
                 break;
             case DecisionEvaluated decision when !child:
+            {
+                if (decision.Warning is { } warning)
+                {
+                    Notify(warning, NoticeLevel.Warning);
+                }
+
+                string routingDetails = string.Empty;
+                if (
+                    decision.Distribution is { } distribution
+                    && decision.Confidence is { } confidence
+                    && decision.ConfidenceThreshold is { } threshold
+                    && decision.Outcome is { } outcome
+                )
+                {
+                    string probabilities = string.Join(
+                        ", ",
+                        distribution.Select(item =>
+                            FormattableString.Invariant($"{item.Answer}={item.Probability:P0}")
+                        )
+                    );
+                    routingDetails = FormattableString.Invariant(
+                        $"; strategy {decision.Strategy}; confidence {confidence:P0} (minimum {threshold:P0}); outcome {outcome}; distribution [{probabilities}]"
+                    );
+                }
+
                 Notify(
                     FormattableString.Invariant(
-                        $"decision {decision.QuestionId} {decision.ModelId} ({decision.Method}): {decision.Answer} ({decision.Probability.ToString("P0", CultureInfo.InvariantCulture)})"
+                        $"decision {decision.QuestionId} {decision.ModelId} ({decision.Method}): {decision.Answer} ({decision.Probability:P0}){routingDetails}"
                     )
                 );
                 break;
+            }
             case DecisionUnavailable unavailable when !child:
                 Notify(
                     $"decision unavailable for question {unavailable.QuestionId}: configure a decision profile; normal approval remains active.",

@@ -58,6 +58,46 @@ public sealed class RoutingDecisionWiringTests
     }
 
     [Fact]
+    public async Task Print_mode_keeps_the_configured_profile_below_the_settings_threshold()
+    {
+        using var temp = new TempDirectory();
+        var decision = new ScriptedChatClient().Enqueue(
+            Scripts.Text(RoutingResponse),
+            Scripts.Stop()
+        );
+        var fast = new ScriptedChatClient().Enqueue(Scripts.Text("fast answer"), Scripts.Stop());
+        var fallback = new ScriptedChatClient().Enqueue(
+            Scripts.Text("default answer"),
+            Scripts.Stop()
+        );
+        WriteFixture(temp, "0.9");
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(
+            PrintModeTestSupport.BaseOptions(
+                temp,
+                new ModelCatalogChatClientFactory(
+                    new Dictionary<string, IChatClient>(StringComparer.Ordinal)
+                    {
+                        ["decision-model"] = decision,
+                        ["fast-model"] = fast,
+                        ["default-model"] = fallback,
+                        [PrintModeTestSupport.ModelId] = fallback,
+                    }
+                )
+            ) with
+            {
+                Prompt = "Hi",
+            }
+        );
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("default answer", output);
+        Assert.DoesNotContain("unavailable", errors, StringComparison.Ordinal);
+        Assert.Empty(fast.Requests);
+        Assert.Single(fallback.Requests);
+    }
+
+    [Fact]
     public async Task Acp_routes_the_run_through_the_selected_profile()
     {
         using var temp = new TempDirectory();
@@ -109,12 +149,12 @@ public sealed class RoutingDecisionWiringTests
         Assert.Empty(fallback.Requests);
     }
 
-    private static void WriteFixture(TempDirectory temp)
+    private static void WriteFixture(TempDirectory temp, string routingMinConfidence = "0.5")
     {
         File.WriteAllText(temp.File("models.json"), ModelsJson());
         File.WriteAllText(
             temp.File("settings.json"),
-            """
+            $$"""
             {
               "schemaVersion": 2,
               "model": "gpt-4o-mini",
@@ -126,6 +166,7 @@ public sealed class RoutingDecisionWiringTests
               "decisions": {
                 "profile": "decision",
                 "routing": "enforce",
+                "routingMinConfidence": {{routingMinConfidence}},
                 "routingProfiles": ["default", "fast"]
               }
             }

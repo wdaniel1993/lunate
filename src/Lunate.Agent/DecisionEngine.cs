@@ -16,7 +16,8 @@ internal static class DecisionEngine
         string method,
         CancellationToken cancellationToken = default,
         Action<UsageDetails, string, string?, double?>? recordUsage = null,
-        bool supportsImages = false
+        bool supportsImages = false,
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? questionCriteria = null
     )
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -34,7 +35,7 @@ internal static class DecisionEngine
         Lunate.Ai.Decisions.DecisionRequest internalRequest = new(
             modelId,
             request.State,
-            prepared.Select(ToInternalQuestion).ToArray()
+            prepared.Select(question => ToInternalQuestion(question, questionCriteria)).ToArray()
         );
         IDecisionClient decisionClient = DecisionClientResolver.Resolve(client, method);
         DecisionResult result = await decisionClient
@@ -95,9 +96,16 @@ internal static class DecisionEngine
         return new DecisionResponse(answers);
     }
 
-    private static InternalDecisionQuestion ToInternalQuestion(PreparedDecisionQuestion prepared)
+    private static InternalDecisionQuestion ToInternalQuestion(
+        PreparedDecisionQuestion prepared,
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? questionCriteria
+    )
     {
         Lunate.Contracts.DecisionQuestion question = prepared.Question;
+        IReadOnlyDictionary<string, string>? criteria =
+            questionCriteria is not null && questionCriteria.TryGetValue(question.Id, out var value)
+                ? value
+                : null;
         return new InternalDecisionQuestion(
             question.Id,
             question.Text,
@@ -112,6 +120,7 @@ internal static class DecisionEngine
                 ),
             },
             prepared.Answers,
+            Criteria: criteria,
             JsonPath: question.JsonPath,
             State: prepared.State
         );

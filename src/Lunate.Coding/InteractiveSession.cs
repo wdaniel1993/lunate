@@ -945,6 +945,7 @@ internal sealed partial class InteractiveSession : IDisposable
                     ? decisionService.DecideAsync
                     : null,
             RoutingProfiles = routingProfiles,
+            RoutingMinConfidence = _settings.Decisions.RoutingMinConfidence,
             ApprovalsThreshold = _settings.Decisions.ApprovalsThreshold,
             DecideTool = _settings.Decisions.Tool,
             Approver = _approver,

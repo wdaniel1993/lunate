@@ -1,3 +1,4 @@
+using Lunate.Contracts;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
@@ -111,6 +112,24 @@ public sealed record DecisionEvaluated(
 
     /// <summary>The selected answer; mirrors <see cref="Option"/> for compatibility.</summary>
     public string Answer { get; init; } = Option;
+
+    /// <summary>The full distribution for a routing decision; null for other decision consumers.</summary>
+    public IReadOnlyList<DecisionProbability>? Distribution { get; init; }
+
+    /// <summary>The computed confidence for a routing decision.</summary>
+    public double? Confidence { get; init; }
+
+    /// <summary>The minimum confidence required to apply a routing decision.</summary>
+    public double? ConfidenceThreshold { get; init; }
+
+    /// <summary>The routing outcome: routed, confidence-below-threshold, or shadow.</summary>
+    public string? Outcome { get; init; }
+
+    /// <summary>The routing strategy: one choice question or one noul question per profile.</summary>
+    public string? Strategy { get; init; }
+
+    /// <summary>A one-time warning about missing routing-profile descriptions.</summary>
+    public string? Warning { get; init; }
 }
 
 /// <summary>A decision consumer was enabled without a configured decision profile.</summary>

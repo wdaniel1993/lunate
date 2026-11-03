@@ -14,7 +14,8 @@ internal sealed record ModelProfile(
     decimal? Temperature = null,
     int? ContextWindow = null,
     ModelCapabilityDescriptor? CapabilitiesOverride = null,
-    string? ApiFamily = null
+    string? ApiFamily = null,
+    string? Description = null
 );
 
 /// <summary>A profile resolved to one user provider entry and one catalog model.</summary>

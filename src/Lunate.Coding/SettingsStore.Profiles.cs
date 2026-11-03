@@ -77,6 +77,7 @@ public static partial class SettingsStore
             int? contextWindow = null;
             ModelCapabilityDescriptor? capabilities = null;
             string? apiFamily = null;
+            string? description = null;
             foreach (JsonProperty field in property.Value.EnumerateObject())
             {
                 switch (field.Name)
@@ -108,6 +109,9 @@ public static partial class SettingsStore
                     case "apiFamily":
                         apiFamily = ReadProfileFamily(field.Value, name, problems);
                         break;
+                    case "description":
+                        description = ReadProfileString(field.Value, name, field.Name, problems);
+                        break;
                     default:
                         problems.Add($"unknown key 'profiles.{name}.{field.Name}'");
                         break;
@@ -138,7 +142,8 @@ public static partial class SettingsStore
                         temperature,
                         contextWindow,
                         capabilities,
-                        apiFamily
+                        apiFamily,
+                        description
                     )
                 );
             }

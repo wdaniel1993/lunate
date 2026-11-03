@@ -28,6 +28,9 @@ public sealed record AgentHarnessOptions
     /// <summary>The named model profiles available to the routing decision.</summary>
     public IReadOnlyDictionary<string, UsageModelClient>? RoutingProfiles { get; init; }
 
+    /// <summary>The minimum decision confidence required to change the configured chat profile.</summary>
+    public double RoutingMinConfidence { get; init; } = 0.5;
+
     /// <summary>
     /// Whether the information-only <c>decide</c> tool is offered to the chat model; it is added
     /// only when this is on and a decision usage resolves.
@@ -184,4 +187,7 @@ public sealed record UsageModelClient(
 {
     /// <summary>The provider template kind of <see cref="Model"/>.</summary>
     public string ProviderKind => Model.Provider;
+
+    /// <summary>The user-written description used as this profile's routing criteria.</summary>
+    public string? Description { get; init; }
 }

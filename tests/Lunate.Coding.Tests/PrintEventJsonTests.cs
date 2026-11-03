@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Contracts;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding.Tests;
@@ -92,6 +93,24 @@ public sealed class PrintEventJsonTests
             {
                 new DecisionEvaluated("run_1", "model-x", "adapter", "approve", 0.8d),
                 """{"type":"decision_evaluated","runId":"run_1","questionId":"approval","modelId":"model-x","method":"adapter","answer":"approve","option":"approve","probability":0.8}"""
+            },
+            {
+                new DecisionEvaluated("run_1", "model-x", "native", "fast", 0.75d)
+                {
+                    QuestionId = "routing",
+                    Answer = "fast",
+                    Distribution =
+                    [
+                        new DecisionProbability("default", 0.25d),
+                        new DecisionProbability("fast", 0.75d),
+                    ],
+                    Confidence = 0.5d,
+                    ConfidenceThreshold = 0.5d,
+                    Outcome = "routed",
+                    Strategy = "noul-per-profile",
+                    Warning = "Routing quality depends on descriptions.",
+                },
+                """{"type":"decision_evaluated","runId":"run_1","questionId":"routing","modelId":"model-x","method":"native","answer":"fast","option":"fast","probability":0.75,"distribution":[{"answer":"default","probability":0.25},{"answer":"fast","probability":0.75}],"confidence":0.5,"confidenceThreshold":0.5,"outcome":"routed","strategy":"noul-per-profile","warning":"Routing quality depends on descriptions."}"""
             },
             {
                 new DecisionUnavailable("run_1"),

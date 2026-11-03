@@ -40,6 +40,9 @@ public sealed record ModelInfo(
     /// </summary>
     public string? ApiFamily { get; init; }
 
+    /// <summary>Whether routing must avoid positional choice questions for this model.</summary>
+    public bool ChoiceOrderSensitive { get; init; }
+
     /// <summary>
     /// The provider headers a resolved profile declares, values as declared — literals,
     /// <c>{session.id}</c>-style templates or <c>auth:</c>/<c>env:</c>/<c>helper:</c>

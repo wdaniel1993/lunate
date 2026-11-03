@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Contracts;
 
 namespace Lunate.Coding;
 
@@ -124,18 +125,7 @@ internal static class PrintEventJson
             ToolCallResult e => ("tool_call_result", ToolResultBody(e)),
             ApprovalRequested e => ("approval_requested", ApprovalBody(e)),
             UsageUpdated e => ("usage_updated", UsageBody(e, catalog, fallbackModelId)),
-            DecisionEvaluated e => (
-                "decision_evaluated",
-                new JsonObject
-                {
-                    ["questionId"] = e.QuestionId,
-                    ["modelId"] = e.ModelId,
-                    ["method"] = e.Method,
-                    ["answer"] = e.Answer,
-                    ["option"] = e.Option,
-                    ["probability"] = e.Probability,
-                }
-            ),
+            DecisionEvaluated e => ("decision_evaluated", DecisionBody(e)),
             DecisionUnavailable e => (
                 "decision_unavailable",
                 new JsonObject { ["questionId"] = e.QuestionId }
@@ -180,6 +170,58 @@ internal static class PrintEventJson
                 nameof(agentEvent)
             ),
         };
+
+    private static JsonObject DecisionBody(DecisionEvaluated e)
+    {
+        var body = new JsonObject
+        {
+            ["questionId"] = e.QuestionId,
+            ["modelId"] = e.ModelId,
+            ["method"] = e.Method,
+            ["answer"] = e.Answer,
+            ["option"] = e.Option,
+            ["probability"] = e.Probability,
+        };
+        if (e.Distribution is { } distribution)
+        {
+            var values = new JsonArray();
+            foreach (DecisionProbability item in distribution)
+            {
+                values.Add(
+                    new JsonObject { ["answer"] = item.Answer, ["probability"] = item.Probability }
+                );
+            }
+
+            body["distribution"] = values;
+        }
+
+        if (e.Confidence is { } confidence)
+        {
+            body["confidence"] = confidence;
+        }
+
+        if (e.ConfidenceThreshold is { } confidenceThreshold)
+        {
+            body["confidenceThreshold"] = confidenceThreshold;
+        }
+
+        if (e.Outcome is { } outcome)
+        {
+            body["outcome"] = outcome;
+        }
+
+        if (e.Strategy is { } strategy)
+        {
+            body["strategy"] = strategy;
+        }
+
+        if (e.Warning is { } warning)
+        {
+            body["warning"] = warning;
+        }
+
+        return body;
+    }
 
     private static JsonObject MessageBody(string messageId) => new() { ["messageId"] = messageId };
 
