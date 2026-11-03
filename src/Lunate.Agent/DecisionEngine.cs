@@ -17,7 +17,7 @@ internal static class DecisionEngine
         CancellationToken cancellationToken = default,
         Action<UsageDetails, string, string?, double?>? recordUsage = null,
         bool supportsImages = false,
-        IReadOnlyDictionary<string, string>? questionCriteria = null
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? questionCriteria = null
     )
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -98,7 +98,7 @@ internal static class DecisionEngine
 
     private static InternalDecisionQuestion ToInternalQuestion(
         PreparedDecisionQuestion prepared,
-        IReadOnlyDictionary<string, string>? questionCriteria
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? questionCriteria
     )
     {
         Lunate.Contracts.DecisionQuestion question = prepared.Question;
