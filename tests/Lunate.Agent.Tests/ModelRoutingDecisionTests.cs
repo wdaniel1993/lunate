@@ -94,7 +94,7 @@ public sealed class ModelRoutingDecisionTests
         Assert.Empty(run.Configured.Requests);
         Assert.Single(run.Fast.Requests);
         DecisionEvaluated decision = Assert.Single(run.Events.OfType<DecisionEvaluated>());
-        Assert.Equal("default", decision.Answer);
+        Assert.Equal("fast", decision.Answer);
         Assert.Equal("noul-per-profile", decision.Strategy);
         Assert.Equal(0.5, decision.Confidence);
         Assert.Equal("routed", decision.Outcome);
