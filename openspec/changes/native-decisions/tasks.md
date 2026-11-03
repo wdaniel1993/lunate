@@ -17,7 +17,7 @@
       `DelegatingDecisionClient`, `DecisionClientBuilder`, `UseOpenTelemetry()`; depends only on
       `Microsoft.Extensions.AI.Abstractions`.
 - [x] The chat-model adapter moves here as `ChatDecisionClient : IDecisionClient` over an `IChatClient`.
-- [ ] New `Lunate.Ai.SystemOne` (internal): the System One HTTP client `IDecisionClient`, quirk data,
+- [x] New `Lunate.Ai.SystemOne` (internal): the System One HTTP client `IDecisionClient`, quirk data,
       fixtures; referenced only by composition.
 - [x] `Lunate.Agent`'s primitive and validator depend only on `IDecisionClient`; mapping to and from
       `Lunate.Contracts` at the agent boundary.
