@@ -45,6 +45,43 @@ public sealed class ModelRoutingDecisionTests
     }
 
     [Fact]
+    public async Task Low_confidence_decision_keeps_the_configured_profile()
+    {
+        DecisionRun run = await RunAsync(
+            DecisionMode.Enforce,
+            """{"results":{"routing":{"answer":"fast","probabilities":{"default":0.3,"fast":0.7}}}}"""
+        );
+
+        Assert.Single(run.Configured.Requests);
+        Assert.Empty(run.Fast.Requests);
+    }
+
+    [Fact]
+    public async Task Confidence_at_the_threshold_routes_to_the_winning_profile()
+    {
+        DecisionRun run = await RunAsync(
+            DecisionMode.Enforce,
+            """{"results":{"routing":{"answer":"fast","probabilities":{"default":0.25,"fast":0.75}}}}"""
+        );
+
+        Assert.Empty(run.Configured.Requests);
+        Assert.Single(run.Fast.Requests);
+    }
+
+    [Fact]
+    public async Task Configured_routing_threshold_controls_the_confidence_gate()
+    {
+        DecisionRun run = await RunAsync(
+            DecisionMode.Enforce,
+            """{"results":{"routing":{"answer":"fast","probabilities":{"default":0.1,"fast":0.9}}}}""",
+            routingMinConfidence: 0.9
+        );
+
+        Assert.Single(run.Configured.Requests);
+        Assert.Empty(run.Fast.Requests);
+    }
+
+    [Fact]
     public async Task Shadow_decision_records_its_choice_without_changing_the_configured_model()
     {
         DecisionRun run = await RunAsync(
@@ -78,7 +115,11 @@ public sealed class ModelRoutingDecisionTests
         Assert.Single(run.Events.OfType<DecisionFailed>());
     }
 
-    private static async Task<DecisionRun> RunAsync(DecisionMode mode, string decisionResponse)
+    private static async Task<DecisionRun> RunAsync(
+        DecisionMode mode,
+        string decisionResponse,
+        double routingMinConfidence = 0.5
+    )
     {
         var configured = new ScriptedChatClient().Enqueue(
             LoopScripts.Text("configured response"),
@@ -109,6 +150,7 @@ public sealed class ModelRoutingDecisionTests
             new AgentHarnessOptions
             {
                 RoutingMode = mode,
+                RoutingMinConfidence = routingMinConfidence,
                 UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
                 {
                     ["chat"] = Model(configured, "default"),
