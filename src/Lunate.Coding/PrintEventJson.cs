@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Contracts;
 
 namespace Lunate.Coding;
 
