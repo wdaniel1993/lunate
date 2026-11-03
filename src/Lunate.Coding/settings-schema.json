@@ -105,13 +105,6 @@
       "description": "Characters of one tool result before truncation. A project file may lower it, never raise it. `LUNATE_TOOL_OUTPUT_LIMIT` overrides it."
     },
     {
-      "name": "profiles.*.description",
-      "type": "string",
-      "default": "unset",
-      "scope": "user, project",
-      "description": "A short user-written description used as this routing option's criteria; missing descriptions are allowed but reduce routing quality."
-    },
-    {
       "name": "profiles.*.apiFamily",
       "type": "string",
       "default": "unset",
@@ -152,6 +145,13 @@
       "default": "unset",
       "scope": "user, project",
       "description": "The profile's context window in tokens; a project profile may lower an already-set value, never raise it."
+    },
+    {
+      "name": "profiles.*.description",
+      "type": "string",
+      "default": "unset",
+      "scope": "user, project",
+      "description": "A short user-written description used as this routing option's criteria; missing descriptions are allowed but reduce routing quality."
     },
     {
       "name": "profiles.*.maxOutput",
