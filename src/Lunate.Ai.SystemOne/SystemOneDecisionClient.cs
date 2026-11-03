@@ -38,7 +38,7 @@ internal sealed class SystemOneDecisionClient(
                 DecisionResult parsed = DecisionResponseParser.Parse(
                     mapped.ResultsJson,
                     request,
-                    modelId,
+                    mapped.ModelId,
                     "native"
                 );
                 Dictionary<string, DecisionAnswer> results = parsed.Results.ToDictionary(

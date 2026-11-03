@@ -6,7 +6,8 @@ namespace Lunate.Ai.SystemOne;
 internal sealed record SystemOneResponse(
     string ResultsJson,
     DecisionUsage? Usage,
-    IReadOnlyDictionary<string, double> ExpectedScores
+    IReadOnlyDictionary<string, double> ExpectedScores,
+    string ModelId
 );
 
 internal static class SystemOneResponseMapper
@@ -17,6 +18,8 @@ internal static class SystemOneResponseMapper
         JsonElement root = document.RootElement;
         if (
             root.ValueKind != JsonValueKind.Object
+            || !root.TryGetProperty("model", out JsonElement model)
+            || model.ValueKind != JsonValueKind.String
             || !root.TryGetProperty("answers", out JsonElement answers)
             || answers.ValueKind != JsonValueKind.Object
         )
@@ -60,7 +63,8 @@ internal static class SystemOneResponseMapper
         return new SystemOneResponse(
             JsonSerializer.Serialize(new { results }),
             MapUsage(root),
-            expectedScores
+            expectedScores,
+            model.GetString()!
         );
     }
 
