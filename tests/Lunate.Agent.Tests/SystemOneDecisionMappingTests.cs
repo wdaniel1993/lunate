@@ -82,8 +82,8 @@ public sealed class SystemOneDecisionMappingTests
             ["reject", "weak", "strong"],
             result.Results["urgency"].Distribution.Select(item => item.Answer)
         );
-        // The published score example reports confidence rounded to two decimal places.
-        Assert.Equal(0.35, result.Results["urgency"].Confidence, 2);
+        // The formula is exact; the spec's 0.35 example is rounded relative to its stated inputs.
+        Assert.Equal(0.355, result.Results["urgency"].Confidence, 10);
     }
 
     [Fact]
