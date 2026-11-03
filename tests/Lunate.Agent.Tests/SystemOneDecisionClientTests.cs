@@ -82,6 +82,31 @@ public sealed class SystemOneDecisionClientTests
         Assert.Equal(1, handler.RequestCount);
     }
 
+    [Fact]
+    public async Task GetDecisionAsync_surfaces_the_field_from_a_422_response()
+    {
+        using RecordingHandler handler = new(
+            """{"error":{"message":"[{\"path\":[\"questions\",\"safe\",\"criteria\"],\"message\":\"Invalid input\"}]"}}""",
+            HttpStatusCode.UnprocessableEntity
+        );
+        using HttpClient httpClient = new(handler);
+        SystemOneDecisionClient client = new(
+            httpClient,
+            new Uri("https://example.test/api/v1/systemone")
+        );
+
+        DecisionTransportException exception = await Assert.ThrowsAsync<DecisionTransportException>(
+            () => client.GetDecisionAsync(
+                CreateRequest(),
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Equal("questions.safe.criteria", exception.Field);
+        Assert.Contains("Invalid input", exception.ProviderMessage, StringComparison.Ordinal);
+        Assert.Equal(1, handler.RequestCount);
+    }
+
     private static DecisionRequest CreateRequest()
     {
         using JsonDocument state = JsonDocument.Parse("{}");
