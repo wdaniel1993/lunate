@@ -193,7 +193,7 @@ public sealed class DecideToolTests
         Assert.Contains("28,004", warning, StringComparison.Ordinal);
         Assert.Contains("4 characters per token", warning, StringComparison.Ordinal);
         Assert.Contains("32,000-token per-question budget", warning, StringComparison.Ordinal);
-        Assert.Contains("long context is opt-in", warning, StringComparison.Ordinal);
+        Assert.Contains("Long context is opt-in", warning, StringComparison.Ordinal);
         Assert.Contains("slower and less accurate", warning, StringComparison.Ordinal);
     }
 
