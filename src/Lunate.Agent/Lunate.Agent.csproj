@@ -59,6 +59,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Agent.Tests" />
+        <InternalsVisibleTo Include="Lunate.Coding" />
         <InternalsVisibleTo Include="lunate" />
         <InternalsVisibleTo Include="Lunate.Protocols" />
         <InternalsVisibleTo Include="Lunate.Protocols.Tests" />
