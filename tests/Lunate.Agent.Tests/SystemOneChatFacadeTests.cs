@@ -7,12 +7,16 @@ namespace Lunate.Agent.Tests;
 public sealed class SystemOneChatFacadeTests
 {
     [Fact]
-    public void GetResponseAsync_refuses_chat_for_a_decision_model()
+    public async Task GetResponseAsync_refuses_chat_for_a_decision_model()
     {
         SystemOneChatFacade client = CreateClient();
 
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")])
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () =>
+                client.GetResponseAsync(
+                    [new ChatMessage(ChatRole.User, "hello")],
+                    cancellationToken: TestContext.Current.CancellationToken
+                )
         );
 
         Assert.Contains("typesafe/jev-1.14 is a decision model", exception.Message, StringComparison.Ordinal);
@@ -24,7 +28,10 @@ public sealed class SystemOneChatFacadeTests
         SystemOneChatFacade client = CreateClient();
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hello")])
+            client.GetStreamingResponseAsync(
+                [new ChatMessage(ChatRole.User, "hello")],
+                cancellationToken: TestContext.Current.CancellationToken
+            )
         );
 
         Assert.Contains("typesafe/jev-1.14 is a decision model", exception.Message, StringComparison.Ordinal);
