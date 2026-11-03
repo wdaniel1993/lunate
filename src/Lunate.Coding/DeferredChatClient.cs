@@ -1,3 +1,4 @@
+using Lunate.Ai.Decisions;
 using Lunate.Contracts;
 using Microsoft.Extensions.AI;
 
@@ -38,7 +39,9 @@ internal sealed class DeferredChatClient : IChatClient
     /// create the client so the decision request can pass through unchanged.
     /// </summary>
     public object? GetService(Type serviceType, object? serviceKey = null) =>
-        serviceType == typeof(INativeDecisionClient) || _client.IsValueCreated
+        serviceType == typeof(INativeDecisionClient)
+        || serviceType == typeof(IDecisionClient)
+        || _client.IsValueCreated
             ? _client.Value.GetService(serviceType, serviceKey)
             : null;
 

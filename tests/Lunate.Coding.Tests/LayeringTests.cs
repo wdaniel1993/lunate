@@ -120,6 +120,57 @@ public sealed class LayeringTests
     }
 
     [Fact]
+    [Trait("Category", "Architecture")]
+    public void Decision_projects_use_the_approved_dependency_edges()
+    {
+        var references = ReadProjectReferences().ToHashSet();
+
+        Assert.Contains(("Lunate.Agent", "Lunate.Ai.Decisions"), references);
+        Assert.Contains(("Lunate.Ai.SystemOne", "Lunate.Ai.Decisions"), references);
+        Assert.Contains(("Lunate.Coding", "Lunate.Ai.SystemOne"), references);
+        Assert.DoesNotContain(("Lunate.Agent", "Lunate.Ai.SystemOne"), references);
+    }
+
+    [Fact]
+    [Trait("Category", "Architecture")]
+    public void Contracts_does_not_reference_internal_decision_projects()
+    {
+        var references = ReadProjectReferences();
+
+        Assert.DoesNotContain(
+            references,
+            reference =>
+                reference.From is "Lunate.Contracts"
+                && reference.To is "Lunate.Ai.Decisions" or "Lunate.Ai.SystemOne"
+        );
+    }
+
+    [Fact]
+    [Trait("Category", "Architecture")]
+    public void Decision_projects_are_unpacked_and_keep_the_vendor_dependency_out_of_the_layer()
+    {
+        string source = RepositoryRoot.Find();
+        XDocument decisions = XDocument.Load(
+            Path.Combine(source, "src", "Lunate.Ai.Decisions", "Lunate.Ai.Decisions.csproj")
+        );
+        XDocument systemOne = XDocument.Load(
+            Path.Combine(source, "src", "Lunate.Ai.SystemOne", "Lunate.Ai.SystemOne.csproj")
+        );
+
+        Assert.Equal(
+            ["Microsoft.Extensions.AI.Abstractions"],
+            decisions
+                .Descendants("PackageReference")
+                .Select(reference => (string?)reference.Attribute("Include"))
+                .OfType<string>()
+                .ToArray()
+        );
+        Assert.Empty(systemOne.Descendants("PackageReference"));
+        Assert.Equal("false", decisions.Descendants("IsPackable").Single().Value);
+        Assert.Equal("false", systemOne.Descendants("IsPackable").Single().Value);
+    }
+
+    [Fact]
     public void Agent_runtime_packages_have_no_layering_violations()
     {
         var packages = ReadAgentPackages();

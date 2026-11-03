@@ -25,6 +25,8 @@
 
     <ItemGroup>
         <ProjectReference Include="../Lunate.Agent/Lunate.Agent.csproj" />
+        <ProjectReference Include="../Lunate.Ai.Decisions/Lunate.Ai.Decisions.csproj" />
+        <ProjectReference Include="../Lunate.Ai.SystemOne/Lunate.Ai.SystemOne.csproj" />
         <ProjectReference Include="../Lunate.Extensibility/Lunate.Extensibility.csproj" />
         <ProjectReference Include="../Lunate.Extensibility.Compile/Lunate.Extensibility.Compile.csproj" />
         <ProjectReference Include="../Lunate.Extensibility.Restore/Lunate.Extensibility.Restore.csproj" />

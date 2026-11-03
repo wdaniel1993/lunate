@@ -23,8 +23,7 @@ public sealed partial class AgentHarness
         }
 
         bool native =
-            model.Model.ApiType == "native"
-            && model.Client.GetService(typeof(INativeDecisionClient)) is INativeDecisionClient;
+            model.Model.ApiType == "native" && DecisionClientResolver.HasNativeClient(model.Client);
         if (!native)
         {
             RequireCapability(
@@ -109,8 +108,7 @@ public sealed partial class AgentHarness
         }
 
         bool native =
-            model.Model.ApiType == "native"
-            && model.Client.GetService(typeof(INativeDecisionClient)) is INativeDecisionClient;
+            model.Model.ApiType == "native" && DecisionClientResolver.HasNativeClient(model.Client);
         if (!native)
         {
             RequireCapability(

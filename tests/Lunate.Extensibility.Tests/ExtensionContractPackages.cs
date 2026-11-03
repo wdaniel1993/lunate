@@ -136,7 +136,7 @@ public sealed class ExtensionContractPackages
     /// a second copy would blur which copy types bind to at load.
     /// </summary>
     [Theory]
-    [InlineData("Lunate.Agent", new[] { "Lunate.Ai.dll" })]
+    [InlineData("Lunate.Agent", new[] { "Lunate.Ai.dll", "Lunate.Ai.Decisions.dll" })]
     [InlineData(
         "Lunate.Extensibility.Testing",
         new[]

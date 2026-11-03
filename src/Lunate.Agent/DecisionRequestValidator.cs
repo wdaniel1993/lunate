@@ -64,60 +64,6 @@ internal static class DecisionRequestValidator
         return prepared;
     }
 
-    public static DecisionAnswer ValidateResult(
-        PreparedDecisionQuestion question,
-        string? answer,
-        IReadOnlyDictionary<string, double> probabilities,
-        string modelId,
-        string method
-    )
-    {
-        if (!question.Answers.Contains(answer, StringComparer.Ordinal))
-        {
-            throw Invalid(question.Question.Id, "the chosen answer is not defined by the question");
-        }
-
-        if (probabilities.Count != question.Answers.Count)
-        {
-            throw Invalid(
-                question.Question.Id,
-                "the distribution must contain every defined answer exactly once"
-            );
-        }
-
-        List<DecisionProbability> distribution = [];
-        double sum = 0d;
-        foreach (string definedAnswer in question.Answers)
-        {
-            if (!probabilities.TryGetValue(definedAnswer, out double probability))
-            {
-                throw Invalid(
-                    question.Question.Id,
-                    $"the distribution is missing '{definedAnswer}'"
-                );
-            }
-
-            if (!double.IsFinite(probability) || probability is < 0d or > 1d)
-            {
-                throw Invalid(
-                    question.Question.Id,
-                    $"probability for '{definedAnswer}' must be finite and between 0 and 1"
-                );
-            }
-
-            sum += probability;
-            distribution.Add(new DecisionProbability(definedAnswer, probability));
-        }
-
-        if (Math.Abs(sum - 1d) > 0.000001d)
-        {
-            throw Invalid(question.Question.Id, "the probabilities must sum to 1 within 0.000001");
-        }
-
-        double chosenProbability = probabilities[answer!];
-        return new DecisionAnswer(answer!, chosenProbability, distribution, modelId, method);
-    }
-
     private static IReadOnlyList<string> ValidateAnswers(
         DecisionQuestion question,
         int minimum,

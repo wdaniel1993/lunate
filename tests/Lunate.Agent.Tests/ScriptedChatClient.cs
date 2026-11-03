@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Lunate.Ai.Decisions;
 using Lunate.Contracts;
 using Microsoft.Extensions.AI;
 
@@ -13,6 +14,8 @@ internal sealed class ScriptedChatClient : IChatClient
     public List<ScriptedRequest> Requests { get; } = [];
 
     public INativeDecisionClient? NativeDecisionClient { get; init; }
+
+    public IDecisionClient? DecisionClient { get; init; }
 
     /// <summary>The start of one call as an awaitable; 1-based over the call order.</summary>
     public Task WaitForCallAsync(int call)
@@ -98,7 +101,12 @@ internal sealed class ScriptedChatClient : IChatClient
     }
 
     public object? GetService(Type serviceType, object? serviceKey = null) =>
-        serviceType == typeof(INativeDecisionClient) ? NativeDecisionClient : null;
+        serviceType switch
+        {
+            _ when serviceType == typeof(IDecisionClient) => DecisionClient,
+            _ when serviceType == typeof(INativeDecisionClient) => NativeDecisionClient,
+            _ => null,
+        };
 
     public void Dispose() { }
 
