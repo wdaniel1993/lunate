@@ -49,6 +49,7 @@ internal static class DecisionRequestValidator
                     minimum: 2,
                     maximum: int.MaxValue
                 ),
+                DecisionQuestionKind.Box => ValidateBoxQuestion(question),
                 _ => throw new ArgumentException(
                     $"Question '{question.Id}' has an unsupported kind.",
                     nameof(request)
@@ -58,6 +59,13 @@ internal static class DecisionRequestValidator
             JsonElement state = question.JsonPath is { } path
                 ? ResolveJsonPath(request.State, path, question.Id)
                 : request.State;
+            if (question.Kind == DecisionQuestionKind.Box && !ContainsImagePart(state))
+            {
+                throw new ArgumentException(
+                    $"Box question '{question.Id}' requires an image part in its state.",
+                    nameof(request)
+                );
+            }
             prepared.Add(new PreparedDecisionQuestion(question, answers, state));
         }
 
@@ -97,6 +105,52 @@ internal static class DecisionRequestValidator
         }
 
         return answers.ToArray();
+    }
+
+    private static IReadOnlyList<string> ValidateBoxQuestion(DecisionQuestion question)
+    {
+        if (question.Answers is { Count: > 0 })
+        {
+            throw new ArgumentException(
+                $"Box question '{question.Id}' must not define a set of answers.",
+                nameof(question)
+            );
+        }
+
+        return [];
+    }
+
+    public static bool ContainsImagePart(JsonElement state)
+    {
+        if (
+            state.ValueKind == JsonValueKind.Object
+            && state.TryGetProperty("type", out JsonElement type)
+            && type.ValueKind == JsonValueKind.String
+            && string.Equals(type.GetString(), "image", StringComparison.Ordinal)
+            && state.TryGetProperty("mimeType", out JsonElement mimeType)
+            && mimeType.ValueKind == JsonValueKind.String
+            && mimeType.GetString()!.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+            && (
+                state.TryGetProperty("data", out JsonElement data)
+                    && data.ValueKind == JsonValueKind.String
+                    && !string.IsNullOrWhiteSpace(data.GetString())
+                || state.TryGetProperty("url", out JsonElement url)
+                    && url.ValueKind == JsonValueKind.String
+                    && !string.IsNullOrWhiteSpace(url.GetString())
+            )
+        )
+        {
+            return true;
+        }
+
+        return state.ValueKind switch
+        {
+            JsonValueKind.Object => state
+                .EnumerateObject()
+                .Any(property => ContainsImagePart(property.Value)),
+            JsonValueKind.Array => state.EnumerateArray().Any(ContainsImagePart),
+            _ => false,
+        };
     }
 
     private static JsonElement ResolveJsonPath(JsonElement state, string path, string questionId)
@@ -147,9 +201,6 @@ internal static class DecisionRequestValidator
 
         return current;
     }
-
-    private static InvalidDataException Invalid(string questionId, string reason) =>
-        new($"Decision question '{questionId}' is off-contract: {reason}.");
 }
 
 internal sealed record PreparedDecisionQuestion(

@@ -27,13 +27,13 @@
 
 ## 3. Contract 1.16.0 (lockstep)
 
-- [ ] `DecisionQuestionKind.Box`; `DecisionAnswer.Box` (`DecisionBox(Top, Bottom, Left, Right,
+- [x] `DecisionQuestionKind.Box`; `DecisionAnswer.Box` (`DecisionBox(Top, Bottom, Left, Right,
       Confidence)`); box validation (fractions in [0,1], `top<bottom`, `left<right`, confidence in
       [0,1], wrong-kind rejected).
-- [ ] `DecisionResult.Confidence` — the computed value (see 5), so extensions see what the router uses.
-- [ ] Image state validation gated by the model's input modalities, refusal naming the capability.
+- [x] `DecisionResult.Confidence` — the computed value (see 5), so extensions see what the router uses.
+- [x] Image state validation gated by the model's input modalities, refusal naming the capability.
 - [ ] `INativeDecisionClient` stays and forwards to `IDecisionClient`, so 1.15.0 consumers keep working.
-- [ ] Version bump and contract tests at the new version.
+- [x] Version bump and contract tests at the new version.
 
 ## 4. System One client
 

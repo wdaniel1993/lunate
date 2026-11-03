@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Lunate.Ai;
 using Lunate.Ai.Decisions;
 using Lunate.Contracts;
 using Microsoft.Extensions.AI;
@@ -27,6 +28,9 @@ internal static class DecisionClientResolver
     public static bool HasNativeClient(IChatClient client) =>
         client.GetService(typeof(IDecisionClient)) is IDecisionClient
         || client.GetService(typeof(INativeDecisionClient)) is INativeDecisionClient;
+
+    public static bool SupportsImageInput(ModelInfo model) =>
+        model.Capabilities?.InputModalities?.Contains("image") ?? model.SupportsVision;
 
     private sealed class LegacyNativeDecisionClient(INativeDecisionClient legacy) : IDecisionClient
     {

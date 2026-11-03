@@ -37,8 +37,24 @@ internal static class DecisionResponseParser
 
             if (question.Kind == DecisionQuestionKind.Box)
             {
+                if (
+                    result.Value.TryGetProperty("answer", out _)
+                    || result.Value.TryGetProperty("probabilities", out _)
+                )
+                {
+                    throw new InvalidDataException(
+                        $"box response for question '{result.Name}' must not contain an answer or distribution"
+                    );
+                }
                 answers.Add(result.Name, ParseBox(result.Value, modelId, method));
                 continue;
+            }
+
+            if (result.Value.TryGetProperty("box", out _))
+            {
+                throw new InvalidDataException(
+                    $"response for non-box question '{result.Name}' contains a box answer"
+                );
             }
 
             if (

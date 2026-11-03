@@ -15,11 +15,19 @@ internal static class DecisionEngine
         string modelId,
         string method,
         CancellationToken cancellationToken = default,
-        Action<UsageDetails, string, string?, double?>? recordUsage = null
+        Action<UsageDetails, string, string?, double?>? recordUsage = null,
+        bool supportsImages = false
     )
     {
+        ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(client);
         ArgumentException.ThrowIfNullOrWhiteSpace(modelId);
+        if (DecisionRequestValidator.ContainsImagePart(request.State) && !supportsImages)
+        {
+            throw new InvalidOperationException(
+                $"model '{modelId}' doesn't support required input modality 'image'."
+            );
+        }
         IReadOnlyList<PreparedDecisionQuestion> prepared = DecisionRequestValidator.Prepare(
             request
         );
@@ -69,6 +77,18 @@ internal static class DecisionEngine
                     answer.ModelId,
                     answer.Method
                 )
+                {
+                    Confidence = answer.Confidence,
+                    Box = answer.Box is { } box
+                        ? new Lunate.Contracts.DecisionBox(
+                            box.Top,
+                            box.Bottom,
+                            box.Left,
+                            box.Right,
+                            answer.Confidence
+                        )
+                        : null,
+                }
             );
         }
 
@@ -86,6 +106,7 @@ internal static class DecisionEngine
                 Lunate.Contracts.DecisionQuestionKind.YesNo => InternalDecisionQuestionKind.Noul,
                 Lunate.Contracts.DecisionQuestionKind.Choice => InternalDecisionQuestionKind.Choice,
                 Lunate.Contracts.DecisionQuestionKind.Score => InternalDecisionQuestionKind.Score,
+                Lunate.Contracts.DecisionQuestionKind.Box => InternalDecisionQuestionKind.Box,
                 _ => throw new InvalidOperationException(
                     "The validated question kind is unsupported."
                 ),

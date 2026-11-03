@@ -51,7 +51,8 @@ public sealed partial class AgentHarness
                         usage,
                         resolvedModelId,
                         UsageAttribution("decision", model, decisionMethod, probability)
-                    )
+                    ),
+                supportsImages: DecisionClientResolver.SupportsImageInput(model.Model)
             );
 
             foreach ((string questionId, DecisionAnswer answer) in response.Results)
@@ -158,7 +159,8 @@ public sealed partial class AgentHarness
                         usage,
                         resolvedModelId,
                         UsageAttribution("decision", model, decisionMethod, probability)
-                    )
+                    ),
+                supportsImages: DecisionClientResolver.SupportsImageInput(model.Model)
             );
             DecisionAnswer answer = response.Results["approval"];
             var evaluated = new DecisionEvaluated(

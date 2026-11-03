@@ -3,11 +3,23 @@ using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
 
-internal sealed class AgentDecisionService(IChatClient client, string modelId, string method)
-    : IAgentDecisionService
+internal sealed class AgentDecisionService(
+    IChatClient client,
+    string modelId,
+    string method,
+    bool supportsImages = false
+) : IAgentDecisionService
 {
     public Task<DecisionResponse> DecideAsync(
         DecisionRequest request,
         CancellationToken cancellationToken = default
-    ) => DecisionEngine.EvaluateAsync(request, client, modelId, method, cancellationToken);
+    ) =>
+        DecisionEngine.EvaluateAsync(
+            request,
+            client,
+            modelId,
+            method,
+            cancellationToken,
+            supportsImages: supportsImages
+        );
 }

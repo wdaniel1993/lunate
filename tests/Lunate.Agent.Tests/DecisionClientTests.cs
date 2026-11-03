@@ -21,6 +21,27 @@ public sealed class DecisionClientTests
 
     [Fact]
     [Trait("Category", "DecisionLayer")]
+    public void Known_input_modalities_override_the_legacy_vision_flag()
+    {
+        Lunate.Ai.ModelInfo model = new(
+            "text-only-model",
+            "test-provider",
+            null,
+            1024,
+            SupportsTools: false
+        )
+        {
+            SupportsVision = true,
+            Capabilities = new Lunate.Ai.ModelCapabilityDescriptor(
+                inputModalities: new HashSet<string>(StringComparer.Ordinal)
+            ),
+        };
+
+        Assert.False(DecisionClientResolver.SupportsImageInput(model));
+    }
+
+    [Fact]
+    [Trait("Category", "DecisionLayer")]
     public async Task OpenTelemetry_records_decision_metadata_without_state_or_question_text()
     {
         List<Activity> stopped = [];

@@ -102,6 +102,39 @@ public sealed class ContractsAssemblyTests
     }
 
     [Fact]
+    public void Box_decision_contract_types_live_in_the_contract_assembly()
+    {
+        Assert.Equal(
+            typeof(Lunate.Contracts.DecisionRequest).Assembly,
+            typeof(Lunate.Contracts.DecisionBox).Assembly
+        );
+        Assert.Equal(0, (int)Lunate.Contracts.DecisionQuestionKind.YesNo);
+        Assert.Equal(1, (int)Lunate.Contracts.DecisionQuestionKind.Choice);
+        Assert.Equal(2, (int)Lunate.Contracts.DecisionQuestionKind.Score);
+        Assert.Equal(3, (int)Lunate.Contracts.DecisionQuestionKind.Box);
+    }
+
+    [Fact]
+    public void Decision_answer_keeps_its_1_15_constructor_and_deconstruction_signatures()
+    {
+        Type[] constructorParameters =
+        [
+            typeof(string),
+            typeof(double),
+            typeof(IReadOnlyList<Lunate.Contracts.DecisionProbability>),
+            typeof(string),
+            typeof(string),
+        ];
+        Assert.NotNull(
+            typeof(Lunate.Contracts.DecisionAnswer).GetConstructor(constructorParameters)
+        );
+        Assert.Contains(
+            typeof(Lunate.Contracts.DecisionAnswer).GetMethods(),
+            method => method.Name == "Deconstruct" && method.GetParameters().Length == 5
+        );
+    }
+
+    [Fact]
     public void The_former_agent_assembly_forwards_every_contract_type_in_its_namespace()
     {
         Type[] contractTypes = TypesInNamespace(typeof(ToolContext).Assembly, "Lunate.Agent");

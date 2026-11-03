@@ -710,7 +710,8 @@ internal sealed partial class InteractiveSession : IDisposable
                     AgentDecisionService = new AgentDecisionService(
                         decisionModel.Client,
                         decisionModel.Model.Id,
-                        decisionModel.Model.ApiType == "native" ? "native" : "adapter"
+                        decisionModel.Model.ApiType == "native" ? "native" : "adapter",
+                        DecisionClientResolver.SupportsImageInput(decisionModel.Model)
                     ),
                 };
             }
