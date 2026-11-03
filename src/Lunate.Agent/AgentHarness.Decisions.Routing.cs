@@ -158,8 +158,8 @@ public sealed partial class AgentHarness
                 {
                     criteria[id] = new Dictionary<string, string>(StringComparer.Ordinal)
                     {
-                        ["yes"] = routingProfiles[profile].Description!,
-                        ["no"] = $"The request does not fit the '{profile}' profile.",
+                        ["true"] = routingProfiles[profile].Description!,
+                        ["false"] = $"The request does not fit the '{profile}' profile.",
                     };
                 }
             }
