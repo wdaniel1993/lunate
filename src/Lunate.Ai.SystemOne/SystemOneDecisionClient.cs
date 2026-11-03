@@ -4,7 +4,12 @@ using Lunate.Ai.Decisions;
 
 namespace Lunate.Ai.SystemOne;
 
-internal sealed class SystemOneDecisionClient(HttpClient httpClient, SystemOnePreset preset)
+internal sealed class SystemOneDecisionClient(
+    HttpClient httpClient,
+    SystemOnePreset preset,
+    Func<double>? jitterSource = null,
+    Func<TimeSpan, CancellationToken, Task>? delayAsync = null
+)
     : IDecisionClient
 {
     public async Task<DecisionResult> GetDecisionAsync(
@@ -43,7 +48,10 @@ internal sealed class SystemOneDecisionClient(HttpClient httpClient, SystemOnePr
             {
                 throw SystemOneErrorMapper.Create(response.StatusCode, responseBody);
             }
-            await Task.Delay(GetRetryDelay(response, attempt), cancellationToken)
+            await (delayAsync ?? Task.Delay)(
+                    GetRetryDelay(response, attempt, jitterSource),
+                    cancellationToken
+                )
                 .ConfigureAwait(false);
         }
 
@@ -85,11 +93,16 @@ internal sealed class SystemOneDecisionClient(HttpClient httpClient, SystemOnePr
     private static bool IsRetryable(System.Net.HttpStatusCode statusCode) =>
         statusCode == System.Net.HttpStatusCode.TooManyRequests || (int)statusCode == 529;
 
-    private static TimeSpan GetRetryDelay(HttpResponseMessage response, int attempt)
+    private static TimeSpan GetRetryDelay(
+        HttpResponseMessage response,
+        int attempt,
+        Func<double>? jitterSource
+    )
     {
         double exponentialMilliseconds = 250 * Math.Pow(2, attempt);
         TimeSpan delay = TimeSpan.FromMilliseconds(
-            exponentialMilliseconds + Random.Shared.NextDouble() * exponentialMilliseconds
+            exponentialMilliseconds
+                + (jitterSource?.Invoke() ?? Random.Shared.NextDouble()) * exponentialMilliseconds
         );
         TimeSpan? retryAfter = response.Headers.RetryAfter?.Delta;
         if (retryAfter is null && response.Headers.RetryAfter?.Date is { } date)

@@ -96,7 +96,17 @@ public sealed class SystemOneDecisionClientTransportTests
     {
         using SystemOneTransientHandler handler = new();
         using HttpClient httpClient = new(handler);
-        SystemOneDecisionClient client = CreateClient(httpClient);
+        List<TimeSpan> delays = [];
+        SystemOneDecisionClient client = new(
+            httpClient,
+            new SystemOnePreset(new Uri("https://example.test/api/v1/systemone")),
+            jitterSource: () => 0,
+            delayAsync: (delay, _) =>
+            {
+                delays.Add(delay);
+                return Task.CompletedTask;
+            }
+        );
 
         DecisionResult result = await client.GetDecisionAsync(
             SystemOneDecisionTestData.CreateRequest(),
@@ -105,6 +115,33 @@ public sealed class SystemOneDecisionClientTransportTests
 
         Assert.Equal("yes", result.Results["safe"].Answer);
         Assert.Equal(3, handler.RequestCount);
+        Assert.Equal([TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(500)], delays);
+    }
+
+    [Fact]
+    public async Task GetDecisionAsync_never_retries_before_retry_after()
+    {
+        using SystemOneRetryAfterHandler handler = new(TimeSpan.FromSeconds(5));
+        using HttpClient httpClient = new(handler);
+        TimeSpan? observedDelay = null;
+        SystemOneDecisionClient client = new(
+            httpClient,
+            new SystemOnePreset(new Uri("https://example.test/api/v1/systemone")),
+            jitterSource: () => 0,
+            delayAsync: (delay, _) =>
+            {
+                observedDelay = delay;
+                return Task.CompletedTask;
+            }
+        );
+
+        await client.GetDecisionAsync(
+            SystemOneDecisionTestData.CreateRequest(),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(TimeSpan.FromSeconds(5), observedDelay);
+        Assert.Equal(2, handler.RequestCount);
     }
 
     private static SystemOneDecisionClient CreateClient(HttpClient httpClient) =>

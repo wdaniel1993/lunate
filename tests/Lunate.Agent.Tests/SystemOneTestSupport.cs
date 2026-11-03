@@ -87,3 +87,37 @@ internal sealed class SystemOneTransientHandler : HttpMessageHandler
         return response;
     }
 }
+
+internal sealed class SystemOneRetryAfterHandler(TimeSpan retryAfter) : HttpMessageHandler
+{
+    private const string Success =
+        """{"model":"typesafe/jev-1.14","answers":{"safe":{"type":"noul","noul":0.91}}}""";
+
+    public int RequestCount { get; private set; }
+
+    protected override Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken
+    )
+    {
+        RequestCount++;
+        if (RequestCount > 1)
+        {
+            return Task.FromResult(
+                new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(Success, Encoding.UTF8, "application/json"),
+                }
+            );
+        }
+
+        HttpResponseMessage response = new(HttpStatusCode.TooManyRequests)
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json"),
+        };
+        response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(
+            retryAfter
+        );
+        return Task.FromResult(response);
+    }
+}
