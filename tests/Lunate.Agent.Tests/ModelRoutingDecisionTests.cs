@@ -121,7 +121,7 @@ public sealed class ModelRoutingDecisionTests
                 UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
                 {
                     ["chat"] = Model(configured, "default"),
-                    ["decision"] = Model(decision, "decision", choiceOrderSensitive),
+                    ["decision"] = Model(decision, "decision"),
                 },
                 RoutingProfiles = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
                 {
@@ -270,7 +270,7 @@ public sealed class ModelRoutingDecisionTests
                 UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
                 {
                     ["chat"] = Model(configured, "default"),
-                    ["decision"] = Model(decision, "decision"),
+                    ["decision"] = Model(decision, "decision", choiceOrderSensitive),
                 },
                 RoutingProfiles = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
                 {
