@@ -163,10 +163,12 @@ internal sealed class UnixChildProcess : ChildProcess
                     string[] envp = BuildEnvp(request);
                     string executable = ResolveExecutable(request.FileName);
 
-                    // argv/envp are built as raw NUL-terminated UTF-8 pointer arrays. Passing a
-                    // managed string[] lets the runtime marshal it, and a value in the inherited
-                    // environment (long tokens, unicode) can make macOS posix_spawn fail with
-                    // EFAULT; the explicit pointers are stable.
+                    // argv/envp are built as raw NUL-terminated UTF-8 pointer arrays. Managed
+                    // marshalling of a string[] is not documented to keep those buffers pinned
+                    // through the spawn, and a diagnostic with an unstable argv/envp pointer is
+                    // indistinguishable from a bad path; the explicit pointers are what the
+                    // syscall contract asks for. Size abuse surfaces as E2BIG (verified on
+                    // macOS 26: a 1 MiB environment), not EFAULT.
                     IntPtr argvPtr = AllocArgv(argv);
                     IntPtr envpPtr = AllocArgv(envp);
                     try
