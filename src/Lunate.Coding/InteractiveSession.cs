@@ -1190,20 +1190,7 @@ internal sealed partial class InteractiveSession : IDisposable
 
     private void TraceRoute(KeyEvent key, RoutedKey routed)
     {
-        string? path = Environment.GetEnvironmentVariable("LUNATE_INPUT_TRACE");
-        if (string.IsNullOrEmpty(path))
-        {
-            return;
-        }
-
-        try
-        {
-            File.AppendAllText(
-                path,
-                $"{DateTimeOffset.UtcNow:O} key {key.Kind} text={key.Text ?? "-"} routed={routed} turn={_turnActive} runCts={_runCancellation is not null} bash={_bashRunning}\n"
-            );
-        }
-        catch (IOException) { }
+        InputTrace.Key(key, routed, _turnActive, _runCancellation is not null, _bashRunning);
     }
 
     private async Task PumpKeysAsync(CancellationToken ct)
