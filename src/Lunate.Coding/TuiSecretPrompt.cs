@@ -167,8 +167,7 @@ internal sealed class TuiSecretPrompt(LiveArea live) : ISecretPrompt
         live.SetSecretPrompt(
             new SecretPromptState(
                 _label,
-                _masked ? new string('*', _buffer.Length) : _buffer.ToString(),
-                _masked
+                _masked ? new string('*', _buffer.Length) : _buffer.ToString()
             )
         );
 

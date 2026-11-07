@@ -41,9 +41,12 @@ renderer reads.
   it strips only line breaks (carriage return and newline), so pasted URLs with spaces survive and a
   trailing newline is never treated as Enter. Both modes submit on Enter and cancel on Esc. The
   buffer is cleared and the mode reset on completion, so one prompt instance cannot leak a mode.
-- **`SecretPromptState.Masked` drives rendering.** The masked prompt posts only `new string('*',
-  length)` — the plaintext of a secret never reaches the live state, widened from the record's
-  comment to a tested property. The visible prompt posts the typed text, which is not a secret.
+- **The prompt prepares the display text; `SecretPromptState` carries only that.** The masked read
+  posts only `new string('*', length)` — the plaintext of a secret never reaches the live state
+  (pinned by the audit and golden frame tests). The visible read posts the typed text, which is not
+  a secret. An earlier sketch carried the mode itself on the record (`Masked`), but the renderer
+  shows the prepared text as is, so the flag would have been written and never read — dead code; it
+  was removed before archive and the record stayed two fields.
 - **The wizard's typed credential routes through the masked read now.** At rc.3 the credential step
   called `PromptAsync`, which is exactly the line the visible-read switch made wrong; it now uses
   `SecretPromptAsync`.

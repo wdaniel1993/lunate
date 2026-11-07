@@ -102,11 +102,11 @@ internal sealed record LiveAreaState
 }
 
 /// <summary>
-/// The open prompt: the label and the display text. Masked prompts carry one asterisk per typed
-/// character; visible prompts carry the typed text itself. The plaintext of a secret never reaches
-/// the live state.
+/// The open prompt: the label and the display text. A masked secret carries one asterisk per typed
+/// character; a visible prompt carries the typed text itself. The plaintext of a secret never
+/// reaches the live state: the prompt prepares the display text, the renderer shows it as is.
 /// </summary>
-internal sealed record SecretPromptState(string Label, string Mask, bool Masked = true);
+internal sealed record SecretPromptState(string Label, string Mask);
 
 /// <summary>
 /// The live thinking block: the accumulating reasoning text and how long it has streamed. The

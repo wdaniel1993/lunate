@@ -41,7 +41,8 @@ internal static class LiveAreaRenderer
         IReadOnlyList<string> noticeLines = string.IsNullOrEmpty(notice)
             ? []
             : NoticeLines(notice, width, state.Unicode);
-        // The live state carries only the mask: the typed characters never reach a frame.
+        // The live state carries only the prepared display text: a masked secret's typed characters
+        // never reach a frame; a visible prompt shows what the user typed.
         string? secretPromptLine = state.SecretPrompt is { } secretPrompt
             ? CellText.Clip(secretPrompt.Label + ": " + secretPrompt.Mask, width)
             : null;
