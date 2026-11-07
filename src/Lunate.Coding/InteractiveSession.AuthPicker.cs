@@ -71,7 +71,7 @@ internal sealed partial class InteractiveSession
         try
         {
             string? id = await _secretPrompt
-                .ReadAsync("Custom provider id", ct)
+                .ReadTextAsync("Custom provider id", ct)
                 .ConfigureAwait(false);
             if (id is null)
             {
@@ -80,7 +80,7 @@ internal sealed partial class InteractiveSession
             }
 
             string? baseUrl = await _secretPrompt
-                .ReadAsync("Base URL for the custom provider", ct)
+                .ReadTextAsync("Base URL for the custom provider", ct)
                 .ConfigureAwait(false);
             if (baseUrl is null)
             {
@@ -89,7 +89,7 @@ internal sealed partial class InteractiveSession
             }
 
             string? model = await _secretPrompt
-                .ReadAsync("Model id for the custom provider", ct)
+                .ReadTextAsync("Model id for the custom provider", ct)
                 .ConfigureAwait(false);
             if (model is null)
             {

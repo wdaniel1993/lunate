@@ -558,7 +558,8 @@ internal sealed partial class InteractiveSession
 
         if (credential is WizardTypedValue)
         {
-            string? key = await PromptAsync("API key for " + provider.Id, ct).ConfigureAwait(false);
+            string? key = await SecretPromptAsync("API key for " + provider.Id, ct)
+                .ConfigureAwait(false);
             if (key is null)
             {
                 return WizardMove.Abort;

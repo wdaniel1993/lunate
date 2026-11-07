@@ -150,6 +150,10 @@ internal sealed partial class InteractiveSession
     }
 
     private Task<string?> PromptAsync(string label, CancellationToken ct) =>
+        _secretPrompt.ReadTextAsync(label, ct);
+
+    /// <summary>The walk's one masked read: the credential key typed at the credential step.</summary>
+    private Task<string?> SecretPromptAsync(string label, CancellationToken ct) =>
         _secretPrompt.ReadAsync(label, ct);
 
     /// <summary>One decision switch through the question component: Enter picks the selected row,
