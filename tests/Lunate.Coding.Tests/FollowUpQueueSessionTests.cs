@@ -260,8 +260,13 @@ public sealed class FollowUpQueueSessionTests
         await run;
     }
 
+    /// <summary>
+    /// /quit while a turn runs takes the Esc path and the quit path at once: the run is cancelled
+    /// (the gated call never completes) and the session loop exits with the normal quit code —
+    /// the queue's "wait for the turn to finish" refusal never applies to it.
+    /// </summary>
     [Fact]
-    public async Task A_slash_command_is_refused_by_the_queue()
+    public async Task Quit_during_a_running_turn_cancels_the_turn_and_exits()
     {
         using var host = new InteractiveSessionHost();
         host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
@@ -275,22 +280,32 @@ public sealed class FollowUpQueueSessionTests
         host.Console.SendText("/quit");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "/quit");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() =>
+
+        // The session ends without the gate ever releasing: the run was cancelled, not waited for.
+        try
         {
-            host.Advance(33);
-            return host.LastFrame.Contains(
-                "slash command cannot be queued",
-                StringComparison.Ordinal
+            await run.WaitAsync(
+                InteractiveSessionHost.DefaultWait,
+                TestContext.Current.CancellationToken
             );
-        });
+        }
+        catch (TimeoutException) when (!run.IsCompleted)
+        {
+            throw new TimeoutException(
+                "the session loop never ended after mid-turn /quit."
+                    + Environment.NewLine
+                    + host.Snapshot()
+            );
+        }
 
+        Assert.Single(host.Client.Requests);
         Assert.Equal(0, host.Session.QueuedFollowUpCount);
-        Assert.Equal("/quit", host.Session.Input.Text);
-
-        host.Client.Release(1);
-        await host.WaitUntilAsync(() => !host.Session.IsRunning);
-        host.Console.Complete();
-        await run;
+        Assert.DoesNotContain(
+            "slash command cannot be queued",
+            host.Frames,
+            StringComparison.Ordinal
+        );
+        Assert.Equal(0, host.Session.ExitCode);
     }
 
     [Fact]
