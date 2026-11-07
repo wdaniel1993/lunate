@@ -11,6 +11,14 @@ internal interface ISecretPrompt
 {
     Task<string?> ReadAsync(string prompt, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The visible-text prompt used by every non-secret wizard and login field (provider id,
+    /// endpoint, model, profile, region, reference). Scripted prompts inherit the secret read,
+    /// so existing tests keep their one answer queue; the live prompt overrides it to echo.
+    /// </summary>
+    Task<string?> ReadTextAsync(string prompt, CancellationToken cancellationToken) =>
+        ReadAsync(prompt, cancellationToken);
+
     /// <summary>Whether the prompt currently owns the keys; false for a scripted prompt.</summary>
     bool IsOpen => false;
 

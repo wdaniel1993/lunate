@@ -67,6 +67,31 @@ public sealed class InteractiveSessionSecretPromptTests
     }
 
     [Fact]
+    public async Task A_visible_text_prompt_echoes_what_is_typed()
+    {
+        var console = new ScriptedConsoleIO();
+        var scheduler = new ManualScheduler();
+        using var live = new LiveArea(console, scheduler, readKeys: false);
+        live.Start();
+        var prompt = new TuiSecretPrompt(live);
+
+        Task<string?> read = prompt.ReadTextAsync(
+            "Profile name",
+            TestContext.Current.CancellationToken
+        );
+        prompt.HandleKey(new KeyEvent(KeyKind.Character, "c", false, false, false));
+        prompt.HandleKey(new KeyEvent(KeyKind.Space, null, false, false, false));
+        prompt.HandleKey(new KeyEvent(KeyKind.Character, "h", false, false, false));
+        scheduler.Advance(TimeSpan.FromMilliseconds(33));
+
+        Assert.Contains("Profile name: c h", console.Writes[^1], StringComparison.Ordinal);
+        Assert.DoesNotContain("**", console.Writes[^1], StringComparison.Ordinal);
+
+        prompt.HandleKey(new KeyEvent(KeyKind.Enter, null, false, false, false));
+        Assert.Equal("c h", await read);
+    }
+
+    [Fact]
     public async Task Escape_cancels_without_saving_a_partial_key()
     {
         using var host = new InteractiveSessionHost(
