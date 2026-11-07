@@ -6,7 +6,7 @@ namespace Lunate.Tui;
 
 internal sealed class KeyReader : IDisposable
 {
-    internal static readonly TimeSpan DefaultQuietWindow = TimeSpan.FromMilliseconds(75);
+    internal static readonly TimeSpan DefaultQuietWindow = TimeSpan.FromMilliseconds(50);
 
     private static readonly byte[] PasteStart = "\u001b[200~"u8.ToArray();
     private static readonly byte[] PasteEnd = "\u001b[201~"u8.ToArray();
@@ -87,7 +87,9 @@ internal sealed class KeyReader : IDisposable
                 );
                 _buffer.RemoveRange(0, end + PasteEnd.Length);
                 _inPaste = false;
-                _onKey(new KeyEvent(KeyKind.Paste, text, false, false, false));
+                var paste = new KeyEvent(KeyKind.Paste, text, false, false, false);
+                InputTrace.Key(paste);
+                _onKey(paste);
                 continue;
             }
 
@@ -116,6 +118,7 @@ internal sealed class KeyReader : IDisposable
             }
 
             _buffer.RemoveRange(0, consumed);
+            InputTrace.Key(key!);
             _onKey(key!);
         }
     }
@@ -141,7 +144,9 @@ internal sealed class KeyReader : IDisposable
             }
 
             _buffer.Clear();
-            _onKey(new KeyEvent(KeyKind.Escape, null, false, false, false));
+            var escape = new KeyEvent(KeyKind.Escape, null, false, false, false);
+            InputTrace.Key(escape);
+            _onKey(escape);
         }
     }
 

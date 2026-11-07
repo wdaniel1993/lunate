@@ -98,7 +98,7 @@ public sealed class LiveAreaActivityRendererTests
     }
 
     [Fact]
-    public void The_narrow_band_keeps_spinner_label_and_elapsed_and_drops_the_extras()
+    public void The_narrow_band_keeps_the_interrupt_hint_and_drops_only_the_deltas()
     {
         var state = new LiveAreaState
         {
@@ -113,9 +113,9 @@ public sealed class LiveAreaActivityRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Equal("| bash dotnet build · 4s", frame.Lines[0]);
+        Assert.Contains("esc to interrupt", frame.Lines[0], StringComparison.Ordinal);
         Assert.DoesNotContain("↑", frame.Lines[0], StringComparison.Ordinal);
-        Assert.DoesNotContain("esc", frame.Lines[0], StringComparison.Ordinal);
+        Assert.True(CellText.Width(frame.Lines[0]) <= 40, frame.Lines[0]);
     }
 
     [Fact]
@@ -136,7 +136,7 @@ public sealed class LiveAreaActivityRendererTests
             .Render(state with { Size = new ConsoleSize(60, 24) })
             .Lines[0];
 
-        Assert.Equal("⠹ thinking… 3s", atFiftyNine);
+        Assert.Equal("⠹ thinking… 3s · esc to interrupt", atFiftyNine);
         Assert.Equal("⠹ thinking… 3s · ↑1.2k ↓180 · esc to interrupt", atSixty);
     }
 
@@ -193,7 +193,7 @@ public sealed class LiveAreaActivityRendererTests
     }
 
     [Theory]
-    [InlineData(40, " · 2s")]
+    [InlineData(40, " · 2s · esc to interrupt")]
     [InlineData(80, " · 2s · ↑1.2k ↓180 · esc to interrupt")]
     public void A_long_tool_summary_is_budgeted_so_the_tail_survives(int width, string tail)
     {

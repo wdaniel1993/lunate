@@ -1,4 +1,4 @@
-/ working… 7s
+/ working… 7s · esc to interrupt
 ────────────────────────────────────────
 > Ask anything, / for commands
 ────────────────────────────────────────

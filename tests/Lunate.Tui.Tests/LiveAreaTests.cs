@@ -153,13 +153,12 @@ public sealed class LiveAreaTests
         string frame = Visible(console.Writes[^1]);
         Match activity = Regex.Match(
             frame,
-            @"[|/\\-] verifying… \d+s",
+            @"[|/\\-] verifying… \d+s(?: · esc to interrupt)?",
             RegexOptions.CultureInvariant
         );
         Assert.True(activity.Success, "the verification activity line must render");
-        Assert.Equal("| verifying… 0s", activity.Value);
+        Assert.Equal("| verifying… 0s · esc to interrupt", activity.Value);
         Assert.DoesNotContain("↑", frame, StringComparison.Ordinal);
-        Assert.DoesNotContain("esc to interrupt", frame, StringComparison.Ordinal);
         Assert.True(CellText.Width(activity.Value) <= width);
     }
 

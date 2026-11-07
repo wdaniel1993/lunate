@@ -424,7 +424,7 @@ The optional `cs_rename` tool SHALL compute a solution-wide rename plan for a re
 - **THEN** the result explains why with no plan produced
 
 ### Requirement: Bash tool
-The `bash` tool SHALL run a single non-interactive command through the platform's resolved shell, in the workspace root, with stdout and stderr captured separately, output decoded as UTF-8, both streams bounded with an explicit cap marker, and the exit code surfaced in the result (culture-invariant). The tool SHALL be marked `Execute` risk so the approval policy applies, its description SHALL name the resolved shell and dialect, and a missing shell SHALL produce a clear error result rather than a partial run. On timeout (default 120 s) or cancellation the process tree SHALL be terminated, children before parents (the mechanism is platform-specific: `ps`-walk + SIGKILL on POSIX, job-object tree kill on Windows); cancellation SHALL rethrow `OperationCanceledException`; `IsError` SHALL be true for non-zero exits, timeouts and spawn failures.
+The `bash` tool SHALL run a single non-interactive command through the platform's resolved shell, in the workspace root, with stdout and stderr captured separately, output decoded as UTF-8, both streams bounded with an explicit cap marker, and the exit code surfaced in the result (culture-invariant). The resolved shell SHALL be started detached from the terminal as the `process-isolation` capability specifies — on POSIX in a new session with no controlling terminal, stdin at `/dev/null` (or the line-pump answer pipe when the run answers lines) and stdout/stderr on captured pipes. The tool SHALL be marked `Execute` risk so the approval policy applies, its description SHALL name the resolved shell and dialect, and a missing shell SHALL produce a clear error result rather than a partial run. On timeout (default 120 s) or cancellation the process tree SHALL be terminated, children before parents (the mechanism is platform-specific: `ps`-walk + SIGKILL on POSIX, job-object tree kill on Windows); cancellation SHALL rethrow `OperationCanceledException`; `IsError` SHALL be true for non-zero exits, timeouts and spawn failures.
 
 #### Scenario: Shell resolution follows the platform table
 - **GIVEN** a Windows machine with Git Bash installed
@@ -441,6 +441,11 @@ The `bash` tool SHALL run a single non-interactive command through the platform'
 - **WHEN** the call's token is cancelled
 - **THEN** the tree is killed and an `OperationCanceledException` is raised
 
+#### Scenario: A cancelled call leaves the session terminal untouched
+- **GIVEN** an interactive session running a `bash` call with an interactive child inside it
+- **WHEN** the call is cancelled from the key reader
+- **THEN** the whole tree is gone, the session's termios is unchanged, and keys typed afterwards reach the session, never the dead child
+
 #### Scenario: UTF-8 and exit codes round-trip
 - **GIVEN** a command emitting non-ASCII text and exiting non-zero
 - **WHEN** it runs
@@ -450,7 +455,6 @@ The `bash` tool SHALL run a single non-interactive command through the platform'
 - **GIVEN** a command producing more than the capture cap
 - **WHEN** it runs
 - **THEN** the captured output ends with the cap marker and memory stays bounded
-
 ### Requirement: Bash guard
 A `bash` command SHALL run wrapped in a guard profile, not a jail: writes under the state root (`LUNATE_HOME`, default `~/.lunate`) and under the install prefix SHALL be denied at the OS level, `auth.json` under the state root SHALL be read-denied, and every other access SHALL keep its ordinary behaviour (normal work inside and outside the workspace survives the guard). The mechanism is per platform: `sandbox-exec` on macOS, `bwrap` on Linux with `setpriv`'s Landlock rules as the Linux fallback; Windows has no mechanism. Every resolution SHALL run the mechanism once before use, so "installed" cannot stand in for "working": when the mechanism cannot start — including the AppArmor restriction of unprivileged user namespaces on Ubuntu 23.10+ — the report SHALL carry the probe's output and the restriction's name, and the command SHALL run unconfined behind a visible notice. When a mechanism enforces less than the profile, the resolution SHALL report that instead of falling back silently. A command whose redirection would write a denied target SHALL be refused before the spawn with a result naming the guard and its mechanism; a failed command that touched a denied target and ended in a filesystem denial SHALL carry a hint that names the guard, marked as best-effort. The guard SHALL be enabled by default. A `bashGuard` settings value of `false` SHALL disable wrapping and probing, and the tool result SHALL explicitly state that the guard is disabled. On startup, while the guard is enabled, Lunate SHALL warn once if a pre-existing hardlink under the state root has a link outside that root, naming a path under the state root. The resolved mechanism and probe state SHALL be available to `/context` and the welcome session header: the mechanism SHALL be one of `sandbox-exec`, `bwrap`, `landlock` or `none`; the probe state SHALL report success, failure or not run. `/context` SHALL show both values, and the header SHALL show the same fact in short form.
 

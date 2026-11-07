@@ -340,6 +340,11 @@ internal sealed partial class InteractiveSession : IDisposable
         // The tui capability requires raw mode through the platform APIs: in a canonical
         // terminal Enter arrives as LF and can never submit. A terminal that cannot switch
         // modes fails soft with the platform's actionable message instead of an exception.
+        // Configure the terminal half of the key trace before any key is read: the state root
+        // is resolved here once (LunateHome), so the trace halves share one path and the repo's
+        // one-place rule for reading the root holds.
+        Tui.InputTrace.Configure(InputTrace.ResolvePath());
+
         IDisposable rawMode;
         try
         {
@@ -1188,6 +1193,11 @@ internal sealed partial class InteractiveSession : IDisposable
     /// </summary>
     internal IReadOnlyList<TranscriptEntry> Transcript => _transcript;
 
+    private void TraceRoute(KeyEvent key, RoutedKey routed)
+    {
+        InputTrace.Key(key, routed, _turnActive, _runCancellation is not null, _bashRunning);
+    }
+
     private async Task PumpKeysAsync(CancellationToken ct)
     {
         await foreach (KeyEvent key in _console.ReadKeysAsync(ct))
@@ -1340,7 +1350,14 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
-        switch (KeyRouter.Route(key, _turnActive, _followUps.Count > 0, _bashMode || _bashRunning))
+        RoutedKey routed = KeyRouter.Route(
+            key,
+            _turnActive,
+            _followUps.Count > 0,
+            _bashMode || _bashRunning
+        );
+        TraceRoute(key, routed);
+        switch (routed)
         {
             case RoutedKey.Edit:
                 EditInput(key);

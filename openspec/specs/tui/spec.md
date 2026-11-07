@@ -1131,10 +1131,12 @@ elapsed seconds and — while the turn is cancellable — the root run's token d
 interrupt`. The label SHALL be `thinking…` while reasoning streams, `<tool name> <summary>` while a
 tool runs, `verifying…` while a write verifier runs, and `working…` otherwise. The verifier activity
 line SHALL show its elapsed time and SHALL fit the active width band. The narrow band (below 60
-columns) SHALL keep the spinner, the label and elapsed seconds and drop the token deltas and the
-interrupt hint. The thinking label SHALL carry the thinking colour where the terminal supports
-colour — the theme value in truecolor and 256-color modes, the 16-color fallback in 16-color mode —
-and SHALL be colour-neutral under NO_COLOR (the spinner carries the motion).
+columns) SHALL keep the spinner, the label, the elapsed seconds and — while the turn is cancellable
+— the `esc to interrupt` hint, and SHALL drop only the token deltas; the hint names the one key
+that stops a run and is never the part that falls off. The thinking label SHALL carry the thinking
+colour where the terminal supports colour — the theme value in truecolor and 256-color modes, the
+16-color fallback in 16-color mode — and SHALL be colour-neutral under NO_COLOR (the spinner carries
+the motion).
 
 #### Scenario: Thinking work shows the affordances
 
@@ -1152,8 +1154,8 @@ and SHALL be colour-neutral under NO_COLOR (the spinner carries the motion).
 
 - **GIVEN** a terminal 40 columns wide with a running tool
 - **WHEN** the activity line renders
-- **THEN** it fits the width with the spinner, the label and the elapsed seconds, and no token deltas
-  or interrupt hint
+- **THEN** it fits the width with the spinner, the label and the elapsed seconds, carries the
+  interrupt hint while the turn is cancellable, and shows no token deltas
 
 #### Scenario: Subagent usage stays out of the deltas
 
@@ -1174,7 +1176,6 @@ and SHALL be colour-neutral under NO_COLOR (the spinner carries the motion).
 - **WHEN** the user presses Esc
 - **THEN** the turn is cancelled through the normal run-cancellation path and the host does not
   write the staged content
-
 ### Requirement: Cache usage in `/context`
 
 The `/context` notice SHALL show the session's accumulated prompt-cache tokens when the provider has reported them: cache reads and cache writes as separate counts, formatted culture-invariantly, in a `cache: read <n>, write <m>` segment. A count the provider never reported, or reported as zero, SHALL be treated as unknown and omitted from the segment; the command SHALL NOT display a zero for an unknown count. The footer line itself SHALL remain unchanged — cache counts belong to the explicit `/context` readout, not to the always-visible status.

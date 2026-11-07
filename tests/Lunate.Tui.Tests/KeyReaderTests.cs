@@ -13,7 +13,7 @@ public sealed class KeyReaderTests
         using var reader = new KeyReader(scheduler, keys.Add);
 
         reader.Feed([0x1B]);
-        scheduler.AdvanceBy(TimeSpan.FromMilliseconds(74).Ticks);
+        scheduler.AdvanceBy(TimeSpan.FromMilliseconds(49).Ticks);
         Assert.Empty(keys);
 
         scheduler.AdvanceBy(TimeSpan.FromMilliseconds(1).Ticks);
@@ -28,7 +28,7 @@ public sealed class KeyReaderTests
         using var reader = new KeyReader(scheduler, keys.Add);
 
         reader.Feed([0x1B]);
-        scheduler.AdvanceBy(TimeSpan.FromMilliseconds(50).Ticks);
+        scheduler.AdvanceBy(TimeSpan.FromMilliseconds(30).Ticks);
         reader.Feed([(byte)'[', (byte)'A']);
         scheduler.AdvanceBy(TimeSpan.FromSeconds(1).Ticks);
 

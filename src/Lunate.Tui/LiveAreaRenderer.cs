@@ -342,9 +342,17 @@ internal static class LiveAreaRenderer
     /// </summary>
     private static string MetricsSuffix(LiveAreaState state, int width)
     {
-        if (!state.Cancellable || WidthBands.IsCompact(width))
+        if (!state.Cancellable)
         {
             return string.Empty;
+        }
+
+        // The interruption hint is the discoverability surface and must survive the compact
+        // band; only the token deltas are optional there. The tool label budgets against this
+        // suffix before clipping its summary, so the hint is never the part that falls off.
+        if (WidthBands.IsCompact(width))
+        {
+            return " · esc to interrupt";
         }
 
         string text = string.Empty;

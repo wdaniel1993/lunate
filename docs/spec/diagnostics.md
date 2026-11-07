@@ -49,3 +49,16 @@ The behaviour itself belongs to the interactive command surface in
 
 `/debug` is interactive-only, like the other session commands. Print mode and ACP compose no command
 registry: the same text is passed to the model as a prompt.
+
+## Input trace
+
+When a report is about keys that never reached the session — an `Esc` that did not stop a run, a
+paste that vanished, a key that reached a blocked turn — run with `LUNATE_INPUT_TRACE=1`, reproduce,
+and attach `<state root>/diagnostics/input-trace.log` to the report.
+
+The trace records key kinds, modifiers, the routing decision the router made and UTC timestamps.
+It never records printable characters or paste content: a value a key carries is reduced to
+`chars=N`, so a credential typed into a prompt — visible or masked — leaves nothing in the file.
+
+`LUNATE_INPUT_TRACE=1` traces to the default file under the state root. Any other value must name a
+path inside the state root and is refused otherwise. On POSIX the file is owner-only (0600).
