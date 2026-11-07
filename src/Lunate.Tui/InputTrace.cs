@@ -14,15 +14,18 @@ namespace Lunate.Tui;
 /// <c>LUNATE_INPUT_TRACE=1</c> traces to <c>diagnostics/input-trace.log</c> under the state root;
 /// any other value must name a path inside the state root and is refused otherwise — a diagnostic
 /// the user can enable writes where the user's records live, never where a repository or a temp
-/// drive does. On POSIX the file is owner-only. The same rule holds a second copy over in
-/// <c>Lunate.Coding</c> because the assemblies are independent; the boundary tests pin it.
+/// drive does. On POSIX the file is owner-only. This file owns the rule and the path shapes; the
+/// one state root it resolves against comes from the session, so the root is read from the process
+/// environment in exactly one place in the repo.
 /// </para>
 /// </summary>
 internal static class InputTrace
 {
     internal const string Variable = "LUNATE_INPUT_TRACE";
     internal const string EnabledValue = "1";
-    internal const string HomeVariable = "LUNATE_HOME";
+
+    /// <summary>The path the session configured from the trace's rules; null while unset or off.</summary>
+    private static string? _path;
 
     /// <summary>UTF-8 without a BOM; the AppendAllText text already ends in its LF.</summary>
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
@@ -32,13 +35,21 @@ internal static class InputTrace
     /// </summary>
     public static void Key(KeyEvent key)
     {
-        string? path = TracePath();
-        if (path is null)
+        if (_path is null)
         {
             return;
         }
 
-        Key(key, path);
+        Key(key, _path);
+    }
+
+    /// <summary>
+    /// Configures the implicit path traced keys write to. The session calls this at startup with
+    /// the one resolved path; keys read before the configuration trace nothing by design.
+    /// </summary>
+    internal static void Configure(string? path)
+    {
+        _path = path;
     }
 
     /// <summary>Records the key at an already-resolved path; the formatting under test.</summary>
@@ -101,32 +112,6 @@ internal static class InputTrace
                         or IOException
                         or NotSupportedException
             ) { }
-    }
-
-    private static string? TracePath()
-    {
-        string? setting = Environment.GetEnvironmentVariable(Variable);
-        if (string.IsNullOrWhiteSpace(setting))
-        {
-            return null;
-        }
-
-        return Resolve(setting, StateRoot());
-    }
-
-    /// <summary>
-    /// The state root. Same rule as <c>LunateHome</c>'s: the profile default or the absolute
-    /// <c>LUNATE_HOME</c> override, read from the process environment and nowhere else.
-    /// </summary>
-    private static string StateRoot()
-    {
-        string? configured = Environment.GetEnvironmentVariable(HomeVariable);
-        return string.IsNullOrWhiteSpace(configured)
-            ? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".lunate"
-            )
-            : Path.TrimEndingDirectorySeparator(configured);
     }
 
     private static bool IsInside(string candidate, string boundary)

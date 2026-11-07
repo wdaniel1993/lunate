@@ -22,7 +22,7 @@ public sealed class InteractiveSessionInputTraceTests
     {
         using var temp = new TempDirectory();
         using var environment = new ProcessEnvironment(
-            (Lunate.Tui.InputTrace.HomeVariable, temp.File("home")),
+            (LunateHome.Variable, temp.File("home")),
             (Lunate.Tui.InputTrace.Variable, Lunate.Tui.InputTrace.EnabledValue)
         );
         using var host = new InteractiveSessionHost(

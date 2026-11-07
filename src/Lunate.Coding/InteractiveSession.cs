@@ -340,6 +340,11 @@ internal sealed partial class InteractiveSession : IDisposable
         // The tui capability requires raw mode through the platform APIs: in a canonical
         // terminal Enter arrives as LF and can never submit. A terminal that cannot switch
         // modes fails soft with the platform's actionable message instead of an exception.
+        // Configure the terminal half of the key trace before any key is read: the state root
+        // is resolved here once (LunateHome), so the trace halves share one path and the repo's
+        // one-place rule for reading the root holds.
+        Tui.InputTrace.Configure(InputTrace.ResolvePath());
+
         IDisposable rawMode;
         try
         {

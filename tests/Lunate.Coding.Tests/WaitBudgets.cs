@@ -132,6 +132,13 @@ internal static class WaitBudgets
     public static readonly TimeSpan ProviderProbeTimeout = TimeSpan.FromMilliseconds(50);
 
     /// <summary>
+    /// The interval for polling a marker file the spawned child writes (the pid its grandchild
+    /// records): the marker is the signal, so polling stays short while the enclosing
+    /// <see cref="SpawnWindow"/> bounds the wait.
+    /// </summary>
+    public static readonly TimeSpan ChildMarkerPoll = TimeSpan.FromMilliseconds(50);
+
+    /// <summary>
     /// A shell command the tool runs to completion — this is the timeout the test hands the tool, not
     /// a wait the test performs: the tool's own kill must be given room not to fire. Sixty seconds is
     /// the value the finishing-command tests used for exactly this, and a command that finishes

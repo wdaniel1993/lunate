@@ -1,4 +1,4 @@
-- read src/Foo.cs · 4s
+- read src/Foo.c · 4s · esc to interrupt
 ────────────────────────────────────────
 \x1b[38;5;110m> Ask anything, / for commands\x1b[0m
 ────────────────────────────────────────

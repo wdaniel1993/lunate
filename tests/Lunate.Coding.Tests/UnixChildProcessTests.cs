@@ -61,7 +61,8 @@ public sealed class UnixChildProcessTests
 
     private static async Task<string> PidFileAsync(string pidFile)
     {
-        for (var attempt = 0; attempt < 200; attempt++)
+        var deadline = DateTime.UtcNow + WaitBudgets.SpawnWindow;
+        while (DateTime.UtcNow < deadline)
         {
             if (File.Exists(pidFile))
             {
@@ -72,7 +73,7 @@ public sealed class UnixChildProcessTests
                 }
             }
 
-            await Task.Delay(50, TestContext.Current.CancellationToken);
+            await Task.Delay(WaitBudgets.ChildMarkerPoll, TestContext.Current.CancellationToken);
         }
 
         Assert.Fail($"the child never wrote its pid to {pidFile}");

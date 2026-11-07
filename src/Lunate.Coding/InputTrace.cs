@@ -30,7 +30,7 @@ internal static class InputTrace
         bool bashRunning
     )
     {
-        string? path = TracePath();
+        string? path = ResolvePath();
         if (path is null)
         {
             return;
@@ -66,7 +66,11 @@ internal static class InputTrace
         { }
     }
 
-    private static string? TracePath()
+    /// <summary>
+    /// Resolves the trace path the trace rule names, once per process where the state root is
+    /// read: the session resolves it and configures both trace halves with it.
+    /// </summary>
+    internal static string? ResolvePath()
     {
         string? setting = Environment.GetEnvironmentVariable(Lunate.Tui.InputTrace.Variable);
         return string.IsNullOrWhiteSpace(setting)
