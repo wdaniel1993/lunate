@@ -207,11 +207,29 @@ internal static class PrintMode
                     workspace.WorktreeRoot,
                     extensions?.HookRunner.Options.ContextBudgetPerExtension
                         ?? new HookRunnerOptions().ContextBudgetPerExtension,
+                    SkillIndex.SkillsBudget.FromSettings(settings.Skills, model.ContextWindow),
+                    SkillIndex.NamesInInstructions(
+                        skills.Skills,
+                        AgentsInstructions.Compose(
+                            workspace.RepoRoot ?? workspace.WorktreeRoot,
+                            workspace.WorktreeRoot
+                        )
+                    ),
                     message => extensions?.Log.Warn(message)
                 );
                 foreach (string warning in skills.Warnings)
                 {
                     interaction.Notify(new UserNotice(NoticeLevel.Warning, warning));
+                }
+
+                if (SkillIndex.SoftNotice(skills.Index) is { } softNotice)
+                {
+                    interaction.Notify(new UserNotice(NoticeLevel.Warning, softNotice));
+                }
+
+                if (SkillIndex.HardCeilingWarning(skills.Index) is { } ceilingWarning)
+                {
+                    interaction.Notify(new UserNotice(NoticeLevel.Warning, ceilingWarning));
                 }
 
                 mcp = await McpComposition

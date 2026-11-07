@@ -210,6 +210,54 @@ public sealed class SkillScannerTests
     }
 
     [Fact]
+    public void A_description_over_the_spec_limit_is_an_invalid_skill()
+    {
+        using var temp = new TempDirectory();
+        string repo = temp.File("repo");
+        Directory.CreateDirectory(Path.Combine(repo, ".git"));
+        string directory = Path.Combine(repo, ".agents", "skills", "verbose");
+        Directory.CreateDirectory(directory);
+        string description = new string('d', SkillIndex.MaxDescriptionLength + 1);
+        File.WriteAllText(
+            Path.Combine(directory, "SKILL.md"),
+            $"---\nname: verbose\ndescription: {description}\n---\nBody.\n"
+        );
+
+        SkillScanResult result = SkillScanner.Scan(Request(temp, worktree: repo, repoRoot: repo));
+
+        SkillDescriptor skill = Assert.Single(result.Skills);
+        Assert.False(skill.Valid);
+        Assert.Contains("1,024 characters", skill.InvalidReason, StringComparison.Ordinal);
+        Assert.Contains("1,025 characters", skill.InvalidReason, StringComparison.Ordinal);
+        Assert.Contains("not loaded", Assert.Single(result.Warnings), StringComparison.Ordinal);
+        // The spec limit is validation, not a silent cut: an invalid skill grants no read root.
+        Assert.DoesNotContain(directory, result.ReadRoots);
+    }
+
+    [Fact]
+    public void A_description_at_the_spec_limit_is_valid()
+    {
+        using var temp = new TempDirectory();
+        string repo = temp.File("repo");
+        Directory.CreateDirectory(Path.Combine(repo, ".git"));
+        WriteSkill(
+            Path.Combine(repo, ".agents", "skills", "greek"),
+            "greek",
+            new string('d', SkillIndex.MaxDescriptionLength)
+        );
+
+        SkillScanResult result = SkillScanner.Scan(Request(temp, worktree: repo, repoRoot: repo));
+
+        SkillDescriptor skill = Assert.Single(result.Skills);
+        Assert.True(skill.Valid);
+        Assert.Empty(result.Warnings);
+        Assert.Contains(
+            result.ReadRoots,
+            directory => directory.EndsWith("greek", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
     public void Allowed_tools_is_accepted_and_ignored()
     {
         using var temp = new TempDirectory();

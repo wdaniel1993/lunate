@@ -2,6 +2,26 @@ namespace Lunate.Coding.Tests;
 
 public sealed class SkillIndexTests
 {
+    /// <summary>Composes with unlimited budgets and no protected names unless a test says otherwise.</summary>
+    private static SkillIndex.Composed Compose(
+        IReadOnlyList<SkillDescriptor> skills,
+        string worktreeRoot,
+        int perExtensionBudgetTokens = 2000,
+        SkillIndex.SkillsBudget? budget = null,
+        IReadOnlySet<string>? protectedNames = null,
+        Action<string>? log = null
+    ) =>
+        SkillIndex.Compose(
+            skills,
+            worktreeRoot,
+            perExtensionBudgetTokens,
+            budget ?? SkillIndex.SkillsBudget.Unlimited,
+            protectedNames ?? new HashSet<string>(StringComparer.Ordinal),
+            log
+        );
+
+    private static SkillIndex.SkillsBudget Budget1000() => new(1000, 1000);
+
     private static SkillDescriptor Skill(
         TempDirectory temp,
         string name,
@@ -41,10 +61,12 @@ public sealed class SkillIndexTests
     {
         using var temp = new TempDirectory();
 
-        SkillIndex.Composed index = SkillIndex.Compose(
+        SkillIndex.Composed index = Compose(
             [Skill(temp, "greek", "Use for Greek")],
             temp.Root,
-            2000
+            2000,
+            SkillIndex.SkillsBudget.Unlimited,
+            new HashSet<string>(StringComparer.Ordinal)
         );
 
         Assert.Contains("read tool", index.Text, StringComparison.Ordinal);
@@ -67,7 +89,7 @@ public sealed class SkillIndexTests
             Skill(temp, "beta", scope: SkillScope.Extension, extensionId: "hello"),
         ];
 
-        SkillIndex.Composed index = SkillIndex.Compose(skills, temp.Root, 2000);
+        SkillIndex.Composed index = Compose(skills, temp.Root);
 
         int greek = index.Text.IndexOf("- greek:", StringComparison.Ordinal);
         int roman = index.Text.IndexOf("- roman:", StringComparison.Ordinal);
@@ -78,34 +100,40 @@ public sealed class SkillIndexTests
     }
 
     [Fact]
-    public void Descriptions_are_truncated_at_200_characters()
+    public void A_description_at_the_spec_limit_is_carried_whole()
     {
         using var temp = new TempDirectory();
-        string description = new('x', 1000);
+        string description = new('x', SkillIndex.MaxDescriptionLength);
 
-        SkillIndex.Composed index = SkillIndex.Compose(
+        SkillIndex.Composed index = Compose(
             [Skill(temp, "long", description)],
             temp.Root,
-            2000
+            2000,
+            SkillIndex.SkillsBudget.Unlimited,
+            new HashSet<string>(StringComparer.Ordinal)
         );
 
         int start = index.Text.IndexOf("long: ", StringComparison.Ordinal) + "long: ".Length;
         int end = index.Text.IndexOf(" [", start, StringComparison.Ordinal);
         string carried = index.Text[start..end];
-        Assert.Equal(201, carried.Length);
-        Assert.EndsWith("…", carried, StringComparison.Ordinal);
+        Assert.Equal(SkillIndex.MaxDescriptionLength, carried.Length);
+        Assert.DoesNotContain("…", carried, StringComparison.Ordinal);
     }
 
     [Fact]
     public void A_description_cut_never_splits_a_surrogate_pair()
     {
         using var temp = new TempDirectory();
-        string description = new string('a', 199) + "\U0001F600" + new string('b', 40);
+        // The high surrogate sits exactly at the 1,024th code unit: a naive slice would cut
+        // the pair in half.
+        string description = new string('a', 1_023) + "\U0001F600" + new string('b', 10);
 
-        SkillIndex.Composed index = SkillIndex.Compose(
+        SkillIndex.Composed index = Compose(
             [Skill(temp, "greek", description)],
             temp.Root,
-            2000
+            2000,
+            SkillIndex.SkillsBudget.Unlimited,
+            new HashSet<string>(StringComparer.Ordinal)
         );
 
         int start = index.Text.IndexOf("greek: ", StringComparison.Ordinal) + "greek: ".Length;
@@ -120,10 +148,12 @@ public sealed class SkillIndexTests
     {
         using var temp = new TempDirectory();
 
-        SkillIndex.Composed index = SkillIndex.Compose(
+        SkillIndex.Composed index = Compose(
             [Skill(temp, "greek", commandOnly: true)],
             temp.Root,
-            2000
+            2000,
+            SkillIndex.SkillsBudget.Unlimited,
+            new HashSet<string>(StringComparer.Ordinal)
         );
 
         Assert.Equal(string.Empty, index.Text);
@@ -143,12 +173,9 @@ public sealed class SkillIndexTests
                 .Select(index => Skill(temp, $"skill-{index:D3}", description)),
         ];
 
-        SkillIndex.Composed index = SkillIndex.Compose(skills, temp.Root, 2000);
+        SkillIndex.Composed index = Compose(skills, temp.Root, budget: Budget1000());
 
-        Assert.True(
-            index.EstimatedTokens <= SkillIndex.MaxEstimatedTokens,
-            $"estimated {index.EstimatedTokens} tokens"
-        );
+        Assert.True(index.EstimatedTokens <= 1000, $"estimated {index.EstimatedTokens} tokens");
         Assert.True(index.IndexedCount < skills.Count);
         Assert.NotEmpty(index.NotIndexed);
         Assert.Contains(
@@ -168,7 +195,7 @@ public sealed class SkillIndexTests
             index.Text,
             StringComparison.Ordinal
         );
-        SkillIndex.Composed again = SkillIndex.Compose(skills, temp.Root, 2000);
+        SkillIndex.Composed again = Compose(skills, temp.Root, budget: Budget1000());
         Assert.Equal(index.Text, again.Text);
     }
 
@@ -184,7 +211,7 @@ public sealed class SkillIndexTests
                 .Select(index => Skill(temp, $"a-very-long-skill-name-{index:D3}", description)),
         ];
 
-        SkillIndex.Composed index = SkillIndex.Compose(skills, temp.Root, 2000);
+        SkillIndex.Composed index = Compose(skills, temp.Root, budget: Budget1000());
 
         int footer = index.Text.LastIndexOf('+');
         string names = index.Text[(index.Text.IndexOf(':', footer) + 2)..];
@@ -208,7 +235,12 @@ public sealed class SkillIndexTests
         ];
         List<string> logs = [];
 
-        SkillIndex.Composed index = SkillIndex.Compose(skills, temp.Root, 100, logs.Add);
+        SkillIndex.Composed index = Compose(
+            skills,
+            temp.Root,
+            perExtensionBudgetTokens: 100,
+            log: logs.Add
+        );
 
         Assert.Contains("- greek:", index.Text, StringComparison.Ordinal);
         Assert.Contains("- ext-00:", index.Text, StringComparison.Ordinal);

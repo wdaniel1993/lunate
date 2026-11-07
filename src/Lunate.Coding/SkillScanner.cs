@@ -463,6 +463,17 @@ internal static partial class SkillScanner
                 reason = $"name '{directoryName}' must match [a-z0-9-]+";
             }
 
+            // The Agent Skills specification limits a description at 1,024 characters. Over it the
+            // skill is invalid — the spec limit is validation, never a silent cut — because a
+            // description missing its head or tail is no longer the trigger the model matches a
+            // task against.
+            if (reason is null && frontmatter.Description!.Length > SkillIndex.MaxDescriptionLength)
+            {
+                reason = FormattableString.Invariant(
+                    $"description is {frontmatter.Description.Length:N0} characters, over the Agent Skills limit of 1,024 characters"
+                );
+            }
+
             if (reason is not null)
             {
                 warnings.Add($"skills: '{canonical}': {reason}; it was not loaded");

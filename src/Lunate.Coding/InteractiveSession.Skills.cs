@@ -26,16 +26,39 @@ internal sealed partial class InteractiveSession
             }
         );
         _skills.SetProjectTrusted(await EnsureSkillsTrustedAsync(ct).ConfigureAwait(false));
+        SkillIndex.SkillsBudget budget = SkillIndex.SkillsBudget.FromSettings(
+            _settings.Skills,
+            SkillsIndexContextWindow()
+        );
+        IReadOnlySet<string> protectedNames = SkillIndex.NamesInInstructions(
+            _skills.Skills,
+            AgentsInstructions.Compose(
+                _workspace.RepoRoot ?? _workspace.WorktreeRoot,
+                _workspace.WorktreeRoot
+            )
+        );
         _skills.BuildIndex(
             _workspace.WorktreeRoot,
             _extensions?.HookRunner.Options.ContextBudgetPerExtension
                 ?? new HookRunnerOptions().ContextBudgetPerExtension,
+            budget,
+            protectedNames,
             message => _extensions?.Log.Warn(message)
         );
         _skillAllowance.Set(_skills.ReadRoots);
         foreach (string warning in _skills.Warnings)
         {
             Notify(warning, NoticeLevel.Warning);
+        }
+
+        if (SkillIndex.SoftNotice(_skills.Index) is { } softNotice)
+        {
+            Notify(softNotice, NoticeLevel.Warning);
+        }
+
+        if (SkillIndex.HardCeilingWarning(_skills.Index) is { } ceilingWarning)
+        {
+            Notify(ceilingWarning, NoticeLevel.Warning);
         }
 
         _skillSection = _skills.Index.Text.Length > 0 ? _skills.Index.Text : null;
@@ -132,13 +155,56 @@ internal sealed partial class InteractiveSession
     /// <summary>The <c>/skills</c> notice: the scopes, markers and invalid entries.</summary>
     private string SkillsText() => SkillsView.Text(_skills?.Skills ?? []);
 
+    /// <summary>
+    /// The context window the skills index budgets derive from, resolved with the session model's
+    /// own precedence: an extension-registered model's declared window, else the configured
+    /// catalog entry, else the 128,000-token default <see cref="CompactionReducer"/> uses.
+    /// </summary>
+    private int SkillsIndexContextWindow()
+    {
+        string? configured = _settings.Model;
+        if (_extensions is not null && !string.IsNullOrWhiteSpace(configured))
+        {
+            try
+            {
+                if (
+                    _extensions.ModelRegistry.FindCapabilities(configured) is { } capabilities
+                    && capabilities.ContextWindow > 0
+                )
+                {
+                    return capabilities.ContextWindow;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // A broken registration just fell back to the catalog in the model resolution
+                // itself (which throws later); the index budget degrades the same way.
+            }
+        }
+
+        if (
+            !string.IsNullOrWhiteSpace(configured)
+            && _catalog.Find(configured) is { } model
+            && model.ContextWindow > 0
+        )
+        {
+            return model.ContextWindow;
+        }
+
+        return CompactionReducer.DefaultContextWindow;
+    }
+
     /// <summary>The <c>/context</c> skills segment.</summary>
     private string SkillsContextSegment()
     {
         SkillIndex.Composed index =
             _skills?.Index ?? new SkillIndex.Composed(string.Empty, 0, 0, []);
+        string advice =
+            index.EstimatedTokens > index.SoftTokens && index.NotIndexed.Count == 0
+                ? "; above the soft index budget — disable unused skills or packages to shrink it"
+                : string.Empty;
         return FormattableString.Invariant(
-            $"skills: {index.IndexedCount} (index ~{index.EstimatedTokens} tokens)"
+            $"skills: {index.IndexedCount} (index ~{index.EstimatedTokens} tokens{advice})"
         );
     }
 

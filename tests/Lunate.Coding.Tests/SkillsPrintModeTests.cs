@@ -1,3 +1,4 @@
+using System.Globalization;
 using Lunate.Agent;
 using Lunate.Extensibility;
 using Microsoft.Extensions.AI;
@@ -173,5 +174,175 @@ public sealed class SkillsPrintModeTests
             .Single(client.Requests[0], message => message.Role == ChatRole.System)
             .Text;
         Assert.DoesNotContain("greek", system, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A trusted print run over the given worktree with a model of the given context window
+    /// (declared in the run's own models.json), returning the scripted client and the run result.
+    /// </summary>
+    internal static async Task<(
+        ScriptedChatClient Client,
+        int ExitCode,
+        string Output,
+        string Errors
+    )> RunTrustedAsync(
+        TempDirectory temp,
+        string worktree,
+        string modelId,
+        int contextWindow,
+        string? settingsJson = null
+    )
+    {
+        string store = temp.File("store");
+        var workspace = new Workspace(worktree);
+        var scan = SkillScanner.ScanProject(
+            new SkillScanRequest(worktree, workspace.RepoRoot, "", [])
+        );
+        List<SkillDescriptor> project =
+        [
+            .. scan.Skills.Where(skill => skill is { Valid: true, Scope: SkillScope.Project }),
+        ];
+        string hash = SkillTrust.ComputeContentHash(project, workspace.RepoRoot ?? worktree);
+        SkillTrust.Record(
+            new ExtensionTrustStore(new ExtensionHostOptions { StorePath = store }),
+            workspace.GitCommonDir ?? worktree,
+            workspace.WorktreeRoot,
+            SkillTrust.Names(project),
+            hash,
+            DateTimeOffset.UtcNow
+        );
+        File.WriteAllText(
+            temp.File("models.json"),
+            $$"""{"schemaVersion":1,"models":[{"id":"{{modelId}}","provider":"openai","contextWindow":{{contextWindow.ToString(CultureInfo.InvariantCulture)}},"supportsTools":true}]}"""
+        );
+        File.WriteAllText(temp.File("settings.json"), settingsJson ?? """{"schemaVersion":2}""");
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            WorkingDirectory = worktree,
+            Environment = PrintModeTestSupport.Environment(model: modelId),
+            Extensions = new ExtensionSeams
+            {
+                StorePath = store,
+                Log = new RecordingExtensionLog(),
+            },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+        return (client, exitCode, output, errors);
+    }
+
+    [Fact]
+    public async Task Twenty_one_skills_on_a_large_context_model_are_all_indexed_with_no_warning()
+    {
+        using var outer = new TempDirectory();
+        string worktree = Path.Combine(outer.Root, "worktree");
+        Directory.CreateDirectory(Path.Combine(worktree, ".git"));
+        for (var index = 0; index < 21; index++)
+        {
+            WriteSkill(
+                Path.Combine(worktree, ".agents", "skills", $"skill-{index:D2}"),
+                $"skill-{index:D2}"
+            );
+        }
+
+        (ScriptedChatClient client, int exitCode, string _, string errors) = await RunTrustedAsync(
+            outer,
+            worktree,
+            "large-model",
+            300_000
+        );
+
+        Assert.Equal(0, exitCode);
+        string system = Assert
+            .Single(client.Requests[0], message => message.Role == ChatRole.System)
+            .Text;
+        for (var index = 0; index < 21; index++)
+        {
+            Assert.Contains($"- skill-{index:D2}: Does a thing", system, StringComparison.Ordinal);
+        }
+
+        Assert.DoesNotContain("more skills (not indexed)", system, StringComparison.Ordinal);
+        Assert.DoesNotContain("skills index", errors, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_pack_over_the_soft_threshold_indexes_completely_and_warns()
+    {
+        using var outer = new TempDirectory();
+        string worktree = Path.Combine(outer.Root, "worktree");
+        Directory.CreateDirectory(Path.Combine(worktree, ".git"));
+        for (var index = 0; index < 6; index++)
+        {
+            WriteSkill(
+                Path.Combine(worktree, ".agents", "skills", $"skill-{index:D2}"),
+                $"skill-{index:D2}",
+                description: new string('d', 120)
+            );
+        }
+
+        (ScriptedChatClient client, int exitCode, string _, string errors) = await RunTrustedAsync(
+            outer,
+            worktree,
+            "small-model",
+            10_000
+        );
+
+        Assert.Equal(0, exitCode);
+        string system = Assert
+            .Single(client.Requests[0], message => message.Role == ChatRole.System)
+            .Text;
+        for (var index = 0; index < 6; index++)
+        {
+            Assert.Contains($"- skill-{index:D2}: ", system, StringComparison.Ordinal);
+        }
+
+        Assert.DoesNotContain("more skills (not indexed)", system, StringComparison.Ordinal);
+        Assert.Contains("stays fully indexed", errors, StringComparison.Ordinal);
+        Assert.Contains("soft threshold", errors, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_small_context_model_crossing_the_ceiling_keeps_AGENTS_md_skills_and_names_the_count()
+    {
+        using var outer = new TempDirectory();
+        string worktree = Path.Combine(outer.Root, "worktree");
+        Directory.CreateDirectory(Path.Combine(worktree, ".git"));
+        for (var index = 0; index < 10; index++)
+        {
+            WriteSkill(
+                Path.Combine(worktree, ".agents", "skills", $"skill-{index:D2}"),
+                $"skill-{index:D2}",
+                description: new string('d', 1000)
+            );
+        }
+
+        File.WriteAllText(
+            Path.Combine(worktree, "AGENTS.md"),
+            "Always run skill-00 first and skill-09 second.\n"
+        );
+
+        (ScriptedChatClient client, int exitCode, string _, string errors) = await RunTrustedAsync(
+            outer,
+            worktree,
+            "tiny-model",
+            4_000
+        );
+
+        Assert.Equal(0, exitCode);
+        string system = Assert
+            .Single(client.Requests[0], message => message.Role == ChatRole.System)
+            .Text;
+        // AGENTS.md-named skills keep their full lines; the rest overflow names-only.
+        Assert.Contains("- skill-00: ", system, StringComparison.Ordinal);
+        Assert.Contains("- skill-09: ", system, StringComparison.Ordinal);
+        Assert.Contains("more skills (not indexed):", system, StringComparison.Ordinal);
+        // The visible warning names how many skills lost their description.
+        Assert.Contains("without their description", errors, StringComparison.Ordinal);
+        Assert.Matches(@"\b[1-9]\d* of 10 skills", errors);
     }
 }

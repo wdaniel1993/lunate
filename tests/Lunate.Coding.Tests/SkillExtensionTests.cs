@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Lunate.Extensibility;
 using Lunate.Tui;
 
@@ -162,7 +163,8 @@ public sealed class SkillExtensionTests
             "the drop must be logged; log:\n" + string.Join("\n", log.Messages)
         );
 
-        // The merged index carries only the lines inside the budget.
+        // The merged index carries only the lines inside the budget: lines with descriptions are
+        // fewer than the 40 contributed, the rest appear names-only in the footer.
         host.Client.Enqueue(Scripts.Text("ok"), Scripts.Stop());
         host.Console.SendText("hi");
         host.Console.SendEnter();
@@ -171,7 +173,7 @@ public sealed class SkillExtensionTests
             .Client.Requests[0]
             .Single(message => message.Role == Microsoft.Extensions.AI.ChatRole.System)
             .Text;
-        int carried = system.Split("ext-skill-").Length - 1;
+        int carried = Regex.Matches(system, @"- ext-skill-\d{2}: ").Count;
         Assert.True(carried > 0, "the budget must keep some lines");
         Assert.True(carried < 40, $"budget dropped nothing: {carried} lines carried");
         await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "ok");

@@ -52,6 +52,7 @@ public sealed partial class SettingsSchemaTests
         ["subagents.tokenBudget"] = 100,
         ["subagents.treeTokenBudget"] = 100,
         ["roslyn.maxLoadedWorkspaces"] = 1,
+        ["skills.indexBudget"] = 400,
         ["tui.fullscreen"] = true,
         ["tui.theme"] = "mono",
         ["tui.keys.*"] = new[] { ProbeKeySpec() },
@@ -125,6 +126,7 @@ public sealed partial class SettingsSchemaTests
         Assert.Equal(50, settings.SpillThresholdTokens);
         Assert.Equal(1, settings.Subagents.Concurrency);
         Assert.Equal(1, settings.Roslyn.MaxLoadedWorkspaces);
+        Assert.Equal(400, settings.Skills.IndexBudget);
         Assert.Equal(ProbeProvider, settings.Profiles[WildcardId].Provider);
         Assert.Equal(1024, settings.Profiles[WildcardId].MaxOutput);
         Assert.Equal(0.5, settings.Decisions.ApprovalsThreshold);
@@ -527,6 +529,7 @@ public sealed partial class SettingsSchemaTests
         ["ReadTools"] = "tools.",
         ["ReadDecisions"] = "decisions.",
         ["ReadTui"] = "tui.",
+        ["ReadSkills"] = "skills.",
         ["ReadProfiles"] = "profiles.*.",
         ["ReadProfileCapabilities"] = "profiles.*.capabilities.",
         ["ReadUsages"] = "usages.",
@@ -548,6 +551,7 @@ public sealed partial class SettingsSchemaTests
                 "usages",
                 "decisions",
                 "tui",
+                "skills",
             },
             ["ReadTui"] = new HashSet<string>(StringComparer.Ordinal) { "keys" },
             ["ReadProfiles"] = new HashSet<string>(StringComparer.Ordinal) { "capabilities" },

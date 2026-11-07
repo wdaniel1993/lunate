@@ -54,12 +54,26 @@ internal sealed class SkillCatalog
 
     /// <summary>
     /// Builds the model index once: extension lines are enforced against the contributing
-    /// extension's context budget first (dropped lines are logged), then the global cap applies.
-    /// Not-indexed entries are marked for <c>/skills</c>.
+    /// extension's context budget first (dropped lines are logged), then the resolved hard ceiling
+    /// applies, never dropping <c>AGENTS.md</c>-named skills. Not-indexed entries are marked for
+    /// <c>/skills</c>.
     /// </summary>
-    internal void BuildIndex(string worktreeRoot, int perExtensionBudgetTokens, Action<string>? log)
+    internal void BuildIndex(
+        string worktreeRoot,
+        int perExtensionBudgetTokens,
+        SkillIndex.SkillsBudget budget,
+        IReadOnlySet<string> protectedNames,
+        Action<string>? log
+    )
     {
-        Index = SkillIndex.Compose(Skills, worktreeRoot, perExtensionBudgetTokens, log);
+        Index = SkillIndex.Compose(
+            Skills,
+            worktreeRoot,
+            perExtensionBudgetTokens,
+            budget,
+            protectedNames,
+            log
+        );
         HashSet<string> notIndexed = new(Index.NotIndexed, StringComparer.Ordinal);
         Skills =
         [

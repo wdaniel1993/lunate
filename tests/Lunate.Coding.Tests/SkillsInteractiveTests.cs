@@ -547,4 +547,49 @@ public sealed class SkillsInteractiveTests
         host.Console.SendEnter();
         await run;
     }
+
+    [Fact]
+    public async Task Context_advises_above_the_soft_budget_and_the_session_notices_once()
+    {
+        using var fixture = new SkillsHost();
+        for (var index = 0; index < 6; index++)
+        {
+            fixture.ProjectSkill($"skill-{index:D2}", description: new string('d', 120));
+        }
+
+        fixture.TrustProjectSkills();
+        InteractiveSessionHost host = fixture.Host;
+        // The session's configured model: a small window (10,000 tokens) puts the complete
+        // 6-skill pack over the 200-token soft threshold but under the 500-token ceiling.
+        File.WriteAllText(
+            host.Options.ModelsPath!,
+            """{"schemaVersion":1,"models":[{"id":"gpt-4o-mini","provider":"openai","contextWindow":10000,"supportsTools":true}]}"""
+        );
+        host.Console.Size = new ConsoleSize(600, 24);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "stays fully indexed");
+        // One-time: the soft notice appears exactly once at composition.
+        Assert.Equal(
+            1,
+            host.Console.Writes.Count(write =>
+                write.Contains("stays fully indexed", StringComparison.Ordinal)
+            )
+        );
+
+        host.Console.SendText("/context");
+        host.Console.SendEnter();
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "skills: 6 (index ~");
+        Assert.Contains("above the soft index budget", host.LastFrame, StringComparison.Ordinal);
+        Assert.Contains(
+            "disable unused skills or packages",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
 }

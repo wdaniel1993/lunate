@@ -41,8 +41,8 @@ listed by `/skills` with the scope label `extension '<id>'`.
 
 Their index lines are charged against the contributing extension's context budget — the same
 `HookRunnerOptions.ContextBudgetPerExtension` value used by hooks, default 2000 estimated tokens —
-before the global 1000-token index cap applies. A line that does not fit is dropped and logged; it
-stays visible in `/skills` as not indexed.
+before the global hard ceiling (5% of the model's context window) applies. A line that does not
+fit is dropped and logged; it stays visible in `/skills` as not indexed.
 
 ## Example
 

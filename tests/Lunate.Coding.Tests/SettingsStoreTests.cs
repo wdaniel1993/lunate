@@ -124,6 +124,75 @@ public sealed class SettingsStoreTests
     }
 
     [Fact]
+    public void A_skills_section_can_set_a_numeric_index_budget()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """{"schemaVersion": 2, "skills": {"indexBudget": 900}}"""
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal(900, settings.Skills.IndexBudget);
+        Assert.False(settings.Skills.Unlimited);
+    }
+
+    [Fact]
+    public void A_skills_section_can_set_an_unlimited_index_budget()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """{"schemaVersion": 2, "skills": {"indexBudget": "unlimited"}}"""
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Null(settings.Skills.IndexBudget);
+        Assert.True(settings.Skills.Unlimited);
+    }
+
+    [Fact]
+    public void Missing_skills_settings_keep_the_computed_context_window_defaults()
+    {
+        using var temp = new TempDirectory();
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("missing.json"), _ => null);
+
+        Assert.Null(settings.Skills.IndexBudget);
+        Assert.False(settings.Skills.Unlimited);
+    }
+
+    [Theory]
+    [InlineData(
+        """{"schemaVersion": 2, "skills": {"indexBudget": "big"}}""",
+        "'skills.indexBudget' must be a positive integer or 'unlimited'"
+    )]
+    [InlineData(
+        """{"schemaVersion": 2, "skills": {"indexBudget": 0}}""",
+        "'skills.indexBudget' must be a positive integer or 'unlimited'"
+    )]
+    [InlineData(
+        """{"schemaVersion": 2, "skills": {"indexBudget": 1.5}}""",
+        "'skills.indexBudget' must be a positive integer or 'unlimited'"
+    )]
+    [InlineData("""{"schemaVersion": 2, "skills": {"width": 80}}""", "unknown key 'skills.width'")]
+    [InlineData("""{"schemaVersion": 2, "skills": true}""", "'skills' must be an object")]
+    public void An_invalid_skills_section_refuses_the_file(string json, string expected)
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("settings.json"), json);
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(temp.File("settings.json"), _ => null)
+        );
+
+        Assert.Contains(expected, exception.Message, StringComparison.Ordinal);
+        Assert.Contains("No settings were applied", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_schema_2_file_can_set_ordered_favorites()
     {
         using var temp = new TempDirectory();

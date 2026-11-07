@@ -287,6 +287,13 @@
       "description": "Required; 1 or 2 are readable, 2 is written."
     },
     {
+      "name": "skills.indexBudget",
+      "type": "number or 'unlimited'",
+      "default": "unset",
+      "scope": "user",
+      "description": "The skills index budget in estimated tokens: a positive integer overrides the computed thresholds (soft 2%, hard ceiling 5% of the model's context window) with one budget whose overflow follows the hard-ceiling behaviour; the literal `unlimited` indexes every skill with no notice and no warning at any size. Unset keeps the computed defaults. There is no environment-variable override."
+    },
+    {
       "name": "startupHeader",
       "type": "boolean",
       "default": "true",

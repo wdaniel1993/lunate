@@ -60,6 +60,7 @@ shown are the documented defaults the store applies when a key is missing.
 | `providers.<id>.region` | string | unset | user | The provider's region metadata: `eu`, `us` or `local`. Preserved as metadata; it never routes data or enforces a region policy. Definitions live in user settings only. |
 | `roslyn.maxLoadedWorkspaces` | integer | 2 | user | C# workspaces kept loaded across roots; a further root's load evicts the least-recently-used one. Never `unlimited`. |
 | `schemaVersion` | integer | 2 | user, project | Required; 1 or 2 are readable, 2 is written. |
+| `skills.indexBudget` | number or 'unlimited' | unset | user | The skills index budget in estimated tokens: a positive integer overrides the computed thresholds (soft 2%, hard ceiling 5% of the model's context window) with one budget whose overflow follows the hard-ceiling behaviour; the literal `unlimited` indexes every skill with no notice and no warning at any size. Unset keeps the computed defaults. There is no environment-variable override. |
 | `startupHeader` | boolean | true | user | Prints the welcome header when a session starts. `LUNATE_STARTUP_HEADER` overrides it. |
 | `subagents.concurrency` | integer | 4 | user, project | Concurrent child runs in one tree, or `unlimited`. A project file may lower it, never raise it. `LUNATE_SUBAGENTS_CONCURRENCY` overrides it. |
 | `subagents.tokenBudget` | integer | 100000 | user, project | Tokens per child run, or `unlimited`. A project file may lower it, never raise it. `LUNATE_SUBAGENTS_TOKEN_BUDGET` overrides it. |

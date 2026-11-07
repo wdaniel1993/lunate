@@ -180,8 +180,17 @@ public sealed class SkillsProductionCompositionTests
             );
         }
 
-        SkillIndex.Composed composed = SkillIndex.Compose(skills, temp.Root, 2000);
-        Assert.True(composed.EstimatedTokens <= SkillIndex.MaxEstimatedTokens);
+        // The index is no longer capped at a fixed token count: a model with room for the base
+        // prompt keeps the whole pack under, say, a 1,000 estimated-token ceiling — the same
+        // bound the old fixed cap assumed but now as the ceiling of a small budget, not the law.
+        SkillIndex.Composed composed = SkillIndex.Compose(
+            skills,
+            temp.Root,
+            2000,
+            new SkillIndex.SkillsBudget(1000, 1000),
+            new HashSet<string>(StringComparer.Ordinal)
+        );
+        Assert.True(composed.EstimatedTokens <= 1000);
         Assert.True(composed.EstimatedTokens > 0);
     }
 }

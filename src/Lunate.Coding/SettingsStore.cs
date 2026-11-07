@@ -122,6 +122,9 @@ public sealed record AgentSettings
     /// <summary>The resolved Roslyn settings (the <c>roslyn</c> section).</summary>
     public RoslynSettings Roslyn { get; init; } = new();
 
+    /// <summary>The resolved skills settings (the <c>skills</c> section).</summary>
+    public SkillsSettings Skills { get; init; } = new();
+
     /// <summary>Whether the interactive session prints the welcome header; defaults to on.</summary>
     public bool StartupHeader { get; init; } = true;
 
@@ -160,6 +163,20 @@ public sealed record ToolsSettings
 {
     /// <summary>The optional search tool names to register; empty (the default) means none.</summary>
     public IReadOnlyList<string> Extra { get; init; } = [];
+}
+
+/// <summary>
+/// The skills index budget (the <c>skills</c> settings section). Unset means the index budgets
+/// derive from the model's context window; a positive integer applies one estimated-token budget
+/// and <c>unlimited</c> indexes every skill with no notice and no warning at any size.
+/// </summary>
+public sealed record SkillsSettings
+{
+    /// <summary>The index budget in estimated tokens; null keeps the context-window defaults.</summary>
+    public int? IndexBudget { get; init; }
+
+    /// <summary>Whether <c>skills.indexBudget</c> is the explicit literal <c>unlimited</c>.</summary>
+    public bool Unlimited { get; init; }
 }
 
 /// <summary>The per-workspace Roslyn limits (the <c>roslyn</c> settings section).</summary>
@@ -478,6 +495,9 @@ public static partial class SettingsStore
                         break;
                     case "roslyn":
                         settings = settings with { Roslyn = ReadRoslyn(property.Value, problems) };
+                        break;
+                    case "skills":
+                        settings = settings with { Skills = ReadSkills(property.Value, problems) };
                         break;
                     case "startupHeader":
                         settings = settings with
@@ -845,6 +865,49 @@ public static partial class SettingsStore
             }
 
             settings = settings with { MaxLoadedWorkspaces = parsed };
+        }
+
+        return settings;
+    }
+
+    /// <summary>
+    /// Reads the <c>skills</c> section: <c>indexBudget</c> is a positive integer or the explicit
+    /// literal <c>unlimited</c>; a missing key keeps the context-window-derived defaults.
+    /// </summary>
+    private static SkillsSettings ReadSkills(JsonElement value, List<string> problems)
+    {
+        var settings = new SkillsSettings();
+        if (value.ValueKind != JsonValueKind.Object)
+        {
+            problems.Add("'skills' must be an object");
+            return settings;
+        }
+
+        foreach (JsonProperty property in value.EnumerateObject())
+        {
+            if (property.Name != "indexBudget")
+            {
+                problems.Add($"unknown key 'skills.{property.Name}'");
+                continue;
+            }
+
+            if (IsUnlimited(property.Value))
+            {
+                settings = settings with { Unlimited = true };
+                continue;
+            }
+
+            if (
+                property.Value.ValueKind == JsonValueKind.Number
+                && property.Value.TryGetInt32(out int parsed)
+                && parsed >= 1
+            )
+            {
+                settings = settings with { IndexBudget = parsed };
+                continue;
+            }
+
+            problems.Add("'skills.indexBudget' must be a positive integer or 'unlimited'");
         }
 
         return settings;
