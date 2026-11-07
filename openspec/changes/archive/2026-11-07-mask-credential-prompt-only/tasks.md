@@ -10,4 +10,4 @@
 
 ## 3. Gate
 
-- [ ] 3.1 Release build, touched test projects under default and de-AT culture, `dotnet csharpier check .`, `openspec validate mask-credential-prompt-only --strict` all pass; archive lands as the final commit.
+- [x] 3.1 Release build, touched test projects under default and de-AT culture, `dotnet csharpier check .`, `openspec validate mask-credential-prompt-only --strict` all pass; archive lands as the final commit.
