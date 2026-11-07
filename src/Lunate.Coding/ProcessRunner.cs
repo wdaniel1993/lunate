@@ -32,107 +32,66 @@ internal sealed partial class ProcessRunner : IProcessRunner
         int cap = request.OutputCapBytes is { } requestedCap and > 0
             ? requestedCap
             : DefaultOutputCapBytes;
-        Process process =
-            Process.Start(BuildStartInfo(request))
-            ?? throw new InvalidOperationException("the process did not start");
-        using (process)
+        using ChildProcess child = ChildProcess.Start(request);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        if (request.Timeout is { } timeout)
         {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(
-                cancellationToken
-            );
-            if (request.Timeout is { } timeout)
-            {
-                timeoutCts.CancelAfter(timeout);
-            }
+            timeoutCts.CancelAfter(timeout);
+        }
 
-            if (request.LineHandler is null)
-            {
-                process.StandardInput.Close();
-            }
+        if (request.LineHandler is null)
+        {
+            child.StandardInput?.Close();
+        }
 
-            Task<(string Text, bool Capped)> stdoutTask = request.LineHandler is { } handler
-                ? PumpLinesAsync(
-                    process.StandardOutput,
-                    process.StandardInput,
-                    handler,
-                    cap,
-                    timeoutCts.Token
-                )
-                : ReadBoundedAsync(process.StandardOutput.BaseStream, cap, CancellationToken.None);
-            Task<(string Text, bool Capped)> stderrTask = ReadBoundedAsync(
-                process.StandardError.BaseStream,
+        Task<(string Text, bool Capped)> stdoutTask = request.LineHandler is { } handler
+            ? PumpLinesAsync(
+                child.StandardOutput,
+                child.StandardInput!,
+                handler,
                 cap,
-                CancellationToken.None
-            );
+                timeoutCts.Token
+            )
+            : ReadBoundedAsync(child.StandardOutput.BaseStream, cap, CancellationToken.None);
+        Task<(string Text, bool Capped)> stderrTask = ReadBoundedAsync(
+            child.StandardError.BaseStream,
+            cap,
+            CancellationToken.None
+        );
 
-            try
+        int exitCode;
+        try
+        {
+            exitCode = await child.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            await child.KillTreeAsync().ConfigureAwait(false);
+            (string stdout, string stderr, bool stdoutCapped, bool stderrCapped) = await DrainAsync(
+                    stdoutTask,
+                    stderrTask
+                )
+                .ConfigureAwait(false);
+            return new ProcessRunResult(null, stdout, stderr, TimedOut: true)
             {
-                await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                await KillTreeAsync(process).ConfigureAwait(false);
-                (string stdout, string stderr, bool stdoutCapped, bool stderrCapped) =
-                    await DrainAsync(stdoutTask, stderrTask).ConfigureAwait(false);
-                return new ProcessRunResult(null, stdout, stderr, TimedOut: true)
-                {
-                    StdoutCapped = stdoutCapped,
-                    StderrCapped = stderrCapped,
-                };
-            }
-            catch (OperationCanceledException)
-            {
-                await KillTreeAsync(process).ConfigureAwait(false);
-                await DrainAsync(stdoutTask, stderrTask).ConfigureAwait(false);
-                throw;
-            }
-
-            (string outText, bool outCapped) = await stdoutTask.ConfigureAwait(false);
-            (string errText, bool errCapped) = await stderrTask.ConfigureAwait(false);
-            return new ProcessRunResult(process.ExitCode, outText, errText, TimedOut: false)
-            {
-                StdoutCapped = outCapped,
-                StderrCapped = errCapped,
+                StdoutCapped = stdoutCapped,
+                StderrCapped = stderrCapped,
             };
         }
-    }
-
-    private static ProcessStartInfo BuildStartInfo(ProcessRunRequest request)
-    {
-        var startInfo = new ProcessStartInfo
+        catch (OperationCanceledException)
         {
-            FileName = request.FileName,
-            WorkingDirectory = request.WorkingDirectory,
-            UseShellExecute = false,
-            RedirectStandardInput = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
+            await child.KillTreeAsync().ConfigureAwait(false);
+            await DrainAsync(stdoutTask, stderrTask).ConfigureAwait(false);
+            throw;
+        }
+
+        (string outText, bool outCapped) = await stdoutTask.ConfigureAwait(false);
+        (string errText, bool errCapped) = await stderrTask.ConfigureAwait(false);
+        return new ProcessRunResult(exitCode, outText, errText, TimedOut: false)
+        {
+            StdoutCapped = outCapped,
+            StderrCapped = errCapped,
         };
-        foreach (string argument in request.Arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        if (request.Environment is { } environment)
-        {
-            startInfo.Environment.Clear();
-            foreach ((string name, string value) in environment)
-            {
-                startInfo.Environment[name] = value;
-            }
-        }
-
-        // Additive, after the replacement above: a caller can mark a child without restating the
-        // environment it inherits, and a name in both is the more specific request.
-        if (request.ExtraEnvironment is { } extra)
-        {
-            foreach ((string name, string value) in extra)
-            {
-                startInfo.Environment[name] = value;
-            }
-        }
-
-        return startInfo;
     }
 
     /// <summary>
@@ -357,7 +316,7 @@ internal sealed partial class ProcessRunner : IProcessRunner
     /// wedges the VM, while this enumeration path completes in milliseconds. The Windows
     /// implementation (job objects) is unaffected and stays on the framework path.
     /// </remarks>
-    private static void KillPosixTree(int rootPid)
+    internal static void KillPosixTree(int rootPid)
     {
         IReadOnlyList<int> targets;
         try

@@ -1188,6 +1188,24 @@ internal sealed partial class InteractiveSession : IDisposable
     /// </summary>
     internal IReadOnlyList<TranscriptEntry> Transcript => _transcript;
 
+    private void TraceRoute(KeyEvent key, RoutedKey routed)
+    {
+        string? path = Environment.GetEnvironmentVariable("LUNATE_INPUT_TRACE");
+        if (string.IsNullOrEmpty(path))
+        {
+            return;
+        }
+
+        try
+        {
+            File.AppendAllText(
+                path,
+                $"{DateTimeOffset.UtcNow:O} key {key.Kind} text={key.Text ?? "-"} routed={routed} turn={_turnActive} runCts={_runCancellation is not null} bash={_bashRunning}\n"
+            );
+        }
+        catch (IOException) { }
+    }
+
     private async Task PumpKeysAsync(CancellationToken ct)
     {
         await foreach (KeyEvent key in _console.ReadKeysAsync(ct))
@@ -1340,7 +1358,14 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
-        switch (KeyRouter.Route(key, _turnActive, _followUps.Count > 0, _bashMode || _bashRunning))
+        RoutedKey routed = KeyRouter.Route(
+            key,
+            _turnActive,
+            _followUps.Count > 0,
+            _bashMode || _bashRunning
+        );
+        TraceRoute(key, routed);
+        switch (routed)
         {
             case RoutedKey.Edit:
                 EditInput(key);

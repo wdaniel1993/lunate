@@ -6,7 +6,7 @@ namespace Lunate.Tui;
 
 internal sealed class KeyReader : IDisposable
 {
-    internal static readonly TimeSpan DefaultQuietWindow = TimeSpan.FromMilliseconds(75);
+    internal static readonly TimeSpan DefaultQuietWindow = TimeSpan.FromMilliseconds(50);
 
     private static readonly byte[] PasteStart = "\u001b[200~"u8.ToArray();
     private static readonly byte[] PasteEnd = "\u001b[201~"u8.ToArray();
@@ -41,6 +41,7 @@ internal sealed class KeyReader : IDisposable
 
             Process();
             ArmEscapeTimer();
+            TraceRaw(bytes);
         }
     }
 
@@ -143,6 +144,24 @@ internal sealed class KeyReader : IDisposable
             _buffer.Clear();
             _onKey(new KeyEvent(KeyKind.Escape, null, false, false, false));
         }
+    }
+
+    private static void TraceRaw(ReadOnlySpan<byte> bytes)
+    {
+        string? path = Environment.GetEnvironmentVariable("LUNATE_INPUT_TRACE");
+        if (string.IsNullOrEmpty(path))
+        {
+            return;
+        }
+
+        try
+        {
+            File.AppendAllText(
+                path,
+                $"{DateTimeOffset.UtcNow:O} raw {Convert.ToHexString(bytes)}\n"
+            );
+        }
+        catch (IOException) { }
     }
 
     private static string NormalizeNewlines(string text) =>
