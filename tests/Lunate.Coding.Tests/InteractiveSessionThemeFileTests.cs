@@ -95,6 +95,36 @@ public sealed class InteractiveSessionThemeFileTests
     }
 
     [Fact]
+    public async Task A_theme_flag_path_keeps_the_tui_theme_setting_as_its_base()
+    {
+        string flagPath = ScratchTheme("""{"prompt":"colour:208"}""");
+        try
+        {
+            using var host = new InteractiveSessionHost(
+                interactiveConsole: true,
+                environment: TrueColorEnvironment,
+                launch: new LaunchOptions { Theme = flagPath }
+            );
+            WriteSettings(host, """{"schemaVersion": 2, "tui": {"theme": "ansi16"}}""");
+
+            Task run = host.RunAsync();
+
+            // The flag names a file, not a built-in, so the setting is still the base theme and
+            // pins the sixteen-colour plan: the file's 256 index paints the nearest of the sixteen
+            // (bright yellow) rather than the exact entry a true-colour base would emit.
+            await host.WaitUntilAsync(Painted(host, "\u001b[93m"));
+            Assert.DoesNotContain("\u001b[38;5;208m", host.LastFrame, StringComparison.Ordinal);
+            Assert.DoesNotContain("\u001b[38;2", host.LastFrame, StringComparison.Ordinal);
+
+            await QuitAsync(host, run);
+        }
+        finally
+        {
+            File.Delete(flagPath);
+        }
+    }
+
+    [Fact]
     public async Task An_unknown_token_warns_and_the_built_in_theme_stands()
     {
         using var host = new InteractiveSessionHost(
