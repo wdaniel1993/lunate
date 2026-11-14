@@ -294,6 +294,46 @@ public sealed class ContainerExecutionEnvironmentTests
     }
 
     [Fact]
+    public async Task The_only_mount_is_the_workspace_at_its_host_path()
+    {
+        var host = new FakeHost();
+        await using ContainerExecutionEnvironment environment = Environment(
+            host,
+            containerName: "lunate-test"
+        );
+
+        await environment.RunAsync(Request("true"), TestContext.Current.CancellationToken);
+
+        ProcessRunRequest create = Assert.Single(host.Requests, IsCreate);
+        Assert.Equal(
+            [
+                "run",
+                "-d",
+                "--name",
+                "lunate-test",
+                "-v",
+                $"{Workspace}:{Workspace}",
+                "-w",
+                Workspace,
+            ],
+            create.Arguments.Take(8)
+        );
+        // One mount, the workspace, at the host's own absolute path. The state root, the install
+        // prefix, auth.json and the engine socket are therefore absent inside the container.
+        Assert.DoesNotContain("-v", create.Arguments.Skip(5));
+        Assert.DoesNotContain("--volume", create.Arguments);
+        Assert.DoesNotContain("--mount", create.Arguments);
+        Assert.DoesNotContain("--privileged", create.Arguments);
+        Assert.DoesNotContain(
+            create.Arguments,
+            argument =>
+                argument.Contains("auth.json", StringComparison.Ordinal)
+                || argument.Contains("docker.sock", StringComparison.Ordinal)
+                || argument.Contains("podman.sock", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
     public void The_environment_announces_that_it_starts_a_host_client()
     {
         ContainerExecutionEnvironment environment = Environment(new FakeHost());
