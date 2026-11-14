@@ -12,9 +12,9 @@ namespace Lunate.Coding.Tests;
 /// while a bystander lived, and a child's descriptor list carried pipe ends it was never given.
 /// <para>
 /// The descriptor-list test reads a child's table against a baseline of this process's, so it holds
-/// only while nothing else in the process opens a descriptor: a desktop-library spawn keeps its
-/// child-side pipe ends inheritable in the parent until it forks. Its collection therefore runs
-/// alone (<see cref="SpawnDescriptorTableCollection"/>).
+/// only while nothing else in the process opens a descriptor: one that another test opens without
+/// close-on-exec is copied into the child. Its collection therefore runs alone
+/// (<see cref="SpawnDescriptorTableCollection"/>).
 /// </para>
 /// </summary>
 [Collection(SpawnDescriptorTableCollection.Name)]
@@ -24,7 +24,7 @@ public sealed class UnixChildProcessPipeLifetimeTests
     public void The_collection_never_runs_beside_another_collection()
     {
         // Sequential tests inside the collection are not enough: a process that another collection
-        // starts mid-spawn holds pipe ends in the parent that the probes below would inherit and
+        // starts mid-spawn holds descriptors in the parent that the probes below would inherit and
         // report. This pins the definition that keeps those foreign ends out of the probes (#862).
         CollectionDefinitionAttribute definition = Assert.IsType<CollectionDefinitionAttribute>(
             typeof(SpawnDescriptorTableCollection).GetCustomAttribute<CollectionDefinitionAttribute>()
