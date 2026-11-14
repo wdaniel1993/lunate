@@ -189,9 +189,19 @@ public sealed class SetupWizardNavigationTests
         host.Console.SendEnter();
 
         // One description per confirmed profile, then the menu returns with the routing row's value.
-        foreach (string description in new[] { "everyday work", "audits" })
+        // Each round waits for its own profile's prompt, never the generic prefix: the previous
+        // prompt's frame still carries that prefix, and an answer sent against it lands in the
+        // follow-up queue instead of the prompt that has not opened yet (a loaded runner paints the
+        // next prompt after the key pump already accepted the text).
+        foreach (
+            (string profile, string description) in new[]
+            {
+                ("chat-main", "everyday work"),
+                ("ops", "audits"),
+            }
+        )
         {
-            await host.WaitForFrameAsync("What is profile '");
+            await host.WaitForFrameAsync($"What is profile '{profile}'");
             host.Advance(500);
             host.Console.SendText(description);
             host.Advance(500);
