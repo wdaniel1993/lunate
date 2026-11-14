@@ -754,6 +754,36 @@ internal sealed class InteractiveSessionHost : IDisposable
         );
     }
 
+    /// <summary>
+    /// Waits for the question picker to be up and for its 300 ms in-flight window to have elapsed,
+    /// so the next key a test sends decides the question instead of being dropped.
+    /// </summary>
+    /// <remarks>
+    /// The question picker arms by the same rule as the approval panel, and a test that answered it
+    /// with a fixed <c>Advance</c> sat on the window's edge: the arm is stamped at the simulated
+    /// instant the picker's first frame paints, so an advance of exactly 300 ms after that frame
+    /// leaves the window at exactly 300 ms — which the rule still counts as in flight — and the keys
+    /// are dropped. Nothing then answers the question, so the run waits for a decision no key can
+    /// deliver and the next chat call never starts (#863). Expiring the arm past the window is the
+    /// approval harness's answer to the same edge; this is the question picker's.
+    /// </remarks>
+    public async Task WaitForQuestionAsync(TimeSpan? timeout = null)
+    {
+        await WaitUntilAsync(() => Session.PendingQuestion is not null, timeout);
+        await WaitUntilAsync(
+            () =>
+            {
+                if (!Session.QuestionArmedForNextKey)
+                {
+                    Session.ExpireQuestionArmWindow();
+                }
+
+                return Session.QuestionArmedForNextKey;
+            },
+            timeout
+        );
+    }
+
     public void Advance(int milliseconds) =>
         Scheduler.Advance(TimeSpan.FromMilliseconds(milliseconds));
 

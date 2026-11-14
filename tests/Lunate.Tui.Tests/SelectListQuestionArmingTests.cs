@@ -126,6 +126,53 @@ public sealed class SelectListQuestionArmingTests
         Assert.Null(prompt.Question.FreeText);
     }
 
+    /// <summary>
+    /// The seam the session harness waits on: a question whose arm sits exactly on the window's
+    /// edge reports the next key as dropped, and aging the arm — without moving the clock — makes
+    /// that same key decide. A harness that waited for the picker's frame and then advanced a fixed
+    /// 300 ms landed on the edge, so the answer it typed was discarded and the run waited for a
+    /// decision no key could deliver (#863).
+    /// </summary>
+    [Fact]
+    public void The_arm_seam_ages_the_window_without_moving_the_clock()
+    {
+        var scheduler = new TestScheduler();
+        var prompt = new SelectListQuestionInteraction(scheduler);
+        prompt.BeginQuestion(Create(), lastKeySequence: 0);
+        scheduler.AdvanceBy(TimeSpan.FromMilliseconds(300).Ticks);
+
+        Assert.False(prompt.ArmedForNextKey(sequence: 1));
+        DateTimeOffset now = scheduler.Now;
+
+        prompt.ExpireArmWindow();
+
+        Assert.Equal(now, scheduler.Now);
+        Assert.True(prompt.ArmedForNextKey(sequence: 1));
+        prompt.Handle(Key(KeyKind.Character, "2"), sequence: 1);
+        prompt.Handle(Key(KeyKind.Enter), sequence: 2);
+        Assert.Equal(QuestionPromptStatus.Submitted, prompt.Question.Status);
+        Assert.Equal(["Plan B"], prompt.Question.Answer!.SelectedOptions);
+    }
+
+    /// <summary>
+    /// Aging the window never defeats the sequence half of the guard: a key read before the question
+    /// armed is still dropped, so the harness cannot press a key the pump would have discarded.
+    /// </summary>
+    [Fact]
+    public void Aging_the_window_keeps_a_buffered_key_ignored()
+    {
+        var scheduler = new TestScheduler();
+        var prompt = new SelectListQuestionInteraction(scheduler);
+        prompt.BeginQuestion(Create(), lastKeySequence: 5);
+        scheduler.AdvanceBy(TimeSpan.FromMilliseconds(300).Ticks);
+
+        prompt.ExpireArmWindow();
+
+        Assert.False(prompt.ArmedForNextKey(sequence: 5));
+        prompt.Handle(Key(KeyKind.Enter), sequence: 5);
+        Assert.Equal(QuestionPromptStatus.Pending, prompt.Question.Status);
+    }
+
     private static SelectListQuestionModel Create(bool multiSelect = false) =>
         SelectListQuestionModel.Create("Choose a plan", "Select a plan.", Options, multiSelect);
 
