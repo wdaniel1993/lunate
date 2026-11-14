@@ -130,8 +130,8 @@ public sealed class SelectListQuestionArmingTests
     /// The seam the session harness waits on: a question whose arm sits exactly on the window's
     /// edge reports the next key as dropped, and aging the arm — without moving the clock — makes
     /// that same key decide. A harness that waited for the picker's frame and then advanced a fixed
-    /// 300 ms landed on the edge, so the answer it typed was discarded and the run waited for a
-    /// decision no key could deliver (#863).
+    /// 300 ms could land on the edge, and then the answer it typed was discarded and the run waited
+    /// for a decision no key could deliver (#863).
     /// </summary>
     [Fact]
     public void The_arm_seam_ages_the_window_without_moving_the_clock()
