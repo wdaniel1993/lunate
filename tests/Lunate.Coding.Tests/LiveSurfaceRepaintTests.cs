@@ -109,6 +109,9 @@ public sealed class LiveSurfaceRepaintTests
         AssertLineOnce(lines, "Simple");
         AssertLineOnce(lines, "Flexible");
 
+        // The repaint advance above lands exactly on the picker's 300 ms in-flight window; the wait
+        // ages the arm past it so the answer is a key that decides, not one the window drops.
+        await host.WaitForQuestionAsync();
         host.Console.SendText("2");
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(2);

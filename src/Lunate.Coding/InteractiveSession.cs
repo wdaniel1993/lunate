@@ -1223,6 +1223,22 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>How long after the panel renders a key is still treated as in flight.</summary>
     private static readonly TimeSpan ApprovalArmWindow = TimeSpan.FromMilliseconds(300);
 
+    /// <summary>The pending question as shown in the live area; null when none is open.</summary>
+    internal SelectListQuestionModel? PendingQuestion => Volatile.Read(ref _questionPrompt);
+
+    /// <summary>
+    /// Whether the next key read would decide the pending question (test seam), the question
+    /// picker's counterpart of <see cref="ApprovalArmedForNextKey"/> and armed by the same rule.
+    /// </summary>
+    internal bool QuestionArmedForNextKey =>
+        _questionInteraction?.ArmedForNextKey(Interlocked.Read(ref _keySequence) + 1) is true;
+
+    /// <summary>
+    /// Ages the pending question's arm past its in-flight window (test seam), the question picker's
+    /// counterpart of <see cref="ExpireApprovalArmWindow"/>.
+    /// </summary>
+    internal void ExpireQuestionArmWindow() => _questionInteraction?.ExpireArmWindow();
+
     /// <summary>The session's approval seam, composed at session start; null before composition.</summary>
     internal IToolApprover? Approver => _approver;
 
@@ -1332,7 +1348,7 @@ internal sealed partial class InteractiveSession : IDisposable
             SelectListQuestionModel question = questionInteraction.Handle(key, sequence);
             if (!ReferenceEquals(question, _questionPrompt))
             {
-                _questionPrompt = question;
+                Volatile.Write(ref _questionPrompt, question);
                 _live.SetQuestion(question);
             }
 
@@ -2400,10 +2416,14 @@ internal sealed partial class InteractiveSession : IDisposable
                 TaskCreationOptions.RunContinuationsAsynchronously
             );
             interaction.BeginQuestion(model, Interlocked.Read(ref _keySequence));
-            _questionPrompt = model;
             _questionInteraction = interaction;
             _questionDecision = decision;
             _live.SetQuestion(model);
+            // Published after the arm is stamped and the interaction is in place: anyone who
+            // watches the question from another thread — the test harness does, then ages the
+            // window with ExpireQuestionArmWindow() — must not observe "the picker is up" while the
+            // stamp is still unwritten.
+            Volatile.Write(ref _questionPrompt, model);
             using CancellationTokenRegistration registration = ct.Register(() =>
                 decision.TrySetCanceled(ct)
             );
@@ -2414,7 +2434,7 @@ internal sealed partial class InteractiveSession : IDisposable
             }
             finally
             {
-                _questionPrompt = null;
+                Volatile.Write(ref _questionPrompt, null);
                 _questionInteraction = null;
                 _questionDecision = null;
                 _live.SetQuestion(null);
