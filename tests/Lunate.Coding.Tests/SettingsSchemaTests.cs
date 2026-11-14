@@ -38,6 +38,7 @@ public sealed partial class SettingsSchemaTests
         ["toolDetails"] = "expanded",
         ["startupHeader"] = false,
         ["bashGuard"] = false,
+        ["environment"] = "docker:probe",
         ["updateCheck"] = false,
         ["thinking"] = "low",
         ["thinkingFull"] = true,

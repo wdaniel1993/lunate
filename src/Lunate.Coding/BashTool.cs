@@ -135,6 +135,9 @@ public sealed class BashTool : ITool
 
         ct.ThrowIfCancellationRequested();
 
+        // The guard still resolves (its refusal and its notice are the tool's) but a container
+        // environment starts a host client of its own and wraps that client: the guard prefix
+        // belongs to the host half, never to the command inside the container.
         GuardCommand launch = _guardEnabled
             ? _guard.Wrap(_shell, _workspace.WorktreeRoot)
             : new GuardCommand(
@@ -158,8 +161,13 @@ public sealed class BashTool : ITool
             run = await _environment
                 .RunAsync(
                     new ProcessRunRequest(
-                        launch.FileName,
-                        [.. launch.ArgumentsPrefix, commandElement.GetString()!],
+                        _environment.StartsHostClient ? _shell.ExecutablePath : launch.FileName,
+                        [
+                            .. _environment.StartsHostClient
+                                ? _shell.ArgumentsPrefix
+                                : launch.ArgumentsPrefix,
+                            commandElement.GetString()!,
+                        ],
                         _workspace.WorktreeRoot,
                         Timeout: _timeout,
                         OutputCapBytes: CaptureCap
@@ -170,6 +178,12 @@ public sealed class BashTool : ITool
                     ct
                 )
                 .ConfigureAwait(false);
+        }
+        catch (ExecutionEnvironmentUnavailableException exception)
+        {
+            // The selected environment could not start the command; the message already says
+            // what failed and what to do next, and the command did not run on the host.
+            return Error(exception.Message);
         }
         catch (OperationCanceledException)
         {

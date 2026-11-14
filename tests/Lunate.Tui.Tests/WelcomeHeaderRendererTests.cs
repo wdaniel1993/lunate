@@ -151,6 +151,58 @@ public sealed class WelcomeHeaderRendererTests
     }
 
     [Fact]
+    public void A_selected_environment_gets_its_own_header_line_after_the_guard()
+    {
+        WelcomeHeaderState container = Full with
+        {
+            GuardStatus = new BashGuardStatus("bwrap", "success", Enabled: true),
+            Environment = ExecutionEnvironmentStatus.StartingFor("podman:alpine"),
+        };
+
+        string[] text = Text(container, width: 80, Capabilities(unicode: true, colored: false));
+
+        Assert.Equal("bash guard bwrap · probe success", text[5]);
+        Assert.Equal("environment podman:alpine", text[6]);
+    }
+
+    [Fact]
+    public void The_local_default_gains_no_environment_line()
+    {
+        string[] text = Text(Full, width: 80, Capabilities(unicode: true, colored: false));
+
+        Assert.DoesNotContain(
+            text,
+            line => line.StartsWith("environment ", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
+    public void The_first_run_header_still_names_the_environment()
+    {
+        WelcomeHeaderState container = FirstRun with
+        {
+            Environment = ExecutionEnvironmentStatus.StartingFor("docker:debian"),
+        };
+
+        string[] text = Text(container, width: 80, Capabilities(unicode: true, colored: false));
+
+        Assert.Contains("environment docker:debian", text);
+    }
+
+    [Fact]
+    public void The_one_line_form_names_the_environment_too()
+    {
+        WelcomeHeaderState container = Full with
+        {
+            Environment = ExecutionEnvironmentStatus.StartingFor("podman:alpine"),
+        };
+
+        string[] text = Text(container, width: 60, Capabilities(unicode: false, colored: false));
+
+        Assert.Contains("environment podman:alpine", text[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void The_first_run_header_names_the_disabled_guard_and_unrun_probe()
     {
         WelcomeHeaderState disabled = FirstRun with { GuardStatus = BashGuardStatus.Disabled };

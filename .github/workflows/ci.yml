@@ -420,6 +420,16 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends bubblewrap
           bwrap --version
 
+      # The container tool runner's end-to-end test drives the runner's real Docker engine; pull the
+      # image once here so the test proves the container path rather than a registry round trip. The
+      # test skips with a visible reason wherever no engine is reachable (the macOS and Windows legs).
+      - name: Pull the container end-to-end image (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          docker pull ubuntu:24.04
+          docker image inspect ubuntu:24.04 >/dev/null
+
       - name: Install hyperfine (Linux)
         if: runner.os == 'Linux' && matrix.shard == 1
         run: |

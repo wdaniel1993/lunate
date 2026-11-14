@@ -31,6 +31,7 @@ shown are the documented defaults the store applies when a key is missing.
 | `decisions.routingMinConfidence` | number | 0.5 | user | A finite confidence threshold from 0 through 1; routing changes the configured chat profile only at or above this value. |
 | `decisions.routingProfiles` | string array | [] | user | Two to 255 unique configured profile names the router may select among; routing requires at least two. |
 | `decisions.tool` | string | off | user | Offers the `decide` tool, only when `decisions.profile` resolves as well. Values: `off`, `on`. |
+| `environment` | string | unset | user | The container environment process-backed tool commands run in: `docker:<image>` or `podman:<image>`; unset keeps host execution. The workspace is mounted at its host absolute path, while the state root, install prefix and `auth.json` are never mounted. `--env` overrides it for the run. There is no environment-variable override. |
 | `favorites` | string array | [] | user | The ordered favourite model ids, at most eight unique entries; schema 2 and later. |
 | `maxCost` | number | unset | user | The cumulative cost ceiling of a session in US dollars; off when unset. A resumed session seeds its spend from its recorded usages. A cost limit over a model the catalog cannot price refuses to start unless `--allow-unpriced` is passed. Print mode can override it with `--max-cost`. |
 | `maxTime` | integer | unset | user | The wall-clock ceiling of one run in seconds; off when unset. Print mode can override it with `--max-time`. |

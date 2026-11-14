@@ -150,6 +150,7 @@ internal static class PrintMode
 
         ExtensionSession? extensions = null;
         McpToolSet? mcp = null;
+        ContainerExecutionEnvironment? environment = null;
         try
         {
             IReadOnlyList<ITool> mcpTools = [];
@@ -160,6 +161,11 @@ internal static class PrintMode
             try
             {
                 workspace = new Workspace(options.WorkingDirectory ?? Environment.CurrentDirectory);
+                environment = ContainerExecutionEnvironment.Create(
+                    settings.Environment,
+                    workspace.WorktreeRoot,
+                    settings.BashGuard
+                );
                 // This run creates a session file and reads its own settings and credentials under
                 // the store, so a root inside the workspace is refused before any of them.
                 LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot);
@@ -358,6 +364,7 @@ internal static class PrintMode
                     mcpTools,
                     inheritedTools,
                     skills,
+                    environment,
                     notice => interaction.Notify(notice)
                 );
             }
@@ -449,6 +456,23 @@ internal static class PrintMode
         }
         finally
         {
+            if (environment is not null)
+            {
+                try
+                {
+                    await environment.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception exception)
+                {
+                    interaction.Notify(
+                        new UserNotice(
+                            NoticeLevel.Warning,
+                            "the container environment did not stop cleanly: " + exception.Message
+                        )
+                    );
+                }
+            }
+
             if (mcp is not null)
             {
                 try
@@ -762,6 +786,7 @@ internal static class PrintMode
         IReadOnlyList<ITool> mcpTools,
         List<ITool> inheritedTools,
         SkillCatalog skills,
+        ContainerExecutionEnvironment? environment,
         Action<UserNotice> warn
     )
     {
@@ -785,7 +810,8 @@ internal static class PrintMode
             writeVerifiers: extensions?.WriteVerifiers,
             verificationMode: settings.Verify,
             refusalTracker: refusalTracker,
-            bashGuardEnabled: settings.BashGuard
+            bashGuardEnabled: settings.BashGuard,
+            environment: environment
         );
         tools.Add(new AskUserTool());
         foreach (ITool tool in mcpTools)
@@ -888,7 +914,8 @@ internal static class PrintMode
                 writeVerifiers: extensions?.WriteVerifiers,
                 verificationMode: settings.Verify,
                 refusalTracker: refusalTracker,
-                bashGuardEnabled: settings.BashGuard
+                bashGuardEnabled: settings.BashGuard,
+                environment: environment
             ),
         };
 

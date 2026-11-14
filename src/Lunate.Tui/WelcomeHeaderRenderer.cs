@@ -31,6 +31,12 @@ internal sealed record WelcomeHeaderState
 
     public BashGuardStatus? GuardStatus { get; init; }
 
+    /// <summary>
+    /// The selected container environment and its readiness; null for the local default, which
+    /// gains no header line at all.
+    /// </summary>
+    public ExecutionEnvironmentStatus? Environment { get; init; }
+
     public WelcomeHeaderCounts? Counts { get; init; }
 
     public string? Fix { get; init; }
@@ -125,6 +131,7 @@ internal static class WelcomeHeaderRenderer
             lines.Add(Line(colored, (state.Workspace, SpanStyle.Dim)));
             AddHome(lines, state, colored);
             AddGuardStatus(lines, state, colored);
+            AddEnvironment(lines, state, colored);
             return lines;
         }
 
@@ -141,6 +148,7 @@ internal static class WelcomeHeaderRenderer
         }
 
         AddGuardStatus(lines, state, colored);
+        AddEnvironment(lines, state, colored);
         lines.Add(CountsLine(state.Counts, capabilities));
         if (state.UpdateVersion is { Length: > 0 } updateVersion)
         {
@@ -180,6 +188,11 @@ internal static class WelcomeHeaderRenderer
         if (state.GuardStatus is { } guardStatus)
         {
             head.Append(unicode ? " · " : " - ").Append(guardStatus.HeaderText(unicode));
+        }
+
+        if (state.Environment is { } environment)
+        {
+            head.Append(unicode ? " · " : " - ").Append(environment.HeaderText);
         }
 
         string action = state.Fix is { Length: > 0 } fix ? fix : HelpHint;
@@ -248,6 +261,15 @@ internal static class WelcomeHeaderRenderer
         if (state.GuardStatus is { } guardStatus)
         {
             lines.Add(Line(colored, (guardStatus.HeaderText(unicode: true), SpanStyle.Dim)));
+        }
+    }
+
+    /// <summary>The active environment's own line; the local default adds nothing.</summary>
+    private static void AddEnvironment(List<string> lines, WelcomeHeaderState state, bool colored)
+    {
+        if (state.Environment is { } environment)
+        {
+            lines.Add(Line(colored, (environment.HeaderText, SpanStyle.Dim)));
         }
     }
 

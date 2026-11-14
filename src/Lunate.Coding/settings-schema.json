@@ -77,6 +77,13 @@
       "description": "Offers the `decide` tool, only when `decisions.profile` resolves as well."
     },
     {
+      "name": "environment",
+      "type": "string",
+      "default": "unset",
+      "scope": "user",
+      "description": "The container environment process-backed tool commands run in: `docker:<image>` or `podman:<image>`; unset keeps host execution. The workspace is mounted at its host absolute path, while the state root, install prefix and `auth.json` are never mounted. `--env` overrides it for the run. There is no environment-variable override."
+    },
+    {
       "name": "favorites",
       "type": "string array",
       "default": "[]",

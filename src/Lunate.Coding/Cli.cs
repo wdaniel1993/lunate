@@ -297,6 +297,14 @@ internal static class Cli
             return false;
         }
 
+        if (parsed.Environment is not null)
+        {
+            // ACP keeps the host path in this change; a selection it silently dropped would be
+            // exactly the silent host fallback the setting forbids.
+            error = "--env is a usage error with --acp; ACP runs tool commands on the host";
+            return false;
+        }
+
         launch = parsed;
         return true;
     }
@@ -315,6 +323,12 @@ internal static class Cli
         {
             errors.WriteLine(
                 "lunate: --acp cannot select a session; --continue, --resume, --session and --no-session are usage errors with --acp"
+            );
+        }
+        if (args.Any(arg => arg == "--env" || arg.StartsWith("--env=", StringComparison.Ordinal)))
+        {
+            errors.WriteLine(
+                "lunate: --acp cannot select a container environment; ACP runs tool commands on the host"
             );
         }
     }

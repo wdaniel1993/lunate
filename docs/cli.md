@@ -87,6 +87,7 @@ These apply to the interactive session and to print mode.
 | `--max-cost <usd>` | stop the run at this cumulative session spend |
 | `--max-time <duration>` | stop the run at this wall-clock limit (`30s`, `5m`, `1h`) |
 | `--allow-unpriced` | allow a cost limit over a model with no known price |
+| `--env <engine:image>` | run process-backed tools in one `docker` or `podman` container: `docker:<image>` or `podman:<image>`, wins over the `environment` setting ([Run tool calls in a container](execution-environments.md)) |
 | `--offline` | skip the daily update check for this run |
 | `--system-prompt <text>` | replace the composed system prompt wholesale, including the tool-call conventions: the caller owns them |
 | `--append-system-prompt <text>` | append a section after the composed system prompt |

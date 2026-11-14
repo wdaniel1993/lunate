@@ -23,6 +23,14 @@ internal interface IExecutionEnvironment
     /// </summary>
     ExecutionCommand Map(ExecutionCommand command);
 
+    /// <summary>
+    /// True when the command runs somewhere else and this environment starts a host client for it
+    /// (the container engine) instead of the tool's own command. The bash tool then hands over the
+    /// plain command and leaves the host-side guard wrapping to the environment, which wraps the
+    /// client it actually starts.
+    /// </summary>
+    bool StartsHostClient => false;
+
     /// <summary>Runs one batch tool command to completion with this environment's cancel semantics.</summary>
     Task<ProcessRunResult> RunAsync(ProcessRunRequest request, CancellationToken cancellationToken);
 
@@ -41,6 +49,13 @@ internal interface IExecutionEnvironment
     /// </summary>
     ValueTask CancelAsync(IExecutionProcess process);
 }
+
+/// <summary>
+/// A selected environment could not start a command at all (a container engine that is absent or
+/// not running, a container that could not be created). The message is model-facing: it says what
+/// failed and what to do next, and the command never falls back to the host.
+/// </summary>
+internal sealed class ExecutionEnvironmentUnavailableException(string message) : Exception(message);
 
 /// <summary>
 /// One logical tool command, before the environment maps it: the four values the seam carries.

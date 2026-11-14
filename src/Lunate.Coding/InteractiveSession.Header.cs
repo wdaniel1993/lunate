@@ -92,6 +92,7 @@ internal sealed partial class InteractiveSession
             ),
             Home = LunateHome.ActiveHomeLine,
             GuardStatus = _bashGuardStatus,
+            Environment = EnvironmentStatus,
             Counts = counts,
             Fix = FirstRunFix(model, configured),
             UpdateVersion = _availableUpdate?.Version,

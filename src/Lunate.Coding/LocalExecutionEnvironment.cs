@@ -34,6 +34,18 @@ internal sealed partial class LocalExecutionEnvironment : IExecutionEnvironment
     public async Task<ProcessRunResult> RunAsync(
         ProcessRunRequest request,
         CancellationToken cancellationToken
+    ) => await RunAsync(request, cancellationToken, afterCancel: null).ConfigureAwait(false);
+
+    /// <summary>
+    /// The batch run with an environment's extra cancel step: after the host-side children-first
+    /// tree kill, <paramref name="afterCancel"/> runs. A container environment passes the
+    /// container-side process-group kill there, so the one place a cancel happens stays in this
+    /// runner instead of being duplicated (output caps, timeouts and the line pump included).
+    /// </summary>
+    internal async Task<ProcessRunResult> RunAsync(
+        ProcessRunRequest request,
+        CancellationToken cancellationToken,
+        Func<Task>? afterCancel
     )
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -85,6 +97,7 @@ internal sealed partial class LocalExecutionEnvironment : IExecutionEnvironment
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             await CancelAsync(child).ConfigureAwait(false);
+            await AfterCancelAsync(afterCancel).ConfigureAwait(false);
             (string stdout, string stderr, bool stdoutCapped, bool stderrCapped) =
                 await LocalProcessStreams.DrainAsync(stdoutTask, stderrTask).ConfigureAwait(false);
             return new ProcessRunResult(null, stdout, stderr, TimedOut: true)
@@ -96,6 +109,7 @@ internal sealed partial class LocalExecutionEnvironment : IExecutionEnvironment
         catch (OperationCanceledException)
         {
             await CancelAsync(child).ConfigureAwait(false);
+            await AfterCancelAsync(afterCancel).ConfigureAwait(false);
             await LocalProcessStreams.DrainAsync(stdoutTask, stderrTask).ConfigureAwait(false);
             throw;
         }
@@ -107,6 +121,15 @@ internal sealed partial class LocalExecutionEnvironment : IExecutionEnvironment
             StdoutCapped = outCapped,
             StderrCapped = errCapped,
         };
+    }
+
+    /// <summary>Runs the environment's extra cancel step; the host tree kill already happened.</summary>
+    private static async Task AfterCancelAsync(Func<Task>? afterCancel)
+    {
+        if (afterCancel is not null)
+        {
+            await afterCancel().ConfigureAwait(false);
+        }
     }
 
     private ProcessRunRequest MapRequest(ProcessRunRequest request)

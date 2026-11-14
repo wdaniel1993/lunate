@@ -43,10 +43,10 @@ mounted. `read`, `write` and `edit`, write verification, approvals and the file-
 the host and work on the mounted workspace; a file written by a container command is published by
 the host's post-call scan. The OS-level guard still wraps the host `exec` client and refuses a
 state-root write before the container is touched. It does not follow the command inside the
-container: the mount boundary is what limits that command's reach, and whether that is the accepted
-policy for inner commands is the open sign-off question on
-[#627](https://github.com/lunate-agent/lunate/issues/627). The container is not a jail: the engine
-socket, a pre-existing hardlink and the workspace itself remain reachable.
+container: the accepted policy is process-only, so the mount boundary — the workspace, and nothing
+of Lunate's state — is what limits that command's reach, and no guard runs inside the container.
+The container is not a jail: the engine socket, a pre-existing hardlink and the workspace itself
+remain reachable.
 [Run tool calls in a container](execution-environments.md) has the flags, the flow and the
 measured limits.
 

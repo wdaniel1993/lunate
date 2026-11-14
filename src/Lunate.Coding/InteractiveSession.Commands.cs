@@ -86,6 +86,11 @@ internal sealed partial class InteractiveSession
         }
 
         tail.Add(_bashGuardStatus.ContextText);
+        if (EnvironmentStatus is { } environment)
+        {
+            tail.Add(environment.ContextText);
+        }
+
         tail.Add(SkillsContextSegment());
         tail.Add(SavingsContextSegment());
         return FormattableString.Invariant(

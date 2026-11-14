@@ -89,6 +89,7 @@ internal sealed partial class BashGuard
     private readonly GuardTarget _target;
     private readonly GuardProbe _probe;
     private GuardCommand? _command;
+    private GuardCommand? _hostCommand;
     private BashGuardStatus? _status;
     private string? _workspace;
 
@@ -139,6 +140,29 @@ internal sealed partial class BashGuard
             : ResolveLinux(shell, workspace);
         _status = Status;
         return _command;
+    }
+
+    /// <summary>
+    /// The same guard around the host client a container environment starts (its engine), resolved
+    /// separately from the shell wrap: the client is what Lunate spawns on the host, and the command
+    /// inside the container is never guarded. The engine name is resolved through PATH first,
+    /// because a mechanism execs an absolute path.
+    /// </summary>
+    internal GuardCommand WrapHostClient(string executable, string workspace)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executable);
+        if (_hostCommand is { } cached)
+        {
+            return cached;
+        }
+
+        string resolved = _probe.FindOnPath(executable) ?? executable;
+        var client = new ResolvedShell(ShellKind.Sh, resolved, resolved, []);
+        _hostCommand =
+            _probe.IsWindows ? UnsupportedWindows(client)
+            : _probe.IsMacOs ? ResolveMacOs(client)
+            : ResolveLinux(client, workspace);
+        return _hostCommand;
     }
 
     private static string NormalizedMechanism(string mechanism) =>

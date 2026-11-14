@@ -89,6 +89,18 @@ public sealed class AcpLaunchOptionsTests
     }
 
     [Fact]
+    public void Acp_rejects_a_container_environment_selection()
+    {
+        Assert.False(Cli.TryParseAcpOptions(["--env", "podman:alpine"], out _, out string? error));
+        Assert.Contains("--env is a usage error with --acp", error, StringComparison.Ordinal);
+
+        Assert.False(
+            Cli.TryParseAcpOptions(["--env=docker:alpine"], out _, out string? inlineError)
+        );
+        Assert.Contains("--env is a usage error with --acp", inlineError, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void An_acp_launch_model_not_in_the_catalog_fails_the_session_creation()
     {
         using var temp = new TempDirectory();

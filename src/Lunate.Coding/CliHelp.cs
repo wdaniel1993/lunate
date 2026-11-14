@@ -197,6 +197,13 @@ internal static class CliHelp
             "  --allow-unpriced               allow a cost limit over a model with no known price"
         );
         output.WriteLine(
+            "  --env <engine:image>           run process-backed tools in one docker or podman"
+        );
+        output.WriteLine(
+            "                                 container (docker:<image> or podman:<image>); wins"
+        );
+        output.WriteLine("                                 over the environment setting");
+        output.WriteLine(
             "  --offline                      skip the daily update check for this run"
         );
         output.WriteLine(

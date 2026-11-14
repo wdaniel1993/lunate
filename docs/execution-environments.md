@@ -10,11 +10,11 @@ The container limits what a command can reach. It does not replace the approval 
 guard; [Run Lunate safely](security.md) compares the layers and [S-7](#evidence-and-limits) records
 what was measured.
 
-> **Status.** Container execution is the execution-environment work tracked by
-> [#626](https://github.com/lunate-agent/lunate/issues/626) and
-> [#627](https://github.com/lunate-agent/lunate/issues/627). This page records the shape, the settings
-> and the measured limits. The security-policy question for commands inside the container is still
-> pending sign-off on #627, and the page does not claim more than the S-7 run measured.
+> **Status.** Container execution is implemented in
+> [#627](https://github.com/lunate-agent/lunate/issues/627). This page records the shape, the
+> settings and the measured limits. The security policy is decided: process-only execution, the
+> approval panel and the host bash guard stay the controls, no guard runs inside the container, and
+> the mount is the reach limit rather than a jail.
 
 ## One complete flow
 
@@ -48,10 +48,11 @@ what was measured.
    The mount is the canonical workspace at the same absolute path, never `/workspace`. Creation
    takes about 146 ms and is reused for every later call.
 4. Each `bash` call runs through the engine's `exec` in that workspace, with the session marker
-   forwarded explicitly because `exec` does not inherit the host environment:
+   forwarded explicitly because `exec` does not inherit the host environment. The container's `/bin/sh`
+   records the command's process group, then execs the command unchanged:
 
    ```text
-   <engine> exec -i -w <workspace> -e LUNATE_SESSION=1 <container> <command>
+   <engine> exec -i -w <workspace> -e LUNATE_SESSION=1 <container> /bin/sh -c '<group wrapper>' lunate-exec /bin/sh -c <command>
    ```
 
 5. The host runs its normal post-call change scan over the mounted workspace. A file the container
@@ -126,10 +127,11 @@ They answer different questions:
 - The **container boundary** is reach: the command sees the workspace mount and the image, not the
   state root, the install prefix or the credentials.
 
-The container replaces neither the approval panel nor the guard. Whether the mount boundary is the
-accepted protection for the inner command, or an in-container guard is required, is the open
-security-boundary question on #627; this page does not claim the guard constrains the inner
-command.
+The container replaces neither the approval panel nor the guard. The accepted policy is
+process-only: the approval panel and the host bash guard remain the controls, the guard wraps the
+host `exec` client, and no guard runs inside the container. The mount boundary — and with it the
+absent state root, install prefix and credentials — is what limits the inner command's reach. That is
+the decision recorded on #627, not a claim that the container is guarded by BashGuard.
 
 ## Cost and lifecycle
 
@@ -178,14 +180,15 @@ mount and is a follow-up, not a promise.
 | Host | Engine | Container | Status |
 | --- | --- | --- | --- |
 | macOS | Podman 6.1.0 with an Apple-VM `podman machine` | Linux arm64 | Demonstrated by S-7. |
-| Linux | Docker Engine | Linux | Target of #627's Linux CI E2E; not demonstrated by S-7. |
+| Linux | Docker Engine | Linux | Covered by the Linux-only end-to-end test in `Lunate.Coding.Tests`, which runs in the Linux CI leg with Docker. |
 | Linux | Podman | Linux | Not demonstrated. |
 | Windows | any | — | Not supported in this mode; WSL2 with a translated path is a follow-up. |
 
-The intended support is Linux and macOS with the workspace at the same path on both sides. Only the
-first row has measured evidence today. Docker Engine, a native Linux host and Windows/path
-translation were not tested, so this page claims none of them; the Linux row becomes a claim when
-its CI run is linked.
+The intended support is Linux and macOS with the workspace at the same path on both sides. The
+Linux Docker row is proven by the container end-to-end test, which skips with a visible reason on a
+host without a reachable engine; the macOS row has S-7's measured evidence. Docker Engine on macOS,
+a native Linux host with Podman, and Windows/path translation were not demonstrated separately, so
+this page claims none of them.
 
 ## Evidence and limits
 
