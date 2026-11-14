@@ -7,10 +7,10 @@ namespace Lunate.Tui;
 /// <summary>
 /// The committed thinking block: one collapsed <c>✦ thought for &lt;n&gt;s</c> line by default, or
 /// the full reasoning text wrapped to the terminal width with a two-space indent when the
-/// <c>thinkingFull</c> setting is on. The text is escaped for markup and painted in
-/// <see cref="ThinkingColor"/> for the caller's capability — 16-colour mode selects magenta
-/// explicitly — and the scrollback console drops the attribute under NO_COLOR, where the glyph
-/// and the words carry the meaning.
+/// <c>thinkingFull</c> setting is on. The text is escaped for markup and painted in the theme's
+/// <c>notice</c> token for the caller's capability — 16-colour mode selects its pinned fallback —
+/// and the scrollback console drops the attribute under NO_COLOR, where the glyph and the words
+/// carry the meaning.
 /// </summary>
 public sealed class ThinkingCommitRenderer
 {
@@ -21,10 +21,16 @@ public sealed class ThinkingCommitRenderer
         ThinkingCommitModel commit,
         int width,
         ColorSystemSupport color = ColorSystemSupport.TrueColor
+    ) => Render(commit, width, new TerminalCapabilities(color, Unicode: true));
+
+    internal IRenderable Render(
+        ThinkingCommitModel commit,
+        int width,
+        TerminalCapabilities capabilities
     )
     {
         var builder = new StringBuilder();
-        foreach (StyledLine line in Lines(commit, width, color))
+        foreach (StyledLine line in Lines(commit, width, capabilities))
         {
             // Blank lines (an empty full text, leading or trailing hard breaks) commit nothing.
             if (!line.IsBlank)
@@ -43,21 +49,21 @@ public sealed class ThinkingCommitRenderer
     internal IReadOnlyList<StyledLine> Lines(
         ThinkingCommitModel commit,
         int width,
-        ColorSystemSupport color = ColorSystemSupport.TrueColor
+        TerminalCapabilities capabilities
     )
     {
         ArgumentNullException.ThrowIfNull(commit);
         return commit.Full
-            ? FullLines(commit.Text, width, color)
-            : [Summary(commit.ElapsedSeconds, color)];
+            ? FullLines(commit.Text, width, capabilities)
+            : [Summary(commit.ElapsedSeconds, capabilities)];
     }
 
-    private static StyledLine Summary(int elapsedSeconds, ColorSystemSupport color)
+    private static StyledLine Summary(int elapsedSeconds, TerminalCapabilities capabilities)
     {
         var line = new StyledLine();
         line.Add(
             FormattableString.Invariant($"✦ thought for {elapsedSeconds}s"),
-            ThinkingColor.SpanFor(color)
+            capabilities.Span(ThemeToken.Notice)
         );
         return line;
     }
@@ -65,10 +71,10 @@ public sealed class ThinkingCommitRenderer
     private static IReadOnlyList<StyledLine> FullLines(
         string text,
         int width,
-        ColorSystemSupport color
+        TerminalCapabilities capabilities
     )
     {
-        SpanStyle span = ThinkingColor.SpanFor(color);
+        SpanStyle span = capabilities.Span(ThemeToken.Notice);
         var lines = new List<StyledLine>();
         foreach (string wrapped in Wrap(text, Math.Max(1, width - Indent.Length)))
         {

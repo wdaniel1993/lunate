@@ -1,1 +1,1 @@
-\x1b[38;5;2m✓\x1b[0m \x1b[38;5;14mbash\x1b[0m\x1b[2m  dotnet build · exit 0 · 1m 02s · ctrl+o\x1b[0m
+\x1b[38;5;2m✓\x1b[0m \x1b[38;2;95;215;215mbash\x1b[0m\x1b[2m  dotnet build · exit 0 · 1m 02s · ctrl+o\x1b[0m

@@ -319,7 +319,7 @@ public sealed class ToolBlockRendererTests
             )
         );
 
-        Assert.Contains("\u001b[38;5;14mbash", ansi);
+        Assert.Contains("\u001b[38;5;6mbash", ansi);
         Assert.Contains("\u001b[2m  dotnet build", ansi);
     }
 
@@ -741,7 +741,7 @@ public sealed class ToolBlockRendererTests
         string ansi = RenderAnsi(DiffModel("exact"));
 
         Assert.Contains("\u001b[2m--- a/src/x.cs", ansi);
-        Assert.Contains("\u001b[2;38;5;14m@@ -1,3 +1,3 @@", ansi);
+        Assert.Contains("\u001b[2;38;5;6m@@ -1,3 +1,3 @@", ansi);
     }
 
     [Fact]

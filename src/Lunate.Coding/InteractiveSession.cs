@@ -163,6 +163,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private string? _stashedDraft;
     private readonly QuitWindow _exitWindow;
     private readonly IUserInteraction _interaction;
+    private readonly TuiUserInteraction _tuiInteraction;
     private readonly ISecretPrompt _secretPrompt;
     private readonly SteeringQueue _steering = new();
     private readonly CancellationTokenSource _lifetime = new();
@@ -241,6 +242,10 @@ internal sealed partial class InteractiveSession : IDisposable
     private TaskCompletionSource<TrustChoice>? _trustDecision;
     private long _keySequence;
     private TuiTheme _theme = TuiTheme.Default;
+
+    /// <summary>The user theme file's tokens, overlaid on whichever built-in theme is selected.</summary>
+    private IReadOnlyDictionary<ThemeToken, ThemeColor> _themeOverlay =
+        new Dictionary<ThemeToken, ThemeColor>();
 
     /// <summary>The colour system every surface renders with: the theme's plan over the detection.</summary>
     private ColorSystemSupport _color = ColorSystemSupport.NoColors;
@@ -335,7 +340,8 @@ internal sealed partial class InteractiveSession : IDisposable
         _history = new InputHistory(options.HistoryPath ?? InputHistory.DefaultPath);
         _quitWindow = QuitWindow.ForCtrlC(options.Scheduler);
         _exitWindow = QuitWindow.ForExit(options.Scheduler);
-        _interaction = new TuiUserInteraction(_live);
+        _tuiInteraction = new TuiUserInteraction(_live);
+        _interaction = _tuiInteraction;
         _secretPrompt = options.SecretPrompt ?? new TuiSecretPrompt(_live);
         _pickerOwner = new PickerOwner(() => _modelId, _live.SetPicker);
     }
@@ -571,6 +577,7 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         ResolveBashGuard();
+        ApplyTheme();
         ApplyTuiPresentation();
         ApplyUserKeymap();
         _thinkingLevel = _settings.Thinking;
@@ -1759,7 +1766,9 @@ internal sealed partial class InteractiveSession : IDisposable
                 console.WriteLine();
             }
 
-            console.Write(_userEcho.Render(input.Text, _console.Size.Columns, _capabilities.Color));
+            console.Write(
+                _userEcho.Render(input.Text, _console.Size.Columns, RenderCapabilities())
+            );
         });
         _promptEchoed = true;
         _turnWroteOutput = false;

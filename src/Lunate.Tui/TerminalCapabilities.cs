@@ -12,6 +12,19 @@ namespace Lunate.Tui;
 public sealed record TerminalCapabilities(ColorSystemSupport Color, bool Unicode)
 {
     /// <summary>
+    /// The theme the session resolved, carried with the detection so every renderer that already
+    /// receives the capabilities paints through the same tokens. Internal on purpose: the theme is
+    /// a presentation detail, not part of the public surface a host compiles against.
+    /// </summary>
+    internal TuiTheme Theme { get; init; } = TuiTheme.Default;
+
+    /// <summary>One semantic token as a scrollback span, resolved for this terminal.</summary>
+    internal SpanStyle Span(ThemeToken token) => Theme.Span(token, Color);
+
+    /// <summary>One semantic token around already-laid-out live-frame text, resolved for this terminal.</summary>
+    internal string Wrap(ThemeToken token, string text) => Theme.Wrap(token, text, Color);
+
+    /// <summary>
     /// Detects the capabilities for the given console context; the seams default to the real
     /// environment and the Windows console output code page, which is never probed on Unix.
     /// </summary>

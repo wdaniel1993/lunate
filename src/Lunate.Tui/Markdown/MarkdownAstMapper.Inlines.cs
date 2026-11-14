@@ -8,7 +8,8 @@ internal static partial class MarkdownAstMapper
     private static void AppendInlines(
         ContainerInline container,
         InlineWriter writer,
-        SpanStyle style
+        SpanStyle style,
+        TerminalCapabilities capabilities
     )
     {
         foreach (var inline in container)
@@ -19,10 +20,15 @@ internal static partial class MarkdownAstMapper
                     writer.Write(literal.Content.ToString(), style);
                     break;
                 case CodeInline code:
-                    writer.Write(code.Content, SpanStyle.InlineCode);
+                    writer.Write(code.Content, capabilities.Span(ThemeToken.Code));
                     break;
                 case EmphasisInline emphasis:
-                    AppendInlines(emphasis, writer, Emphasis(style, emphasis.DelimiterCount));
+                    AppendInlines(
+                        emphasis,
+                        writer,
+                        Emphasis(style, emphasis.DelimiterCount),
+                        capabilities
+                    );
                     break;
                 case LinkInline link:
                     AppendLink(link, writer);
@@ -40,7 +46,7 @@ internal static partial class MarkdownAstMapper
                     writer.Break();
                     break;
                 case ContainerInline nested:
-                    AppendInlines(nested, writer, style);
+                    AppendInlines(nested, writer, style, capabilities);
                     break;
             }
         }

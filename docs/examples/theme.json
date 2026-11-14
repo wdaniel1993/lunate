@@ -1,0 +1,12 @@
+{
+  "accent": "bright-cyan",
+  "muted": "grey",
+  "error": "bright-red",
+  "success": "green",
+  "warning": "bright-yellow",
+  "code": "colour:208",
+  "diff.add": "bright-green",
+  "diff.remove": "bright-red",
+  "prompt": "#87afd7",
+  "notice": "bright-magenta"
+}

@@ -8,13 +8,23 @@ public sealed class MarkdownRenderer
 {
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder().Build();
 
-    private readonly TerminalCapabilities _capabilities;
+    private TerminalCapabilities _capabilities;
 
     /// <summary>The Unicode defaults; the interactive session passes its detected capabilities.</summary>
     public MarkdownRenderer()
         : this(new TerminalCapabilities(ColorSystemSupport.Detect, Unicode: true)) { }
 
     internal MarkdownRenderer(TerminalCapabilities capabilities)
+    {
+        ArgumentNullException.ThrowIfNull(capabilities);
+        _capabilities = capabilities;
+    }
+
+    /// <summary>
+    /// Applies the session's resolved capabilities — the theme's tokens and the colour depth they
+    /// downgrade for — so inline code and the syntax tones resolve the way the console paints.
+    /// </summary>
+    internal void SetCapabilities(TerminalCapabilities capabilities)
     {
         ArgumentNullException.ThrowIfNull(capabilities);
         _capabilities = capabilities;

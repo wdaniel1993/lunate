@@ -75,6 +75,12 @@ internal sealed record LaunchOptions
     /// </summary>
     public string? Keymap { get; init; }
 
+    /// <summary>
+    /// The theme for this run: a built-in name (<c>default</c>, <c>ansi16</c>, <c>mono</c>) or the
+    /// path of a token file. Null keeps the resolved <c>tui.theme</c> setting, then <c>default</c>.
+    /// </summary>
+    public string? Theme { get; init; }
+
     /// <summary>The print-mode prompt; null outside print mode.</summary>
     public string? Prompt { get; init; }
 
@@ -97,6 +103,7 @@ internal sealed record LaunchOptions
         var offline = false;
         var fullscreen = false;
         string? keymap = null;
+        string? theme = null;
         var resume = false;
         var noSession = false;
         var noTools = false;
@@ -150,6 +157,12 @@ internal sealed record LaunchOptions
                     break;
                 case "--keymap":
                     if (!TryValue(args, ref index, "--keymap", inline, out keymap, out error))
+                    {
+                        return false;
+                    }
+                    break;
+                case "--theme":
+                    if (!TryValue(args, ref index, "--theme", inline, out theme, out error))
                     {
                         return false;
                     }
@@ -383,6 +396,7 @@ internal sealed record LaunchOptions
             Offline = offline,
             Fullscreen = fullscreen,
             Keymap = keymap,
+            Theme = theme,
             Prompt = print ? positional[0] : null,
         };
         return true;

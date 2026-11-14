@@ -53,6 +53,19 @@ internal sealed partial class TranscriptViewer : IDisposable
         }
     }
 
+    /// <summary>
+    /// Applies the resolved theme to the alternate screen's renderers; the theme travels with the
+    /// colour plan, so the frame's tokens and the console's depth agree.
+    /// </summary>
+    internal void SetTheme(TuiTheme theme)
+    {
+        lock (_gate)
+        {
+            _capabilities = _capabilities with { Theme = theme };
+            _renderer.SetTheme(theme);
+        }
+    }
+
     /// <summary>Whether the viewer owns the terminal right now.</summary>
     public bool IsOpen => _screen is not null;
 

@@ -12,23 +12,13 @@ namespace Lunate.Tui;
 /// </summary>
 internal sealed class UserEchoRenderer
 {
-    /// <summary>The visual spec's dark user value; the theme card moves this behind its resolver.</summary>
-    internal const string DarkHex = LivePalette.PromptHex;
-
     private const string Prefix = "> ";
     private const string Indent = "  ";
 
-    private static readonly SpanStyle UserSpan = new(Color: DarkHex);
-    private static readonly SpanStyle SixteenColorSpan = new(Color: "blue");
-
-    public IRenderable Render(
-        string text,
-        int width,
-        ColorSystemSupport color = ColorSystemSupport.TrueColor
-    )
+    public IRenderable Render(string text, int width, TerminalCapabilities capabilities)
     {
         var builder = new StringBuilder();
-        foreach (StyledLine line in Lines(text, width, color))
+        foreach (StyledLine line in Lines(text, width, capabilities))
         {
             builder.Append(line.ToMarkup(trimTrailingWhitespace: false)).Append('\n');
         }
@@ -39,12 +29,13 @@ internal sealed class UserEchoRenderer
     internal IReadOnlyList<StyledLine> Lines(
         string text,
         int width,
-        ColorSystemSupport color = ColorSystemSupport.TrueColor
+        TerminalCapabilities capabilities
     )
     {
+        ArgumentNullException.ThrowIfNull(capabilities);
         int columns = Math.Max(1, width);
         int textWidth = Math.Max(1, columns - Prefix.Length);
-        SpanStyle prefixStyle = SpanFor(color);
+        SpanStyle prefixStyle = capabilities.Span(ThemeToken.Prompt);
         var lines = new List<StyledLine>();
         foreach ((string wrapped, bool first) in Wrap(text, textWidth))
         {
@@ -56,14 +47,6 @@ internal sealed class UserEchoRenderer
 
         return lines;
     }
-
-    private static SpanStyle SpanFor(ColorSystemSupport color) =>
-        color switch
-        {
-            ColorSystemSupport.NoColors => SpanStyle.Plain,
-            ColorSystemSupport.TrueColor or ColorSystemSupport.EightBit => UserSpan,
-            _ => SixteenColorSpan,
-        };
 
     /// <summary>
     /// Greedy word wrap at <paramref name="width"/> cells, keeping the text verbatim: space runs,

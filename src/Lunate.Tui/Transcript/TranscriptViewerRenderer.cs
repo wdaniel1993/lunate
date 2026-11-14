@@ -43,7 +43,22 @@ public sealed class TranscriptViewerRenderer
 
     /// <summary>Applies the theme's colour plan; the Unicode side of the capability is unchanged.</summary>
     internal void SetColor(ColorSystemSupport color) =>
-        _capabilities = _capabilities with { Color = color };
+        SetCapabilities(_capabilities with { Color = color });
+
+    /// <summary>Applies the resolved theme to every surface the frame renders through.</summary>
+    internal void SetTheme(TuiTheme theme) => SetCapabilities(_capabilities with { Theme = theme });
+
+    /// <summary>
+    /// Applies the resolved capabilities to the frame and to the two renderers it composes:
+    /// the transcript's markdown and its tool blocks read the same tokens at the same depth.
+    /// </summary>
+    internal void SetCapabilities(TerminalCapabilities capabilities)
+    {
+        ArgumentNullException.ThrowIfNull(capabilities);
+        _capabilities = capabilities;
+        _blocks.SetCapabilities(capabilities);
+        _markdown.SetCapabilities(capabilities);
+    }
 
     /// <summary>The frame as markup, opening at the latest content (<paramref name="scrolledLines"/> 0).</summary>
     public IRenderable Render(TranscriptModel transcript, ConsoleSize size, int scrolledLines = 0)
@@ -197,7 +212,7 @@ public sealed class TranscriptViewerRenderer
     private IReadOnlyList<StyledLine> ThinkingLines(ThinkingCommitModel commit, int columns)
     {
         var shown = commit with { Full = !string.IsNullOrWhiteSpace(commit.Text) };
-        return _thinking.Lines(shown, columns, _capabilities.Color);
+        return _thinking.Lines(shown, columns, _capabilities);
     }
 
     /// <summary>Keys left, position right, dim; clipped so the line never passes the width.</summary>
@@ -235,7 +250,7 @@ public sealed class TranscriptViewerRenderer
     private StyledLine Marked(StyledLine line, int columns)
     {
         var marked = new StyledLine();
-        marked.Add(_capabilities.Unicode ? "\u25b8 " : "> ", SpanStyle.Key);
+        marked.Add(_capabilities.Unicode ? "\u25b8 " : "> ", _capabilities.Span(ThemeToken.Accent));
         marked.Append(line);
         return marked.Clip(columns);
     }

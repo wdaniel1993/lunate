@@ -1,1 +1,1 @@
-\x1b[32m✓\x1b[0m \x1b[96mwrite\x1b[0m\x1b[2m  src/NewFile.cs · +3 −0 · ctrl+o\x1b[0m
+\x1b[32m✓\x1b[0m \x1b[36mwrite\x1b[0m\x1b[2m  src/NewFile.cs · +3 −0 · ctrl+o\x1b[0m

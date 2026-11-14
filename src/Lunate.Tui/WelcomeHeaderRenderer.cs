@@ -69,8 +69,6 @@ internal static class WelcomeHeaderRenderer
     private const string Separator = " — ";
     private const string AsciiSeparator = " - ";
 
-    private static readonly SpanStyle MarkStyle = new(Color: LivePalette.AccentHex);
-
     /// <summary>Whether the terminal shows the full block: Unicode support and width ≥ 80.</summary>
     internal static bool ShowsBlock(TerminalCapabilities capabilities, int width)
     {
@@ -110,7 +108,7 @@ internal static class WelcomeHeaderRenderer
         bool colored = Colored(capabilities);
         List<string> lines =
         [
-            Line(colored, (Mark, MarkStyle)),
+            Line(colored, (Mark, capabilities.Span(ThemeToken.Accent))),
             Line(
                 colored,
                 ("lunate", SpanStyle.Bold),

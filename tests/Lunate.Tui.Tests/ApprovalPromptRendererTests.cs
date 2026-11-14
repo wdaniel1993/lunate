@@ -157,9 +157,9 @@ public sealed class ApprovalPromptRendererTests
         );
 
         Assert.Contains(
-            "\u001b[38;2;95;215;215my\u001b[0m]es  > ["
-                + "\u001b[38;2;95;215;215mn\u001b[0m]o  ["
-                + "\u001b[38;2;95;215;215ma\u001b[0m]lways this session",
+            "\u001b[38;5;6my\u001b[0m]es  > ["
+                + "\u001b[38;5;6mn\u001b[0m]o  ["
+                + "\u001b[38;5;6ma\u001b[0m]lways this session",
             output
         );
     }
@@ -196,6 +196,7 @@ public sealed class ApprovalPromptRendererTests
                 WorkspaceRoot: "~/worktree-b"
             ),
             width: 40,
+            TuiTheme.Default,
             ColorSystemSupport.NoColors,
             unicode: true
         );
@@ -237,6 +238,7 @@ public sealed class ApprovalPromptRendererTests
                 Detail: ["dotnet format", "line one", "line two", "line three"]
             ),
             width: 40,
+            TuiTheme.Default,
             ColorSystemSupport.NoColors,
             unicode: true
         );
@@ -261,6 +263,7 @@ public sealed class ApprovalPromptRendererTests
                 WorkspaceRoot: "~/worktree-b"
             ),
             width: 40,
+            TuiTheme.Default,
             ColorSystemSupport.NoColors,
             unicode: true
         );
@@ -282,6 +285,7 @@ public sealed class ApprovalPromptRendererTests
                 Detail: ["dotnet format", "line one", "line two", "line three"]
             ),
             width: 60,
+            TuiTheme.Default,
             ColorSystemSupport.NoColors,
             unicode: true
         );
@@ -301,6 +305,7 @@ public sealed class ApprovalPromptRendererTests
                 Detail: ["dotnet format --verify-no-changes --include src/Lunate/Tui/Approval.cs"]
             ),
             width: 40,
+            TuiTheme.Default,
             ColorSystemSupport.NoColors,
             unicode: true
         );
@@ -326,6 +331,7 @@ public sealed class ApprovalPromptRendererTests
         var lines = ApprovalPromptRenderer.PlainLines(
             new ApprovalPromptModel("bash", $$"""{"command":"{{command}}"}"""),
             width: 40,
+            TuiTheme.Default,
             ColorSystemSupport.NoColors,
             unicode: true
         );
@@ -345,6 +351,7 @@ public sealed class ApprovalPromptRendererTests
         var lines = ApprovalPromptRenderer.PlainLines(
             new ApprovalPromptModel("bash", "{}", Detail: ["placeholder", detail]),
             width: 40,
+            TuiTheme.Default,
             ColorSystemSupport.NoColors,
             unicode: true
         );
@@ -365,6 +372,7 @@ public sealed class ApprovalPromptRendererTests
         var lines = ApprovalPromptRenderer.PlainLines(
             new ApprovalPromptModel("bash", string.Empty, Detail: ["dotnet format", "body"]),
             width: 80,
+            TuiTheme.Default,
             ColorSystemSupport.TrueColor,
             unicode: true
         );

@@ -825,6 +825,15 @@ public sealed class CliTests
         Assert.True(Parse("--fullscreen").Fullscreen);
     }
 
+    [Fact]
+    public void Launch_options_parse_the_theme_name_or_path()
+    {
+        // No flag keeps the resolved tui.theme setting; the flag names a built-in or a token file.
+        Assert.Null(Parse().Theme);
+        Assert.Equal("ansi16", Parse("--theme", "ansi16").Theme);
+        Assert.Equal("mine.json", Parse("--theme=mine.json").Theme);
+    }
+
     [Theory]
     [MemberData(nameof(ConflictingLaunchFlags))]
     public void Run_with_conflicting_launch_flags_is_a_usage_error(
@@ -1028,6 +1037,7 @@ public sealed class CliTests
         Assert.Contains("--tools <list>", help, StringComparison.Ordinal);
         Assert.Contains("--no-tools", help, StringComparison.Ordinal);
         Assert.Contains("--offline", help, StringComparison.Ordinal);
+        Assert.Contains("--theme <name|path>", help, StringComparison.Ordinal);
         Assert.Contains("--system-prompt <text>", help, StringComparison.Ordinal);
         Assert.Contains("--append-system-prompt <text>", help, StringComparison.Ordinal);
         Assert.Contains("--flag=value", help, StringComparison.Ordinal);

@@ -20,11 +20,6 @@ internal readonly record struct DiffLine(DiffLineKind Kind, string Text);
 /// </summary>
 internal static class DiffRenderer
 {
-    private static readonly SpanStyle Added = new(Color: "green");
-    private static readonly SpanStyle Removed = new(Color: "red");
-    private static readonly SpanStyle Hunk = new(TextStyle.Dim, "cyan");
-    private static readonly SpanStyle Normalized = new(Color: "yellow");
-
     public static IReadOnlyList<DiffLine> Parse(ToolDiffInfo diff)
     {
         if (string.IsNullOrWhiteSpace(diff.UnifiedDiff))
@@ -71,12 +66,16 @@ internal static class DiffRenderer
         return lines;
     }
 
-    public static void Append(List<StyledLine> lines, ToolDiffInfo diff)
+    public static void Append(
+        List<StyledLine> lines,
+        ToolDiffInfo diff,
+        TerminalCapabilities capabilities
+    )
     {
         foreach (var diffLine in Parse(diff))
         {
             var line = new StyledLine();
-            line.Add(diffLine.Text, StyleFor(diffLine.Kind, diff.MatchTier));
+            line.Add(diffLine.Text, StyleFor(diffLine.Kind, diff.MatchTier, capabilities));
             lines.Add(line);
         }
     }
@@ -101,22 +100,30 @@ internal static class DiffRenderer
         return (added, removed);
     }
 
-    private static SpanStyle StyleFor(DiffLineKind kind, string tier) =>
+    private static SpanStyle StyleFor(
+        DiffLineKind kind,
+        string tier,
+        TerminalCapabilities capabilities
+    ) =>
         kind switch
         {
-            DiffLineKind.MatchTier => TierStyle(tier),
+            DiffLineKind.MatchTier => TierStyle(tier, capabilities),
             DiffLineKind.FileHeader => SpanStyle.Dim,
-            DiffLineKind.HunkHeader => Hunk,
-            DiffLineKind.Insertion => Added,
-            DiffLineKind.Deletion => Removed,
+            // A hunk header keeps its dim attribute and takes the accent's colour.
+            DiffLineKind.HunkHeader => capabilities.Span(ThemeToken.Accent) with
+            {
+                Text = TextStyle.Dim,
+            },
+            DiffLineKind.Insertion => capabilities.Span(ThemeToken.DiffAdd),
+            DiffLineKind.Deletion => capabilities.Span(ThemeToken.DiffRemove),
             _ => SpanStyle.Dim,
         };
 
-    private static SpanStyle TierStyle(string tier) =>
+    private static SpanStyle TierStyle(string tier, TerminalCapabilities capabilities) =>
         tier switch
         {
             "exact" => SpanStyle.Dim,
-            "normalized" or "indent" => Normalized,
+            "normalized" or "indent" => capabilities.Span(ThemeToken.Warning),
             _ => SpanStyle.Plain,
         };
 

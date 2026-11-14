@@ -52,6 +52,7 @@ public sealed class ApprovalSelectionLayoutTests
                 Selected = 1,
             },
             width: 30,
+            TuiTheme.Default,
             ColorSystemSupport.NoColors,
             unicode: true
         );
@@ -70,6 +71,7 @@ public sealed class ApprovalSelectionLayoutTests
                 Selected = 1,
             },
             width: 22,
+            TuiTheme.Default,
             ColorSystemSupport.NoColors,
             unicode: true
         );
@@ -102,6 +104,7 @@ public sealed class ApprovalSelectionLayoutTests
         var lines = ApprovalPromptRenderer.PlainLines(
             prompt,
             width,
+            TuiTheme.Default,
             ColorSystemSupport.NoColors,
             unicode: true
         );
@@ -167,6 +170,7 @@ public sealed class ApprovalSelectionLayoutTests
                 ShowLegend = true,
             },
             width: 80,
+            TuiTheme.Default,
             ColorSystemSupport.NoColors,
             unicode: true
         );
@@ -225,6 +229,7 @@ public sealed class ApprovalSelectionLayoutTests
             ApprovalPromptRenderer.PlainLines(
                 prompt,
                 width,
+                TuiTheme.Default,
                 ColorSystemSupport.NoColors,
                 unicode: true
             ),
@@ -236,5 +241,10 @@ public sealed class ApprovalSelectionLayoutTests
         int width,
         ColorSystemSupport color,
         bool unicode
-    ) => [.. ApprovalPromptRenderer.PlainLines(prompt, width, color, unicode).Select(l => l.Text)];
+    ) =>
+        [
+            .. ApprovalPromptRenderer
+                .PlainLines(prompt, width, TuiTheme.Default, color, unicode)
+                .Select(l => l.Text),
+        ];
 }

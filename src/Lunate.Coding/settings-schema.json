@@ -393,7 +393,7 @@
       "default": "default",
       "scope": "user",
       "allowed": ["default", "ansi16", "mono"],
-      "description": "The colour-depth policy applied to the transcript and status line; a theme can only lower the depth, so `NO_COLOR` still wins."
+      "description": "The theme applied to the transcript and status line: `default` keeps the detected colour depth, `ansi16` names the sixteen colours, `mono` drops every attribute. A theme can only lower the depth, so `NO_COLOR` still wins; a theme file overlays the selected theme's tokens."
     },
     {
       "name": "updateCheck",

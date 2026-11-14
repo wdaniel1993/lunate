@@ -26,6 +26,7 @@ New here? [Quickstart](quickstart.md) installs Lunate and walks the first run, a
   - [Project instructions](agents-md.md)
   - [Skills](skills.md)
   - [MCP servers](mcp-servers.md)
+  - [Themes](themes.md)
   - [Themes and keys](themes-and-keys.md)
 - **Build on it**
   - [Extension authoring](extensions/README.md)

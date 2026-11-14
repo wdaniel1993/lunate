@@ -1,0 +1,40 @@
+[dim]» Add validation to TodoList.Add[/]
+
+[purple]  Null titles must throw before the list mutates.[/]
+
+The check belongs at the top of the method, before the list
+mutates.
+
+[green]✓[/] [teal]edit[/][dim]  src/TodoList.cs · +1 −1[/]
+edited src/TodoList.cs lines 2–2 (match: exact)
+[dim]match: exact[/]
+[dim]--- a/src/TodoList.cs[/]
+[dim]+++ b/src/TodoList.cs[/]
+[dim teal]@@ -2,4 +2,4 @@[/]
+[dim] public void Add(string title)[/]
+[dim] {[/]
+[red]-    _items.Add(title);[/]
+[green]+    throw new ArgumentException(nameof(title));[/]
+[dim] }[/]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[dim]↑↓ scroll · PgUp/PgDn · Home/End · g/G · q close[/]        [dim]100%[/]

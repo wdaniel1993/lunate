@@ -1,4 +1,4 @@
-\x1b[94m> \x1b[0mAdd validation to TodoList.Add: reject
+\x1b[34m> \x1b[0mAdd validation to TodoList.Add: reject
   null, empty and whitespace-only titles
   with ArgumentException, and keep the
   guard at the top so the list never

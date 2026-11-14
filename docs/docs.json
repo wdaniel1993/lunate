@@ -66,6 +66,10 @@
           "path": "mcp-servers.md"
         },
         {
+          "title": "Themes",
+          "path": "themes.md"
+        },
+        {
           "title": "Themes and keys",
           "path": "themes-and-keys.md"
         }
@@ -388,6 +392,10 @@
     {
       "path": "mcp-servers.md",
       "reason": "Prose-only; its host configuration is a JSON file the checker cannot run unattended."
+    },
+    {
+      "path": "themes.md",
+      "reason": "Prose-only; a theme file is a user configuration file and --theme is a session option, so no command runs unattended."
     },
     {
       "path": "themes-and-keys.md",

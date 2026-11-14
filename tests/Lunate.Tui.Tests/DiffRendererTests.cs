@@ -1,3 +1,5 @@
+using Spectre.Console;
+
 namespace Lunate.Tui.Tests;
 
 public sealed class DiffRendererTests
@@ -70,7 +72,11 @@ public sealed class DiffRendererTests
     public void Unknown_tiers_keep_their_name_and_render_unstyled()
     {
         var lines = new List<StyledLine>();
-        DiffRenderer.Append(lines, new ToolDiffInfo("p", "other", SampleDiff));
+        DiffRenderer.Append(
+            lines,
+            new ToolDiffInfo("p", "other", SampleDiff),
+            new TerminalCapabilities(ColorSystemSupport.TrueColor, Unicode: true)
+        );
         string markup = lines[0].ToMarkup();
 
         Assert.Equal(

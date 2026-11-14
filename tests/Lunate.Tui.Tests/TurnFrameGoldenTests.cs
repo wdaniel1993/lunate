@@ -148,7 +148,13 @@ public sealed class TurnFrameGoldenTests
         console.Profile.Width = width;
         console.EmitAnsiSequences = true;
         console.Profile.Capabilities.ColorSystem = ConsoleColor(mode);
-        console.Write(new UserEchoRenderer().Render(text, width, Capability(mode)));
+        console.Write(
+            new UserEchoRenderer().Render(
+                text,
+                width,
+                new TerminalCapabilities(Capability(mode), Unicode: true)
+            )
+        );
         return Lines(console.Output);
     }
 

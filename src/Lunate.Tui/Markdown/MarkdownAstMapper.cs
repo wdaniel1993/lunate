@@ -96,12 +96,13 @@ internal static partial class MarkdownAstMapper
                 lines.AddRange(
                     RenderBlockInlines(
                         heading.Inline,
-                        heading.Level == 1 ? SpanStyle.Heading1 : SpanStyle.Bold
+                        heading.Level == 1 ? SpanStyle.Heading1 : SpanStyle.Bold,
+                        capabilities
                     )
                 );
                 break;
             case ParagraphBlock paragraph:
-                lines.AddRange(RenderBlockInlines(paragraph.Inline, SpanStyle.Plain));
+                lines.AddRange(RenderBlockInlines(paragraph.Inline, SpanStyle.Plain, capabilities));
                 break;
             case ListBlock list:
                 lines.AddRange(RenderList(list, capabilities, maxWidth));
@@ -113,7 +114,7 @@ internal static partial class MarkdownAstMapper
                 AppendFenced(fenced.Info, fenced.Lines, lines, capabilities, maxWidth);
                 break;
             case CodeBlock code:
-                AppendCode(null, code.Lines, lines);
+                AppendCode(null, code.Lines, lines, capabilities);
                 break;
             case ThematicBreakBlock thematic:
                 AppendPlainLine(
@@ -223,10 +224,15 @@ internal static partial class MarkdownAstMapper
             return;
         }
 
-        AppendCode(info, content, lines);
+        AppendCode(info, content, lines, capabilities);
     }
 
-    private static void AppendCode(string? info, StringLineGroup content, List<StyledLine> lines)
+    private static void AppendCode(
+        string? info,
+        StringLineGroup content,
+        List<StyledLine> lines,
+        TerminalCapabilities capabilities
+    )
     {
         if (!string.IsNullOrWhiteSpace(info))
         {
@@ -249,7 +255,7 @@ internal static partial class MarkdownAstMapper
             {
                 foreach (var span in SyntaxHighlight.Line(language, text, ref inBlockComment))
                 {
-                    line.Add(span.Text, StyleFor(span.Kind));
+                    line.Add(span.Text, StyleFor(span.Kind, capabilities));
                 }
             }
 
@@ -257,15 +263,19 @@ internal static partial class MarkdownAstMapper
         }
     }
 
-    private static SpanStyle StyleFor(HighlightKind kind) =>
+    /// <summary>
+    /// One syntax span through the theme's tokens: keywords take the accent, strings success,
+    /// comments the muted tone, numbers and variables warning, and a JSON key the code tone.
+    /// </summary>
+    private static SpanStyle StyleFor(HighlightKind kind, TerminalCapabilities capabilities) =>
         kind switch
         {
-            HighlightKind.Keyword => SpanStyle.Keyword,
-            HighlightKind.String => SpanStyle.String,
-            HighlightKind.Comment => SpanStyle.Comment,
-            HighlightKind.Number => SpanStyle.Number,
-            HighlightKind.Key => SpanStyle.Key,
-            HighlightKind.Variable => SpanStyle.Variable,
+            HighlightKind.Keyword => capabilities.Span(ThemeToken.Accent),
+            HighlightKind.String => capabilities.Span(ThemeToken.Success),
+            HighlightKind.Comment => capabilities.Span(ThemeToken.Muted),
+            HighlightKind.Number => capabilities.Span(ThemeToken.Warning),
+            HighlightKind.Key => capabilities.Span(ThemeToken.Code),
+            HighlightKind.Variable => capabilities.Span(ThemeToken.Warning),
             _ => SpanStyle.Plain,
         };
 
@@ -284,12 +294,16 @@ internal static partial class MarkdownAstMapper
         lines.Add(line);
     }
 
-    private static List<StyledLine> RenderBlockInlines(ContainerInline? inline, SpanStyle style)
+    private static List<StyledLine> RenderBlockInlines(
+        ContainerInline? inline,
+        SpanStyle style,
+        TerminalCapabilities capabilities
+    )
     {
         var writer = new InlineWriter();
         if (inline is not null)
         {
-            AppendInlines(inline, writer, style);
+            AppendInlines(inline, writer, style, capabilities);
         }
 
         return writer.Finish();

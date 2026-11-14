@@ -68,4 +68,80 @@ public sealed class TuiThemeTests
         TuiTheme theme = TuiTheme.Get("mono");
         Assert.Equal(ColorSystemSupport.NoColors, theme.Plan(ColorSystemSupport.NoColors));
     }
+
+    [Theory]
+    [InlineData("default")]
+    [InlineData("ansi16")]
+    public void The_colour_themes_map_all_ten_tokens(string name)
+    {
+        TuiTheme theme = TuiTheme.Get(name);
+        ColorSystemSupport color = theme.Plan(ColorSystemSupport.TrueColor);
+
+        Assert.Equal(10, ThemeTokens.All.Length);
+        foreach (ThemeToken token in ThemeTokens.All)
+        {
+            Assert.NotNull(theme.Span(token, color).Color);
+            Assert.Contains("\u001b[", theme.Wrap(token, "text", color), StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void Mono_resolves_every_token_without_a_colour()
+    {
+        TuiTheme theme = TuiTheme.Get("mono");
+        ColorSystemSupport color = theme.Plan(ColorSystemSupport.TrueColor);
+
+        foreach (ThemeToken token in ThemeTokens.All)
+        {
+            Assert.Null(theme.Span(token, color).Color);
+            Assert.Equal("text", theme.Wrap(token, "text", color));
+        }
+    }
+
+    [Fact]
+    public void The_user_file_replaces_only_the_tokens_it_names()
+    {
+        Assert.True(ThemeColor.TryParse("red", out ThemeColor red, out _));
+        var overlay = new Dictionary<ThemeToken, ThemeColor> { [ThemeToken.Accent] = red };
+
+        TuiTheme theme = TuiTheme.Default.WithTokens(overlay);
+
+        Assert.Equal("red", theme.Span(ThemeToken.Accent, ColorSystemSupport.TrueColor).Color);
+        Assert.Equal(
+            TuiTheme.Default.Span(ThemeToken.Muted, ColorSystemSupport.TrueColor).Color,
+            theme.Span(ThemeToken.Muted, ColorSystemSupport.TrueColor).Color
+        );
+    }
+
+    [Fact]
+    public void An_overlay_cannot_re_enable_colour_in_a_colourless_session()
+    {
+        var overlay = new Dictionary<ThemeToken, ThemeColor>();
+        foreach (ThemeToken token in ThemeTokens.All)
+        {
+            Assert.True(ThemeColor.TryParse("#ff8800", out ThemeColor color, out _));
+            overlay[token] = color;
+        }
+
+        TuiTheme theme = TuiTheme.Default.WithTokens(overlay);
+
+        Assert.Equal(ColorSystemSupport.NoColors, theme.Plan(ColorSystemSupport.NoColors));
+        foreach (ThemeToken token in ThemeTokens.All)
+        {
+            Assert.Null(theme.Span(token, ColorSystemSupport.NoColors).Color);
+            Assert.Equal("text", theme.Wrap(token, "text", ColorSystemSupport.NoColors));
+        }
+    }
+
+    [Fact]
+    public void An_overlay_on_mono_stays_colourless()
+    {
+        Assert.True(ThemeColor.TryParse("red", out ThemeColor red, out _));
+        TuiTheme theme = TuiTheme.Mono.WithTokens(
+            new Dictionary<ThemeToken, ThemeColor> { [ThemeToken.Accent] = red }
+        );
+
+        Assert.Equal(ColorSystemSupport.NoColors, theme.Plan(ColorSystemSupport.TrueColor));
+        Assert.Null(theme.Span(ThemeToken.Accent, theme.Plan(ColorSystemSupport.TrueColor)).Color);
+    }
 }

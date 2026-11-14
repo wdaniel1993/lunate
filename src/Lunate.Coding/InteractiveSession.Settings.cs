@@ -484,23 +484,35 @@ internal sealed partial class InteractiveSession
         }
     }
 
-    /// <summary>Applies one theme's colour plan to the live surfaces, mid-session and at startup.</summary>
-    private void SetTheme(TuiTheme theme)
+    /// <summary>
+    /// Applies one base theme, under the user file's token overlay, to every surface — mid-session
+    /// and at startup. The colour plan caps the depth at the detection's, so a theme can only lower
+    /// it; the theme and the depth travel to each surface together so the frame and the scrollback
+    /// agree on which tokens have a colour.
+    /// </summary>
+    private void SetTheme(TuiTheme baseTheme)
     {
+        TuiTheme theme = baseTheme.WithTokens(_themeOverlay);
         _theme = theme;
         _color = theme.Plan(_capabilities.Color);
+        TerminalCapabilities rendered = RenderCapabilities();
         _live.SetColor(_color);
+        _live.SetTheme(theme);
         _viewer.SetColor(_color);
+        _viewer.SetTheme(theme);
+        _markdown.SetCapabilities(rendered);
+        _toolBlocks.SetCapabilities(rendered);
+        _tuiInteraction.SetTheme(theme, _color);
     }
 
     /// <summary>
-    /// The TUI presentation the resolved settings carry: the theme's colour plan over the detected
-    /// colour system and the persisted key remaps applied to the catalogue in place. Called once
-    /// when the settings resolve, before the welcome header and the first user echo render.
+    /// The TUI presentation the resolved settings carry: the persisted key remaps applied to the
+    /// catalogue in place. Called once when the settings resolve, before the welcome header and the
+    /// first user echo render; the theme is <see cref="ApplyTheme"/>'s, because the launch flag and
+    /// the user file decide it beside the setting.
     /// </summary>
     private void ApplyTuiPresentation()
     {
-        SetTheme(TuiTheme.Get(_settings.Tui.Theme));
         foreach (KeyValuePair<string, IReadOnlyList<string>> remap in _settings.Tui.Keys)
         {
             var patterns = new List<KeyPattern>();

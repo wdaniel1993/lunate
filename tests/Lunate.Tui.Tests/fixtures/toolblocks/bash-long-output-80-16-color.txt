@@ -1,1 +1,1 @@
-\x1b[32m✓\x1b[0m \x1b[96mbash\x1b[0m\x1b[2m  dotnet build · exit 0 · 1m 02s · ctrl+o\x1b[0m
+\x1b[32m✓\x1b[0m \x1b[36mbash\x1b[0m\x1b[2m  dotnet build · exit 0 · 1m 02s · ctrl+o\x1b[0m

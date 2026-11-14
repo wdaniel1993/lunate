@@ -96,7 +96,7 @@ public sealed class UserEchoRendererTests
         string ansi = RenderAnsi(
             "one two three four five six",
             width: 12,
-            colors: ColorSystem.NoColors
+            color: ColorSystemSupport.NoColors
         );
 
         Assert.Equal(plain, ansi);
@@ -111,31 +111,47 @@ public sealed class UserEchoRendererTests
         console.EmitAnsiSequences = true;
         console.Profile.Capabilities.ColorSystem = ColorSystem.Standard;
         console.Write(
-            new UserEchoRenderer().Render("hello", width: 40, ColorSystemSupport.Standard)
+            new UserEchoRenderer().Render(
+                "hello",
+                width: 40,
+                new TerminalCapabilities(ColorSystemSupport.Standard, Unicode: true)
+            )
         );
 
-        Assert.Equal("\u001b[94m> \u001b[0mhello\n\n", console.Output.ReplaceLineEndings("\n"));
+        Assert.Equal("\u001b[34m> \u001b[0mhello\n\n", console.Output.ReplaceLineEndings("\n"));
     }
 
     private static string Render(string text, int width)
     {
         var console = new TestConsole();
         console.Profile.Width = 200;
-        console.Write(new UserEchoRenderer().Render(text, width));
+        console.Write(
+            new UserEchoRenderer().Render(
+                text,
+                width,
+                new TerminalCapabilities(ColorSystemSupport.TrueColor, Unicode: true)
+            )
+        );
         return console.Output.ReplaceLineEndings("\n");
     }
 
     private static string RenderAnsi(
         string text,
         int width,
-        ColorSystem colors = ColorSystem.TrueColor
+        ColorSystemSupport color = ColorSystemSupport.TrueColor
     )
     {
         var console = new TestConsole();
         console.Profile.Width = 200;
         console.EmitAnsiSequences = true;
-        console.Profile.Capabilities.ColorSystem = colors;
-        console.Write(new UserEchoRenderer().Render(text, width));
+        console.Profile.Capabilities.ColorSystem = (ColorSystem)color;
+        console.Write(
+            new UserEchoRenderer().Render(
+                text,
+                width,
+                new TerminalCapabilities(color, Unicode: true)
+            )
+        );
         return console.Output.ReplaceLineEndings("\n");
     }
 }

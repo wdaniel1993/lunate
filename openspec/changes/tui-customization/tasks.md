@@ -16,13 +16,13 @@ change archives only when the last part lands.
 
 ## 2. Themes
 
-- [ ] 2.1 Token set (`accent`, `muted`, `error`, `success`, `warning`, `code`, `diff.add`,
+- [x] 2.1 Token set (`accent`, `muted`, `error`, `success`, `warning`, `code`, `diff.add`,
       `diff.remove`, `prompt`, `notice`) and the three built-ins; route every existing colour use
       through a token.
-- [ ] 2.2 Parse `~/.lunate/theme.json` (ANSI name, 256 index, hex) and fail on an unknown token with
+- [x] 2.2 Parse `~/.lunate/theme.json` (ANSI name, 256 index, hex) and fail on an unknown token with
       the valid list.
-- [ ] 2.3 Downgrade by capability: hex to 256, to 16, to none; `NO_COLOR` wins over any theme.
-- [ ] 2.4 Tests: each colour form, each downgrade, unknown token, `NO_COLOR` precedence, and a golden
+- [x] 2.3 Downgrade by capability: hex to 256, to 16, to none; `NO_COLOR` wins over any theme.
+- [x] 2.4 Tests: each colour form, each downgrade, unknown token, `NO_COLOR` precedence, and a golden
       of one transcript under each built-in theme.
 
 ## 3. Full screen

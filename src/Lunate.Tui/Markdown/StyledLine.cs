@@ -23,13 +23,6 @@ internal readonly record struct SpanStyle(
     public static readonly SpanStyle Bold = new(TextStyle.Bold);
     public static readonly SpanStyle Dim = new(TextStyle.Dim);
     public static readonly SpanStyle Heading1 = new(TextStyle.Bold | TextStyle.Underline);
-    public static readonly SpanStyle InlineCode = new(Color: "aqua");
-    public static readonly SpanStyle Keyword = new(Color: "blue");
-    public static readonly SpanStyle String = new(Color: "green");
-    public static readonly SpanStyle Comment = new(Color: "grey");
-    public static readonly SpanStyle Number = new(Color: "yellow");
-    public static readonly SpanStyle Key = new(Color: "blue");
-    public static readonly SpanStyle Variable = new(Color: "yellow");
 
     public static string Attributes(SpanStyle style)
     {

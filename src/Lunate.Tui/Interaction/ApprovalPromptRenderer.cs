@@ -13,10 +13,8 @@ namespace Lunate.Tui;
 /// </summary>
 public sealed class ApprovalPromptRenderer
 {
-    internal static readonly SpanStyle Question = new(Color: "yellow");
-    internal static readonly SpanStyle Accent = new(Color: LivePalette.AccentHex);
-
     private readonly bool _unicode;
+    private readonly TerminalCapabilities _capabilities;
 
     /// <summary>The Unicode defaults; the interactive session passes its detected capabilities.</summary>
     public ApprovalPromptRenderer()
@@ -25,6 +23,7 @@ public sealed class ApprovalPromptRenderer
     internal ApprovalPromptRenderer(TerminalCapabilities capabilities)
     {
         ArgumentNullException.ThrowIfNull(capabilities);
+        _capabilities = capabilities;
         _unicode = capabilities.Unicode;
     }
 
@@ -65,6 +64,7 @@ public sealed class ApprovalPromptRenderer
     internal static IReadOnlyList<ApprovalPanelLine> PlainLines(
         ApprovalPromptModel prompt,
         int width,
+        TuiTheme theme,
         ColorSystemSupport color,
         bool unicode
     )
@@ -76,27 +76,31 @@ public sealed class ApprovalPromptRenderer
             .. ApprovalPanelLayout
                 .Build(prompt, width, unicode)
                 .Select(line => new ApprovalPanelLine(
-                    [.. line.Spans.Select(span => span with { Text = Styled(span, color) })],
+                    [.. line.Spans.Select(span => span with { Text = Styled(span, theme, color) })],
                     line.Part
                 )),
         ];
     }
 
-    private static SpanStyle Style(ApprovalTone tone) =>
+    private SpanStyle Style(ApprovalTone tone) =>
         tone switch
         {
-            ApprovalTone.Warning => Question,
+            ApprovalTone.Warning => _capabilities.Span(ThemeToken.Warning),
             ApprovalTone.Muted => SpanStyle.Dim,
-            ApprovalTone.Accent => Accent,
+            ApprovalTone.Accent => _capabilities.Span(ThemeToken.Accent),
             _ => SpanStyle.Plain,
         };
 
-    private static string Styled(ApprovalSpan span, ColorSystemSupport color) =>
+    /// <summary>The question marker the trust prompt shares, in the default theme's warning tone.</summary>
+    internal static SpanStyle Question { get; } =
+        TuiTheme.Default.Span(ThemeToken.Warning, ColorSystemSupport.Detect);
+
+    private static string Styled(ApprovalSpan span, TuiTheme theme, ColorSystemSupport color) =>
         span.Tone switch
         {
-            ApprovalTone.Warning => LivePalette.Warning(span.Text, color),
-            ApprovalTone.Muted => LivePalette.Muted(span.Text, color),
-            ApprovalTone.Accent => LivePalette.Accent(span.Text, color),
+            ApprovalTone.Warning => theme.Wrap(ThemeToken.Warning, span.Text, color),
+            ApprovalTone.Muted => theme.Wrap(ThemeToken.Muted, span.Text, color),
+            ApprovalTone.Accent => theme.Wrap(ThemeToken.Accent, span.Text, color),
             _ => span.Text,
         };
 }

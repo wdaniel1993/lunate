@@ -1,1 +1,1 @@
-\x1b[38;5;2m✓\x1b[0m \x1b[38;5;14medit\x1b[0m\x1b[2m  [red]src[/].cs · +1 −1 · ctrl+o\x1b[0m
+\x1b[38;5;2m✓\x1b[0m \x1b[38;2;95;215;215medit\x1b[0m\x1b[2m  [red]src[/].cs · +1 −1 · ctrl+o\x1b[0m

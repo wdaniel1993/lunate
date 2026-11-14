@@ -88,6 +88,7 @@ These apply to the interactive session and to print mode.
 | `--max-time <duration>` | stop the run at this wall-clock limit (`30s`, `5m`, `1h`) |
 | `--allow-unpriced` | allow a cost limit over a model with no known price |
 | `--offline` | skip the daily update check for this run |
+| `--theme <name\|path>` | paint with `default`, `ansi16` or `mono`, or read the token file at `<path>` instead of the home `theme.json` ([Themes](themes.md)) |
 | `--system-prompt <text>` | replace the composed system prompt wholesale, including the tool-call conventions: the caller owns them |
 | `--append-system-prompt <text>` | append a section after the composed system prompt |
 

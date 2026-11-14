@@ -99,3 +99,30 @@ Filled by the apply run: every departure from this design, with the reason, befo
   line, `<a> and <b> both answer Enter in context Idle; <a> wins`); when the winner's keys take
   several keys in several contexts, the loser's line appears per key, and a loser that loses its
   last key is disabled rather than refused.
+
+- The theme file lives at `~/.lunate/theme.json` exactly as pinned, but the path is the Lunate
+  home store (`~/.lunate`, moved wholesale by `LUNATE_HOME`), not the raw user profile — the same
+  reason the keymap deviation gives: every other state file follows the store, and a test or a
+  portable run pointed at `LUNATE_HOME` must not read the user's real configuration. `--theme
+  <path>` is unaffected. (Themes, section 2, task 2.2.)
+- "Fails the load" is the whole theme file being discarded: the selected built-in keeps every
+  token, and startup prints one warning line naming why. Never a half-applied file and never a
+  refused start — the same rule the keymap follows, for the same reason. (Themes, task 2.2.)
+- Selection when `--theme` names a file: the flag replaces the *file*, not the built-in, so the
+  base theme remains the `tui.theme` setting (then `default`). A `--theme` that names a built-in
+  still reads the home `theme.json` and overlays it, because that file is the user's choice of
+  tokens rather than a second selection. (Themes, section 2, task 2.2.)
+- The default theme's highlighted code maps to semantic tokens: a keyword takes `accent`, a JSON
+  key `code`, a comment `muted`, a string `success`, a number and a shell variable `warning`. The
+  ten tokens have no syntax-specific names, and a token whose meaning were a fixed colour would
+  not survive a theme; the visible change is that a keyword is the accent's cyan rather than the
+  old ANSI blue. The frames' goldens change only where this routing unifies a colour (the tool name
+  and hunk header take the accent, and the sixteen-colour user echo takes `prompt`'s pinned
+  fallback instead of plain "blue"). (Themes, task 2.1.)
+- A colour keeps the form the theme declared it in: a named colour renders as that name at every
+  depth (the byte sequence the palette's older, name-based spans emitted), a hex value is RGB on a
+  true-colour terminal, the nearest 256 entry on a 256-colour one, and the nearest of the sixteen
+  below that; a 256 index keeps its exact entry. The built-ins pin the sixteen-colour fallback the
+  visual spec chose (a pastel hex has no honest Euclidean nearest — `#af87d7` resolves to silver),
+  so `default` at sixteen colours paints the same values it painted before the tokens. (Themes,
+  task 2.3.)

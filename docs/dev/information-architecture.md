@@ -32,7 +32,8 @@ docs/
   agents-md.md                project instructions
   skills.md                   Agent Skills
   mcp-servers.md              the MCP client
-  themes-and-keys.md          themes and remapping
+  themes.md                   themes, the tokens and the theme file
+  themes-and-keys.md          the /settings theme and remap rows
   print.md                    print mode
   json-events.md              the --json event stream
   acp.md                      editor integration over ACP
@@ -66,7 +67,7 @@ docs/
 | --- | --- | --- |
 | Get started | `index.md`, `quickstart.md`, `how-lunate-works.md` | What Lunate is, install and first run, the mental model |
 | Use it | `usage.md`, `models-and-providers.md`, `decisions.md`, `export-copy-debug.md`, `terminal-setup.md` | The daily session and the terminal |
-| Customize | `configuration.md`, `agents-md.md`, `skills.md`, `mcp-servers.md`, `themes-and-keys.md` | User-owned configuration and resources |
+| Customize | `configuration.md`, `agents-md.md`, `skills.md`, `mcp-servers.md`, `themes.md`, `themes-and-keys.md` | User-owned configuration and resources |
 | Build on it | `extensions/`, `extensions-remote.md`, `mcp-roslyn.md` | Extension authoring, the wire contract, the C# tools from another host |
 | Automate | `print.md`, `json-events.md`, `acp.md`, `ci.md` | One-shot, machine-readable, editor and unattended use |
 | Reference | `cli.md`, `settings.md`, `providers.md`, `keybindings.md`, `environment-variables.md` | Look-up tables, generated where the source exists |

@@ -75,7 +75,7 @@ shown are the documented defaults the store applies when a key is missing.
 | `tools.extra` | string array | [] | user | Optional search tools to register beside the core set; empty means none. `LUNATE_EXTRA_TOOLS` overrides it. Values: `grep`, `find`, `ls`. |
 | `tui.fullscreen` | boolean | false | user | Starts the interactive session in the full-screen workspace. |
 | `tui.keys.<id>` | array of key specs | unset | user | A binding id (see the keybindings reference) remapped to its declared keys, persisted so it survives a restart. |
-| `tui.theme` | string | default | user | The colour-depth policy applied to the transcript and status line; a theme can only lower the depth, so `NO_COLOR` still wins. Values: `default`, `ansi16`, `mono`. |
+| `tui.theme` | string | default | user | The theme applied to the transcript and status line: `default` keeps the detected colour depth, `ansi16` names the sixteen colours, `mono` drops every attribute. A theme can only lower the depth, so `NO_COLOR` still wins; a theme file overlays the selected theme's tokens. Values: `default`, `ansi16`, `mono`. |
 | `updateCheck` | boolean | true | user | Checks GitHub Releases at most once a day and links a newer release's changelog. `LUNATE_UPDATE_CHECK` overrides it. |
 | `usages.chat` | string | unset | user, project | The chat profile; the usage every other usage falls back to when unassigned. |
 | `usages.compaction` | string | unset | user, project | The profile used to compact a session; used only when assigned. |

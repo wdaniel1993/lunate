@@ -263,7 +263,7 @@ internal sealed partial class InteractiveSession
         _turnWroteOutput = true;
         _live.WriteScrollback(console =>
             console.Write(
-                _thinkingCommit.Render(commit, _console.Size.Columns, _capabilities.Color)
+                _thinkingCommit.Render(commit, _console.Size.Columns, RenderCapabilities())
             )
         );
     }

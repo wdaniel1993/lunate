@@ -64,21 +64,21 @@ internal static class AutocompleteRenderer
         int room = Math.Max(0, width - CellText.Width(gutter));
         string row =
             item.Kind == CompletionKind.File
-                ? FileRow(item, selected, state.Color, room, width)
-                : TextRow(item, selected, state.Color, room, width);
+                ? FileRow(item, selected, state, room, width)
+                : TextRow(item, selected, state, room, width);
         return gutter + row;
     }
 
     private static string TextRow(
         CompletionItem item,
         bool selected,
-        ColorSystemSupport color,
+        LiveAreaState state,
         int room,
         int width
     )
     {
         string name = CellText.Clip(item.Text, room);
-        string row = Tone(name, selected, color);
+        string row = Tone(name, selected, state);
         if (width < DescriptionMinWidth || string.IsNullOrEmpty(item.Description))
         {
             return row;
@@ -92,13 +92,15 @@ internal static class AutocompleteRenderer
         }
 
         string description = CellText.Clip(item.Description, remaining - 2);
-        return description.Length == 0 ? row : row + "  " + LivePalette.Muted(description, color);
+        return description.Length == 0
+            ? row
+            : row + "  " + state.Theme.Wrap(ThemeToken.Muted, description, state.Color);
     }
 
     private static string FileRow(
         CompletionItem item,
         bool selected,
-        ColorSystemSupport color,
+        LiveAreaState state,
         int room,
         int width
     )
@@ -113,9 +115,10 @@ internal static class AutocompleteRenderer
 
         string shownDirectory = CellText.Clip(directory, room);
         string shownName = CellText.Clip(name, Math.Max(0, room - CellText.Width(shownDirectory)));
-        return LivePalette.Muted(shownDirectory, color) + Tone(shownName, selected, color);
+        return state.Theme.Wrap(ThemeToken.Muted, shownDirectory, state.Color)
+            + Tone(shownName, selected, state);
     }
 
-    private static string Tone(string text, bool selected, ColorSystemSupport color) =>
-        selected ? LivePalette.Accent(text, color) : text;
+    private static string Tone(string text, bool selected, LiveAreaState state) =>
+        selected ? state.Theme.Wrap(ThemeToken.Accent, text, state.Color) : text;
 }

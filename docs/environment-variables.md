@@ -62,7 +62,7 @@ and scope; [configuration](configuration.md) has the prose for each.
 | --- | --- |
 | `LUNATE_ASCII` | Forces the ASCII glyph set, punctuation and markers. |
 | `LUNATE_UNICODE` | Forces the Unicode glyph set when the detection would degrade. The overrides decide first, and because degrading is the safe direction, ASCII wins if both are set. |
-| `NO_COLOR` | Disables colour everywhere. A theme can only lower the colour depth, so this wins over `tui.theme`. |
+| `NO_COLOR` | Disables colour everywhere. A theme can only lower the colour depth, so this wins over `tui.theme`, `--theme` and any theme file. |
 | `COLORTERM` | Read with the terminal's own detection to decide the colour depth. |
 | `TERM` | `dumb` degrades the glyph set to ASCII and is one reason a bare `lunate` refuses the TUI. |
 | `WT_SESSION` | On Windows, marks a terminal that can render the Unicode glyph set. |

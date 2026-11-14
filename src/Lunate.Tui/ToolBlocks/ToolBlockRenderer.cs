@@ -22,15 +22,15 @@ public enum ToolDetails
 /// </summary>
 public sealed class ToolBlockRenderer
 {
-    internal static readonly SpanStyle StatusOk = new(Color: "green");
-    internal static readonly SpanStyle StatusError = new(Color: "red");
+    /// <summary>The running glyph's dim, which is emphasis and not one of the theme's colours.</summary>
     internal static readonly SpanStyle StatusRunning = SpanStyle.Dim;
-    internal static readonly SpanStyle Accent = new(Color: "cyan");
+
+    /// <summary>The muted tone is a dim attribute in every theme; the words carry the meaning.</summary>
     internal static readonly SpanStyle Muted = SpanStyle.Dim;
-    internal static readonly SpanStyle Warning = new(Color: "yellow");
 
     private readonly bool _unicode;
     private readonly string _home;
+    private TerminalCapabilities _capabilities;
 
     /// <summary>The Unicode defaults; the interactive session passes its detected capabilities.</summary>
     public ToolBlockRenderer()
@@ -41,6 +41,18 @@ public sealed class ToolBlockRenderer
         ArgumentNullException.ThrowIfNull(capabilities);
         _unicode = capabilities.Unicode;
         _home = homeDirectory ?? PathText.Home();
+        _capabilities = capabilities;
+    }
+
+    /// <summary>
+    /// Applies the session's resolved capabilities — the theme's tokens and the colour depth they
+    /// downgrade for — so the tool name, the status glyph and the excerpt tones resolve the way
+    /// the console paints.
+    /// </summary>
+    internal void SetCapabilities(TerminalCapabilities capabilities)
+    {
+        ArgumentNullException.ThrowIfNull(capabilities);
+        _capabilities = capabilities;
     }
 
     public IRenderable Render(ToolBlockModel block) =>
@@ -97,7 +109,7 @@ public sealed class ToolBlockRenderer
 
         if (block.Diff is not null && (fullOutput || details == ToolDetails.Expanded))
         {
-            DiffRenderer.Append(lines, block.Diff);
+            DiffRenderer.Append(lines, block.Diff, _capabilities);
         }
 
         return lines;
@@ -108,7 +120,7 @@ public sealed class ToolBlockRenderer
         var line = new StyledLine();
         line.Add(Glyph(block.Status), StatusStyle(block.Status));
         line.Add(" ", SpanStyle.Plain);
-        line.Add(block.ToolName, Accent);
+        line.Add(block.ToolName, _capabilities.Span(ThemeToken.Accent));
         bool compact = WidthBands.IsCompact(width);
         // A failed call's output is an error message, not file content: no line count from it.
         // An image read's placeholder is not a line either.
@@ -169,7 +181,7 @@ public sealed class ToolBlockRenderer
             var line = new StyledLine();
             line.Add(
                 indent ? "  " + excerpt.Text : excerpt.Text,
-                excerpt.IsMarker ? Warning
+                excerpt.IsMarker ? _capabilities.Span(ThemeToken.Warning)
                     : ImagePlaceholder.IsOnly(excerpt.Text) ? Muted
                     : SpanStyle.Plain
             );
@@ -185,12 +197,12 @@ public sealed class ToolBlockRenderer
             _ => _unicode ? "\u2026" : "...",
         };
 
-    private static SpanStyle StatusStyle(ToolBlockStatus status) =>
+    private SpanStyle StatusStyle(ToolBlockStatus status) =>
         status switch
         {
             ToolBlockStatus.Running => StatusRunning,
-            ToolBlockStatus.Ok => StatusOk,
-            ToolBlockStatus.Error => StatusError,
+            ToolBlockStatus.Ok => _capabilities.Span(ThemeToken.Success),
+            ToolBlockStatus.Error => _capabilities.Span(ThemeToken.Error),
             _ => SpanStyle.Plain,
         };
 }

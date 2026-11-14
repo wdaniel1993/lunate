@@ -1,4 +1,4 @@
-\x1b[38;5;9m✗\x1b[0m \x1b[38;5;14mcs_diagnostics\x1b[0m\x1b[2m  changed · 2 errors 1 warning · \x1b[0m
+\x1b[38;5;9m✗\x1b[0m \x1b[38;5;80mcs_diagnostics\x1b[0m\x1b[2m  changed · 2 errors 1 warning · \x1b[0m
 \x1b[2msrc/a.cs(4,5): error CS0103: The name 'Foo' does \x1b[0m
 \x1b[2mnot exist · src/b.cs(9,1): warning CS8600: \x1b[0m
 \x1b[2mConverting null literal · ctrl+o\x1b[0m

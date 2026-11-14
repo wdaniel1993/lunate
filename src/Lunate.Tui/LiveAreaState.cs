@@ -85,6 +85,9 @@ internal sealed record LiveAreaState
     /// <summary>The colour system the raw live frame is painted for (NO_COLOR drops SGR).</summary>
     public ColorSystemSupport Color { get; init; } = ColorSystemSupport.NoColors;
 
+    /// <summary>The theme every token in the frame resolves through.</summary>
+    public TuiTheme Theme { get; init; } = TuiTheme.Default;
+
     /// <summary>Whether the terminal can show box characters; false falls back to ASCII.</summary>
     public bool Unicode { get; init; } = true;
 

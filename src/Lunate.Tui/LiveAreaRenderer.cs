@@ -48,7 +48,13 @@ internal static class LiveAreaRenderer
             : null;
         IReadOnlyList<ApprovalPanelLine> approvalLines = state.Approval is null
             ? []
-            : ApprovalPromptRenderer.PlainLines(state.Approval, width, state.Color, state.Unicode);
+            : ApprovalPromptRenderer.PlainLines(
+                state.Approval,
+                width,
+                state.Theme,
+                state.Color,
+                state.Unicode
+            );
         IReadOnlyList<string> trustLines = state.Trust is null
             ? []
             : TrustPromptRenderer.PlainLines(state.Trust, width, state.Unicode);
@@ -97,13 +103,8 @@ internal static class LiveAreaRenderer
         var input = InputLine.Layout(state.Input, width, MaxLines, state.BashMode);
         IReadOnlyList<string> inputLines =
             state.Input.Text.Length == 0
-                ?
-                [
-                    state.BashMode
-                        ? BashPromptLine(width, state.Color)
-                        : PlaceholderLine(width, state.Color),
-                ]
-                : PromptLines(input.Lines, state.Color, state.BashMode);
+                ? [state.BashMode ? BashPromptLine(state, width) : PlaceholderLine(state, width)]
+                : PromptLines(input.Lines, state, state.BashMode);
         var tail = TailLines(
             state.TailText,
             // The picker is modal: while it is open it owns the area above the input.
@@ -131,7 +132,7 @@ internal static class LiveAreaRenderer
 
         foreach (string noticeLine in noticeLines)
         {
-            lines.Add(noticeLine);
+            lines.Add(state.Theme.Wrap(ThemeToken.Notice, noticeLine, state.Color));
         }
 
         if (secretPromptLine is not null)
@@ -180,7 +181,7 @@ internal static class LiveAreaRenderer
         {
             // The status line takes the theme's tone: muted in the colour modes, plain under
             // mono. Width math happens before styling, so the SGR bytes must not count as columns.
-            lines.Add(LivePalette.Muted(CellText.Clip(footerLine, width), state.Color));
+            lines.Add(Muted(state, CellText.Clip(footerLine, width)));
         }
 
         int cursorRow = tail.Count + preInputLines + input.CursorRow;
@@ -213,13 +214,13 @@ internal static class LiveAreaRenderer
             "↑/↓ move · number selects · Space toggles · Tab enters free text · Enter submits · Esc skips",
         ];
 
-    private static string PlaceholderLine(int width, ColorSystemSupport color)
+    private static string PlaceholderLine(LiveAreaState state, int width)
     {
         string prompt = CellText.Clip("> ", width);
         string text = CellText.Clip(Placeholder, Math.Max(0, width - CellText.Width(prompt)));
         // The whole line carries the prompt tone, so an empty input still reads as something
         // to type into rather than as a line of output.
-        return LivePalette.Prompt(prompt + text, color);
+        return state.Theme.Wrap(ThemeToken.Prompt, prompt + text, state.Color);
     }
 
     /// <summary>
@@ -229,11 +230,11 @@ internal static class LiveAreaRenderer
     /// </summary>
     private static IReadOnlyList<string> PromptLines(
         IReadOnlyList<string> lines,
-        ColorSystemSupport color,
+        LiveAreaState state,
         bool bashMode
     )
     {
-        if (color == ColorSystemSupport.NoColors)
+        if (state.Color == ColorSystemSupport.NoColors)
         {
             return lines;
         }
@@ -250,8 +251,8 @@ internal static class LiveAreaRenderer
 
             string marker = line[..markerWidth];
             string tone = bashMode
-                ? LivePalette.Accent(marker, color)
-                : LivePalette.Prompt(marker, color);
+                ? state.Theme.Wrap(ThemeToken.Accent, marker, state.Color)
+                : state.Theme.Wrap(ThemeToken.Prompt, marker, state.Color);
             styled.Add(tone + line[markerWidth..]);
         }
 
@@ -259,8 +260,12 @@ internal static class LiveAreaRenderer
     }
 
     /// <summary>The empty bash-mode prompt: the accent-toned <c>! </c> marker and nothing else.</summary>
-    private static string BashPromptLine(int width, ColorSystemSupport color) =>
-        LivePalette.Accent(CellText.Clip("! ", width), color);
+    private static string BashPromptLine(LiveAreaState state, int width) =>
+        state.Theme.Wrap(ThemeToken.Accent, CellText.Clip("! ", width), state.Color);
+
+    /// <summary>One span in the muted tone; the text alone where the colour depth allows none.</summary>
+    private static string Muted(LiveAreaState state, string text) =>
+        state.Theme.Wrap(ThemeToken.Muted, text, state.Color);
 
     private static string ThinkingLabel(int elapsedSeconds) =>
         FormattableString.Invariant($"⠹ thinking… {elapsedSeconds}s");
@@ -331,7 +336,7 @@ internal static class LiveAreaRenderer
         )
         {
             string label = CellText.Clip(ThinkingLabel(current.ElapsedSeconds), width);
-            return ThinkingColor.Wrap(label, state.Color) + line[label.Length..];
+            return state.Theme.Wrap(ThemeToken.Notice, label, state.Color) + line[label.Length..];
         }
 
         return line;
@@ -387,7 +392,9 @@ internal static class LiveAreaRenderer
         return
         [
             .. text.Skip(start)
-                .Select(line => ThinkingColor.Wrap(CellText.Clip(line, width), state.Color)),
+                .Select(line =>
+                    state.Theme.Wrap(ThemeToken.Notice, CellText.Clip(line, width), state.Color)
+                ),
         ];
     }
 

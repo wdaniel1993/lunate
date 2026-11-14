@@ -14,6 +14,16 @@ namespace Lunate.Coding;
 /// </summary>
 internal sealed class TuiUserInteraction(LiveArea live) : IUserInteraction
 {
+    private TuiTheme _theme = TuiTheme.Default;
+    private ColorSystemSupport _color = ColorSystemSupport.Detect;
+
+    /// <summary>The theme an extension block's segment styles resolve through.</summary>
+    internal void SetTheme(TuiTheme theme, ColorSystemSupport color)
+    {
+        _theme = theme;
+        _color = color;
+    }
+
     public void Notify(UserNotice notice) => live.SetNotice(notice.Message);
 
     public void UpdateStatus(UserStatus status) =>
@@ -37,7 +47,7 @@ internal sealed class TuiUserInteraction(LiveArea live) : IUserInteraction
     public void RenderExtension(ExtensionBlock block) =>
         live.WriteScrollback(console => console.Write(RenderBlock(block.Segments)));
 
-    private static Markup RenderBlock(IReadOnlyList<TextSegment> segments)
+    private Markup RenderBlock(IReadOnlyList<TextSegment> segments)
     {
         var lines = new List<StyledLine> { new() };
         foreach (TextSegment segment in segments)
@@ -60,13 +70,13 @@ internal sealed class TuiUserInteraction(LiveArea live) : IUserInteraction
         return new Markup(builder.ToString());
     }
 
-    private static SpanStyle Palette(Style style) =>
+    private SpanStyle Palette(Style style) =>
         style switch
         {
             Style.Dim => SpanStyle.Dim,
-            Style.Accent => SpanStyle.Key,
-            Style.Warning => ApprovalPromptRenderer.Question,
-            Style.Error => ToolBlockRenderer.StatusError,
+            Style.Accent => _theme.Span(ThemeToken.Code, _color),
+            Style.Warning => _theme.Span(ThemeToken.Warning, _color),
+            Style.Error => _theme.Span(ThemeToken.Error, _color),
             _ => SpanStyle.Plain,
         };
 }

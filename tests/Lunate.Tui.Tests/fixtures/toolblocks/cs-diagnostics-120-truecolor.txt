@@ -1,2 +1,2 @@
-\x1b[38;5;9m✗\x1b[0m \x1b[38;5;14mcs_diagnostics\x1b[0m\x1b[2m  changed · 2 errors 1 warning · src/a.cs(4,5): error CS0103: The name 'Foo' does not exist · \x1b[0m
+\x1b[38;5;9m✗\x1b[0m \x1b[38;2;95;215;215mcs_diagnostics\x1b[0m\x1b[2m  changed · 2 errors 1 warning · src/a.cs(4,5): error CS0103: The name 'Foo' does not exist · \x1b[0m
 \x1b[2msrc/b.cs(9,1): warning CS8600: Converting null literal · ctrl+o\x1b[0m

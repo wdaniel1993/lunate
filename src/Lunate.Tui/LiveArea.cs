@@ -63,6 +63,7 @@ internal sealed partial class LiveArea : IDisposable
             {
                 Size = _console.Size,
                 Color = _capabilities.Color,
+                Theme = _capabilities.Theme,
                 Unicode = _capabilities.Unicode,
             };
             initial = _state;
@@ -169,6 +170,19 @@ internal sealed partial class LiveArea : IDisposable
         {
             _scrollback = null;
         }
+    }
+
+    /// <summary>
+    /// Applies the resolved theme: every token the live frame paints through — the input marker,
+    /// the activity label, the thinking block, the status line, an approval's tones and the
+    /// autocomplete selection. The colour plan and the theme travel together, so the frame and the
+    /// scrollback agree on which tokens have a colour at all.
+    /// </summary>
+    public void SetTheme(TuiTheme theme)
+    {
+        ArgumentNullException.ThrowIfNull(theme);
+        _capabilities = _capabilities with { Theme = theme };
+        Post(new ThemeInput(theme));
     }
 
     public void SetRunUsage(long? inputTokens, long? outputTokens) =>
@@ -518,6 +532,7 @@ internal sealed partial class LiveArea : IDisposable
             },
             CancellableInput cancellable => state with { Cancellable = cancellable.Cancellable },
             ColorInput color => state with { Color = color.Color },
+            ThemeInput theme => state with { Theme = theme.Theme },
             RunUsageInput usage => state with
             {
                 RunInputTokens = usage.InputTokens,
@@ -596,6 +611,8 @@ internal sealed partial class LiveArea : IDisposable
     private sealed record CancellableInput(bool Cancellable) : LiveAreaInput;
 
     private sealed record ColorInput(ColorSystemSupport Color) : LiveAreaInput;
+
+    private sealed record ThemeInput(TuiTheme Theme) : LiveAreaInput;
 
     private sealed record RunUsageInput(long? InputTokens, long? OutputTokens) : LiveAreaInput;
 

@@ -69,6 +69,6 @@ stays byte-stable. Recording wins when both are set.
 - Environment-variable overrides and `/settings`: [environment-variables.md](environment-variables.md).
   The key remaps the `tui.keys` entries persist: [keybindings.md](keybindings.md).
 - Project instructions: [agents-md.md](agents-md.md). Skills: [skills.md](skills.md). MCP server
-  files: [mcp-servers.md](mcp-servers.md). The theme: [themes-and-keys.md](themes-and-keys.md).
+  files: [mcp-servers.md](mcp-servers.md). The theme: [themes.md](themes.md).
 - Why the parser is deny-by-default and every problem fails the load as one error:
   [`openspec/specs/agent-config/`](../openspec/specs/agent-config/spec.md) owns that behaviour.
