@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Reflection;
 using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Coding.Tests;
@@ -9,9 +10,31 @@ namespace Lunate.Coding.Tests;
 /// spawn names, so one spawn can never hold another spawn's pipe write end open. The overlapping
 /// spawns below are the regression: on the pre-fix spawn every victim's captured stream stayed open
 /// while a bystander lived, and a child's descriptor list carried pipe ends it was never given.
+/// <para>
+/// The descriptor-list test reads a child's table against a baseline of this process's, so it holds
+/// only while nothing else in the process opens a descriptor: a desktop-library spawn keeps its
+/// child-side pipe ends inheritable in the parent until it forks. Its collection therefore runs
+/// alone (<see cref="SpawnDescriptorTableCollection"/>).
+/// </para>
 /// </summary>
+[Collection(SpawnDescriptorTableCollection.Name)]
 public sealed class UnixChildProcessPipeLifetimeTests
 {
+    [Fact]
+    public void The_collection_never_runs_beside_another_collection()
+    {
+        // Sequential tests inside the collection are not enough: a process that another collection
+        // starts mid-spawn holds pipe ends in the parent that the probes below would inherit and
+        // report. This pins the definition that keeps those foreign ends out of the probes (#862).
+        CollectionDefinitionAttribute definition = Assert.IsType<CollectionDefinitionAttribute>(
+            typeof(SpawnDescriptorTableCollection).GetCustomAttribute<CollectionDefinitionAttribute>()
+        );
+        Assert.True(
+            definition.DisableParallelization,
+            "the spawn-descriptor-table collection must disable parallelization"
+        );
+    }
+
     // Enough simultaneous spawns that the pipe-creation-to-posix_spawn window always overlaps; the
     // pre-fix spawn leaked in every pair of the measured run (#699).
     private const int Pairs = 8;
@@ -62,8 +85,9 @@ public sealed class UnixChildProcessPipeLifetimeTests
 
         string baseline = await FdSetAsync(temp, "baseline.txt");
 
-        // The probe children run beside long-lived bystanders, so any pipe end another spawn created
-        // is present in the parent's descriptor table at the instant they start.
+        // The probe children run beside long-lived bystanders, so any pipe end another spawn of this
+        // test created is present in the parent's descriptor table at the instant they start. No
+        // other test runs beside this one, so no descriptor enters that table from outside.
         using var barrier = new Barrier(Pairs * 2);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var probes = new Task[Pairs];
